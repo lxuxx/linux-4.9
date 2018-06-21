@@ -126,6 +126,7 @@ struct usb_ep_ops {
 	int (*enable) (struct usb_ep *ep,
 		const struct usb_endpoint_descriptor *desc);
 	int (*disable) (struct usb_ep *ep);
+	void (*dispose) (struct usb_ep *ep);
 
 	struct usb_request *(*alloc_request) (struct usb_ep *ep,
 		gfp_t gfp_flags);
@@ -429,7 +430,9 @@ static inline struct usb_gadget *dev_to_usb_gadget(struct device *dev)
  */
 static inline size_t usb_ep_align(struct usb_ep *ep, size_t len)
 {
-	return round_up(len, (size_t)le16_to_cpu(ep->desc->wMaxPacketSize));
+	int max_packet_size = (size_t)usb_endpoint_maxp(ep->desc) & 0x7ff;
+
+	return round_up(len, max_packet_size);
 }
 
 /**
@@ -746,7 +749,7 @@ struct usb_gadget_string_container {
 };
 
 /* put descriptor for string with that id into buf (buflen >= 256) */
-int usb_gadget_get_string(struct usb_gadget_strings *table, int id, u8 *buf);
+int usb_gadget_get_string(const struct usb_gadget_strings *table, int id, u8 *buf);
 
 /*-------------------------------------------------------------------------*/
 

@@ -153,6 +153,17 @@
 			#ports = <2>;
 			clocks = <&syscon ASPEED_CLK_GATE_USBUHCICLK>;
 		};
+
+		vhub: vhub@0x1e6a0000 {
+			compatible = "aspeed,ast2500-usb-vhub";
+			reg = <0x1e6a0000 0x300>;
+			interrupts = <5>;
+			clocks = <&syscon ASPEED_CLK_GATE_USBPORT1CLK>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_usb2ad_default>;
+			list_mode = <0>;
+		};
+
 #if 0
 		udc: udc@0x1e6a0000 {
 			compatible = "aspeed,ast-udc";
