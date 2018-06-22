@@ -524,6 +524,9 @@ int aspeed_crypto_rsa_trigger(struct aspeed_crypto_dev *crypto_dev)
 	printk("ne = %d nm = %d\n", rsa_key->ne, rsa_key->nm);
 	printk("ready rsa\n");
 #endif
+#ifdef ASPEED_RSA_INT
+	init_completion(&crypto_dev->cmd_complete);
+#endif
 	if (ctx->enc) {
 		memcpy(e_buff, rsa_key->e, 512);
 		// printk("rsa_key->e: %d\n", rsa_key->ne);
@@ -539,12 +542,19 @@ int aspeed_crypto_rsa_trigger(struct aspeed_crypto_dev *crypto_dev)
 		aspeed_crypto_write(crypto_dev, rsa_key->nd + (rsa_key->nm << 16),
 				    ASPEED_HACE_RSA_MD_EXP_BIT);
 	}
+#ifdef ASPEED_RSA_INT
+	aspeed_crypto_write(crypto_dev,
+			    RSA_CMD_SRAM_ENGINE_ACCESSABLE | RSA_CMD_FIRE | RSA_CMD_INT_ENABLE,
+			    ASPEED_HACE_RSA_CMD);
+	wait_for_completion(&crypto_dev->cmd_complete);
+#else
 	aspeed_crypto_write(crypto_dev,
 			    RSA_CMD_SRAM_ENGINE_ACCESSABLE | RSA_CMD_FIRE,
 			    ASPEED_HACE_RSA_CMD);
 	while (aspeed_crypto_read(crypto_dev, ASPEED_HACE_STS) & HACE_RSA_BUSY);
 	aspeed_crypto_write(crypto_dev, 0, ASPEED_HACE_RSA_CMD);
 	udelay(2);
+#endif
 	result_length = (get_bit_numbers((u32 *)xa_buff) + 7) / 8;
 #if 0
 	printk("after np\n");
@@ -575,8 +585,11 @@ static int aspeed_rsa_enc(struct akcipher_request *req)
 	spin_lock_irqsave(&crypto_dev->lock, flags);
 	err = crypto_enqueue_request(&crypto_dev->queue, &req->base);
 	spin_unlock_irqrestore(&crypto_dev->lock, flags);
+#ifdef ASPEED_RSA_INT
+	schedule_work(&crypto_dev->crypto_work);
+#else
 	tasklet_schedule(&crypto_dev->crypto_tasklet);
-
+#endif
 	return err;
 
 }
@@ -593,7 +606,11 @@ static int aspeed_rsa_dec(struct akcipher_request *req)
 	spin_lock_irqsave(&crypto_dev->lock, flags);
 	err = crypto_enqueue_request(&crypto_dev->queue, &req->base);
 	spin_unlock_irqrestore(&crypto_dev->lock, flags);
+#ifdef ASPEED_RSA_INT
+	schedule_work(&crypto_dev->crypto_work);
+#else
 	tasklet_schedule(&crypto_dev->crypto_tasklet);
+#endif
 
 	return err;
 }

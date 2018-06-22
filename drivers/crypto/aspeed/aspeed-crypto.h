@@ -19,6 +19,9 @@
 #include <crypto/sha.h>
 #include <crypto/ecdh.h>
 
+// #define ASPEED_CRYPTO_INT
+// #define ASPEED_CIPHER_INT
+// #define ASPEED_RSA_INT
 
 /* Crypto control registers*/
 #define ASPEED_HACE_SRC			0x00
@@ -116,7 +119,7 @@
 
 struct aspeed_cipher_ctx {
 	struct aspeed_crypto_dev *crypto_dev;
-	u8			*iv;
+	u8		*iv;
 	int 		key_len;
 	int 		enc_cmd;
 	void		*cipher_key;
@@ -131,6 +134,7 @@ struct aspeed_crypto_dev {
 	struct clk 			*yclk;
 	struct clk			*rsaclk;
 	spinlock_t			lock;
+	struct completion		cmd_complete;
 
 	//hash
 	struct aspeed_sham_reqctx *sham_reqctx;
@@ -138,6 +142,8 @@ struct aspeed_crypto_dev {
 	struct crypto_queue	queue;
 
 	struct tasklet_struct	crypto_tasklet;
+
+	struct work_struct	crypto_work;
 
 	unsigned long	flags;
 
@@ -208,7 +214,7 @@ struct aspeed_sham_reqctx {
 /*************************************************************************************/
 
 struct aspeed_ecdh_ctx {
-	struct aspeed_crypto_dev	*crypto_dev;
+	struct aspeed_crypto_dev *crypto_dev;
 	const u8 *public_key;
 	unsigned int curve_id;
 	size_t	n_sz;

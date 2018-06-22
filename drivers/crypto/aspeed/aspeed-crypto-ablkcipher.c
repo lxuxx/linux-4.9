@@ -16,7 +16,7 @@
  */
 #include "aspeed-crypto.h"
 
-//#define ASPEED_CIPHER_DEBUG
+// #define ASPEED_CIPHER_DEBUG
 
 #ifdef ASPEED_CIPHER_DEBUG
 //#define CIPHER_DBG(fmt, args...) printk(KERN_DEBUG "%s() " fmt, __FUNCTION__, ## args)
@@ -34,23 +34,29 @@ int aspeed_crypto_ablkcipher_trigger(struct aspeed_crypto_dev *crypto_dev)
 	int nbytes = 0;
 //	struct scatterlist *sg;
 //	int i = 0;
+#ifdef ASPEED_CIPHER_INT
+	init_completion(&crypto_dev->cmd_complete);
+#else
 	while (aspeed_crypto_read(crypto_dev, ASPEED_HACE_STS) & HACE_CRYPTO_BUSY);
+#endif
 
 #if 0
 	for_each_sg(in_sg, sg, sg_nents(req->src), i) {
-		printk("req->src %x [%d] : %x, len %d \n ",req->src, i, sg->dma_address, sg->length);
+		printk("req->src %x [%d] : %x, len %d \n ", req->src, i, sg->dma_address, sg->length);
 	}
-	
+
 	for_each_sg(out_sg, sg, sg_nents(req->dst), i) {
 		printk("req->dst %x [%d] : %x, len %d \n ", req->dst, i, sg->dma_address, sg->length);
 	}
 #endif
 	//for enable interrupt
-//	ctx->enc_cmd |= HACE_CMD_ISR_EN;
+#ifdef ASPEED_CIPHER_INT
+	ctx->enc_cmd |= HACE_CMD_ISR_EN;
+#endif
 
 	aspeed_crypto_write(crypto_dev, ctx->cipher_key_dma, ASPEED_HACE_CONTEXT);
 
-	if((sg_nents(req->src) == 1) && (sg_nents(req->dst) == 1)) {
+	if ((sg_nents(req->src) == 1) && (sg_nents(req->dst) == 1)) {
 		//src dma map
 		if (!dma_map_sg(crypto_dev->dev, req->src, 1, DMA_TO_DEVICE)) {
 			dev_err(crypto_dev->dev, "[%s:%d] dma_map_sg(src)	error\n",
@@ -69,8 +75,12 @@ int aspeed_crypto_ablkcipher_trigger(struct aspeed_crypto_dev *crypto_dev)
 
 		aspeed_crypto_write(crypto_dev, req->nbytes, ASPEED_HACE_DATA_LEN);
 		aspeed_crypto_write(crypto_dev, ctx->enc_cmd, ASPEED_HACE_CMD);
-	
+
+#ifdef ASPEED_CIPHER_INT
+		wait_for_completion(&crypto_dev->cmd_complete);
+#else
 		while (aspeed_crypto_read(crypto_dev, ASPEED_HACE_STS) & HACE_CRYPTO_BUSY);
+#endif
 	} else {
 		nbytes = sg_copy_to_buffer(in_sg, sg_nents(req->src), crypto_dev->cipher_addr, req->nbytes);
 		CIPHER_DBG("copy nbytes %d, req->nbytes %d , nb_in_sg %d, nb_out_sg %d \n", nbytes, req->nbytes, sg_nents(req->src), sg_nents(req->dst));
@@ -83,10 +93,13 @@ int aspeed_crypto_ablkcipher_trigger(struct aspeed_crypto_dev *crypto_dev)
 		aspeed_crypto_write(crypto_dev, req->nbytes, ASPEED_HACE_DATA_LEN);
 		aspeed_crypto_write(crypto_dev, ctx->enc_cmd, ASPEED_HACE_CMD);
 
+#ifdef ASPEED_CIPHER_INT
+		wait_for_completion(&crypto_dev->cmd_complete);
+#else
 		while (aspeed_crypto_read(crypto_dev, ASPEED_HACE_STS) & HACE_CRYPTO_BUSY);
-
+#endif
 		nbytes = sg_copy_from_buffer(out_sg, sg_nents(req->dst), crypto_dev->cipher_addr, req->nbytes);
-		CIPHER_DBG("sg_copy_from_buffer nbytes %d req->nbytes %d, cmd %x\n",nbytes, req->nbytes, ctx->enc_cmd);
+		CIPHER_DBG("sg_copy_from_buffer nbytes %d req->nbytes %d, cmd %x\n", nbytes, req->nbytes, ctx->enc_cmd);
 		if (!nbytes) {
 			printk("nbytes %d req->nbytes %d\n", nbytes, req->nbytes);
 			return -EINVAL;
@@ -103,8 +116,8 @@ static int aspeed_rc4_crypt(struct ablkcipher_request *req, u32 cmd)
 
 	CIPHER_DBG("\n");
 
-	cmd |= HACE_CMD_RI_WO_DATA_ENABLE | 
-			HACE_CMD_CONTEXT_LOAD_ENABLE | HACE_CMD_CONTEXT_SAVE_ENABLE;
+	cmd |= HACE_CMD_RI_WO_DATA_ENABLE |
+	       HACE_CMD_CONTEXT_LOAD_ENABLE | HACE_CMD_CONTEXT_SAVE_ENABLE;
 
 	ctx->enc_cmd = cmd;
 
@@ -161,7 +174,7 @@ static int aspeed_des_crypt(struct ablkcipher_request *req, u32 cmd)
 
 	CIPHER_DBG("\n");
 
-	if(req->info) 
+	if (req->info)
 		memcpy(ctx->cipher_key + 8, req->info, 8);
 
 	cmd |= HACE_CMD_DES_SELECT | HACE_CMD_RI_WO_DATA_ENABLE |
@@ -177,7 +190,7 @@ static int aspeed_des_setkey(struct crypto_ablkcipher *cipher, const u8 *key,
 {
 	struct crypto_tfm *tfm = crypto_ablkcipher_tfm(cipher);
 	struct aspeed_cipher_ctx *ctx = crypto_ablkcipher_ctx(cipher);
-	u32 tmp[DES_EXPKEY_WORDS];	
+	u32 tmp[DES_EXPKEY_WORDS];
 
 	CIPHER_DBG("bits : %d : \n", keylen);
 
@@ -326,7 +339,7 @@ static int aspeed_aes_crypt(struct ablkcipher_request *req, u32 cmd)
 	struct aspeed_cipher_ctx *ctx = crypto_ablkcipher_ctx(crypto_ablkcipher_reqtfm(req));
 	struct aspeed_crypto_dev *crypto_dev = ctx->crypto_dev;
 
-	if(req->info)
+	if (req->info)
 		memcpy(ctx->cipher_key, req->info, 16);
 
 	cmd |= HACE_CMD_AES_SELECT | HACE_CMD_RI_WO_DATA_ENABLE |
@@ -440,7 +453,7 @@ static int aspeed_crypto_cra_init(struct crypto_tfm *tfm)
 
 	ctx->crypto_dev = crypto_alg->crypto_dev;
 	ctx->iv = NULL;
-	ctx->cipher_key = dma_alloc_coherent(ctx->crypto_dev->dev, PAGE_SIZE, &ctx->cipher_key_dma, GFP_KERNEL);	
+	ctx->cipher_key = dma_alloc_coherent(ctx->crypto_dev->dev, PAGE_SIZE, &ctx->cipher_key_dma, GFP_KERNEL);
 
 	return 0;
 }
@@ -463,7 +476,7 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 			.cra_driver_name 	= "aspeed-ecb-aes",
 			.cra_priority 		= 300,
 			.cra_flags 		= CRYPTO_ALG_TYPE_ABLKCIPHER |
-						CRYPTO_ALG_ASYNC,
+			CRYPTO_ALG_ASYNC,
 			.cra_blocksize 	= AES_BLOCK_SIZE,
 			.cra_ctxsize 		= sizeof(struct aspeed_cipher_ctx),
 			.cra_alignmask	= 0x0f,
@@ -487,7 +500,7 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 			.cra_driver_name 	= "aspeed-cbc-aes",
 			.cra_priority 		= 300,
 			.cra_flags 		= CRYPTO_ALG_TYPE_ABLKCIPHER |
-					CRYPTO_ALG_ASYNC,
+			CRYPTO_ALG_ASYNC,
 			.cra_blocksize 	= AES_BLOCK_SIZE,
 			.cra_ctxsize 		= sizeof(struct aspeed_cipher_ctx),
 			.cra_alignmask	= 0xf,
@@ -655,7 +668,7 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 			.cra_driver_name	= "aspeed-ofb-des",
 			.cra_priority		= 300,
 			.cra_flags		= CRYPTO_ALG_TYPE_ABLKCIPHER |
-					CRYPTO_ALG_ASYNC,
+			CRYPTO_ALG_ASYNC,
 			.cra_blocksize		= DES_BLOCK_SIZE,
 			.cra_ctxsize		= sizeof(struct aspeed_cipher_ctx),
 			.cra_alignmask	= 0xf,
@@ -679,7 +692,7 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 			.cra_driver_name	= "aspeed-ctr-des",
 			.cra_priority		= 300,
 			.cra_flags		= CRYPTO_ALG_TYPE_ABLKCIPHER |
-					CRYPTO_ALG_ASYNC,
+			CRYPTO_ALG_ASYNC,
 			.cra_blocksize		= DES_BLOCK_SIZE,
 			.cra_ctxsize		= sizeof(struct aspeed_cipher_ctx),
 			.cra_alignmask	= 0xf,
@@ -823,7 +836,7 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 			.cra_driver_name	= "aspeed-arc4",
 			.cra_priority		= 300,
 			.cra_flags		= CRYPTO_ALG_TYPE_ABLKCIPHER |
-									CRYPTO_ALG_ASYNC,
+			CRYPTO_ALG_ASYNC,
 			.cra_blocksize		= 1,
 			.cra_ctxsize		= sizeof(struct aspeed_cipher_ctx),
 			.cra_alignmask	= 0xf,
