@@ -450,6 +450,15 @@ static const struct usb_ep_ops ast_vhub_ep0_ops = {
 	.free_request	= ast_vhub_free_request,
 };
 
+static const struct usb_endpoint_descriptor ast_vhub_ep0_desc = {
+	.bLength = USB_DT_ENDPOINT_SIZE,
+	.bDescriptorType = USB_DT_ENDPOINT,
+	.bEndpointAddress = 0,
+	.bmAttributes = USB_ENDPOINT_XFER_CONTROL,
+	.wMaxPacketSize = AST_VHUB_EP0_MAX_PACKET,
+};
+
+
 void ast_vhub_init_ep0(struct ast_vhub *vhub, struct ast_vhub_ep *ep,
 		       struct ast_vhub_dev *dev)
 {
@@ -465,6 +474,7 @@ void ast_vhub_init_ep0(struct ast_vhub *vhub, struct ast_vhub_ep *ep,
 	ep->dev = dev;
 	ep->vhub = vhub;
 	ep->ep0.state = ep0_state_token;
+//	ep->ep0.desc = &ast_vhub_ep0_desc;
 	INIT_LIST_HEAD(&ep->ep0.req.queue);
 	ep->ep0.req.internal = true;
 
