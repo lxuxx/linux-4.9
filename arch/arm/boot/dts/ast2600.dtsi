@@ -1,0 +1,145 @@
+#include "skeleton.dtsi"
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/clock/aspeed-clock.h>
+#include <dt-bindings/gpio/gpio.h>
+/ {
+	model = "AST2600 SOC";
+	compatible = "aspeed";
+	#address-cells = <1>;
+	#size-cells = <1>;
+	memory@80000000 {
+		reg = <0x80000000 0x20000000>;
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			compatible = "arm,cortex-a7";
+			device_type = "cpu";
+#if 0                        
+			next-level-cache = <&L2>;
+#endif                        
+			reg = <0>;
+		};
+
+	};
+
+        intc: interrupt-controller@40460000 {
+                compatible = "arm,cortex-a7-gic";
+                #interrupt-cells = <3>;
+                interrupt-controller;
+                reg = <0x00801000 0x1000>,
+                      <0x00800100 0x0100>;
+        };
+#if 0
+        L2: l2-cache {
+                compatible = "arm,pl310-cache";
+                reg = <0x00c0000 0x1000>;
+                cache-unified;
+                cache-level = <2>;
+                /*
+                 * Override default cache size, sets and
+                 * associativity as these may be erroneously set
+                 * up by boot loader(s).
+                 */
+                cache-size = <262144>; // 256KB
+                cache-sets = <512>;
+                cache-line-size = <32>;
+                arm,parity-disable;
+                arm,tag-latency = <1 1 1>;
+                arm,data-latency = <1 1 1>;
+        };
+#endif
+#if 0
+        scu: scu@1f000000 {
+                compatible = "arm,cortex-a9-scu";
+                reg = <0x1f000000 0x100>;
+        };
+
+
+        timer {
+                compatible = "arm,armv7-timer";
+                interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+                             <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+                             <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+                             <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
+        };
+
+        pmu {
+                compatible = "arm,cortex-a7-pmu";
+                interrupts = <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>,
+                             <GIC_SPI 121 IRQ_TYPE_LEVEL_HIGH>;
+        };
+
+#endif
+
+	apb {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+                clk_uart: clk_uart {
+                        #clock-cells = <0>;
+                        compatible = "fixed-clock";
+                        clock-frequency = <1846154>;
+                };
+
+                clk_timer: clk_timer {
+                        #clock-cells = <0>;
+                        compatible = "fixed-clock";
+                        clock-frequency = <25000000>;
+                };
+
+                ahbc: ahbc@1e600000 {
+                        compatible = "aspeed,ast-ahbc";
+                        reg = <0x1e600000 0x100>;
+                };
+
+                syscon: syscon@1e6e2000 {
+                        compatible = "aspeed,ast2600-scu", "syscon", "simple-mfd";
+                        reg = <0x1e6e2000 0x1a8>;
+                        #address-cells = <1>;
+                        #size-cells = <0>;
+                        #clock-cells = <1>;
+                        #reset-cells = <1>;
+                };
+#if 0
+		timer: timer@1e782000 {
+                        /* This timer is a Faraday FTTMR010 derivative */
+                        compatible = "aspeed,ast2500-timer";
+                        reg = <0x1e782000 0x90>;
+                        interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
+                        clocks = <&clk_timer>;
+#if 0                        
+                        interrupts = <16 17 18 35 36 37 38 39>;
+                        clocks = <&syscon ASPEED_CLK_APB>;
+                        clock-names = "PCLK";
+#endif                        
+                };
+#else
+		timer:timer@1e782000 {
+			compatible = "aspeed,ast-timer";
+			reg = <0x1e782000 0x1000>;
+                        interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>,
+                                     <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>,
+                                     <GIC_SPI 18 IRQ_TYPE_LEVEL_HIGH>;
+		};
+#endif
+		uart0: serial@1e784000 {
+                        compatible = "ns16550a";
+                        reg = <0x1e784000 0x1000>;
+                        reg-shift = <2>;
+                        interrupts = <GIC_SPI 10 IRQ_TYPE_LEVEL_HIGH>;
+#if 1
+                        clocks = <&clk_uart>;
+#else                        
+                        clocks = <&syscon ASPEED_CLK_GATE_UART5CLK>;
+#endif                        
+                        no-loopback-test;
+                };
+
+	};
+};
