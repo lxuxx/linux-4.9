@@ -487,11 +487,20 @@ void RSAgetNp(struct aspeed_rsa_ctx *ctx, struct aspeed_rsa_key *rsa_key)
 static int aspeed_akcipher_complete(struct aspeed_crypto_dev *crypto_dev, int err)
 {
 	struct akcipher_request *req = crypto_dev->akcipher_req;
+	struct crypto_akcipher *cipher = crypto_akcipher_reqtfm(crypto_dev->akcipher_req);
+	struct aspeed_rsa_ctx *ctx = crypto_tfm_ctx(&cipher->base);
+	unsigned long val;
 
 	RSA_DBG("\n");
 	crypto_dev->flags &= ~CRYPTO_FLAGS_BUSY;
 	if (crypto_dev->is_async)
 		req->base.complete(&req->base, err);
+
+	do_gettimeofday(&ctx->end);
+
+	val = (ctx->end.tv_sec - ctx->begin.tv_sec) * 1000000;
+	val += ((ctx->end.tv_usec - ctx->begin.tv_usec));
+	printk("rsa dec time %lu\n", val);
 
 	tasklet_schedule(&crypto_dev->queue_task);
 
@@ -625,6 +634,7 @@ static int aspeed_rsa_enc(struct akcipher_request *req)
 
 	ctx->enc = 1;
 	RSA_DBG("\n");
+	do_gettimeofday(&ctx->begin);
 
 	return aspeed_crypto_handle_queue(crypto_dev, &req->base);
 
@@ -638,6 +648,7 @@ static int aspeed_rsa_dec(struct akcipher_request *req)
 
 	ctx->enc = 0;
 	RSA_DBG("\n");
+	do_gettimeofday(&ctx->begin);
 
 	return aspeed_crypto_handle_queue(crypto_dev, &req->base);
 }
@@ -732,17 +743,43 @@ err:
 static int aspeed_rsa_set_pub_key(struct crypto_akcipher *tfm, const void *key,
 				  unsigned int keylen)
 {
-	RSA_DBG("\n");
+	int ret;
+	struct timeval begin, end;
+	unsigned long val;
 
-	return aspeed_rsa_setkey(tfm, key, keylen, 0);
+	RSA_DBG("\n");
+	do_gettimeofday(&begin);
+
+	ret = aspeed_rsa_setkey(tfm, key, keylen, 0);
+
+	do_gettimeofday(&end);
+
+	val = (end.tv_sec - begin.tv_sec) * 1000000;
+	val += ((end.tv_usec - begin.tv_usec));
+	printk("rsa set put key time %lu\n", val);
+
+	return ret;
 }
 
 static int aspeed_rsa_set_priv_key(struct crypto_akcipher *tfm, const void *key,
 				   unsigned int keylen)
 {
-	RSA_DBG("\n");
+	int ret;
+	struct timeval begin, end;
+	unsigned long val;
 
-	return aspeed_rsa_setkey(tfm, key, keylen, 1);
+	RSA_DBG("\n");
+	do_gettimeofday(&begin);
+
+	ret = aspeed_rsa_setkey(tfm, key, keylen, 1);
+
+	do_gettimeofday(&end);
+
+	val = (end.tv_sec - begin.tv_sec) * 1000000;
+	val += ((end.tv_usec - begin.tv_usec));
+	printk("rsa set put key time %lu\n", val);
+
+	return ret;
 }
 
 static int aspeed_rsa_max_size(struct crypto_akcipher *tfm)

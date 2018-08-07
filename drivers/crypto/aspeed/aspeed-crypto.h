@@ -273,6 +273,7 @@ struct aspeed_rsa_key {
 struct aspeed_rsa_ctx {
 	struct aspeed_crypto_dev *crypto_dev;
 	struct aspeed_rsa_key key;
+	struct timeval begin, end;
 	u8 *euclid_ctx;
 	int enc;
 };
