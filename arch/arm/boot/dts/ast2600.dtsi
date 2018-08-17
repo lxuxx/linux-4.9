@@ -52,6 +52,15 @@
                 arm,data-latency = <1 1 1>;
         };
 #endif
+        timer {
+                compatible = "arm,armv7-timer";
+				interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+							<GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+							<GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+							<GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
+				clock-frequency = <25000000>;
+        };
+
 #if 0
         scu: scu@1f000000 {
                 compatible = "arm,cortex-a9-scu";
@@ -61,10 +70,11 @@
 
         timer {
                 compatible = "arm,armv7-timer";
-                interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
-                             <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
-                             <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
-                             <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
+				interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+							<GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+							<GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+							<GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
+				clock-frequency = <25000000>;
         };
 
         pmu {
@@ -107,17 +117,18 @@
                         #reset-cells = <1>;
                 };
 #if 0
+#if 0
 		timer: timer@1e782000 {
                         /* This timer is a Faraday FTTMR010 derivative */
                         compatible = "aspeed,ast2500-timer";
                         reg = <0x1e782000 0x90>;
                         interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
                         clocks = <&clk_timer>;
-#if 0                        
+#if 0
                         interrupts = <16 17 18 35 36 37 38 39>;
                         clocks = <&syscon ASPEED_CLK_APB>;
                         clock-names = "PCLK";
-#endif                        
+#endif
                 };
 #else
 		timer:timer@1e782000 {
@@ -127,6 +138,7 @@
                                      <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>,
                                      <GIC_SPI 18 IRQ_TYPE_LEVEL_HIGH>;
 		};
+#endif
 #endif
 		uart0: serial@1e784000 {
                         compatible = "ns16550a";
