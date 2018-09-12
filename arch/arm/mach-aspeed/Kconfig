@@ -33,7 +33,8 @@ config MACH_ASPEED_G5
 
 config MACH_ASPEED_G6
 	bool "Aspeed SoC 6th Generation"
-	depends on ARCH_MULTI_V7
+	depends on ARCH_MULTI_V7 || ARCH_MULTI_V6
+	select CPU_V6
 	select CPU_V7
         select ARM_AMBA
         select ARM_GIC
