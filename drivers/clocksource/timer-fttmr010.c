@@ -83,6 +83,7 @@ struct fttmr010 {
 	unsigned int tick_rate;
 	bool count_down;
 	u32 t1_enable_val;
+	int aspeed_version;
 	struct clock_event_device clkevt;
 #ifdef CONFIG_ARM
 	struct delay_timer delay_timer;
@@ -265,9 +266,8 @@ static irqreturn_t fttmr010_timer_interrupt(int irq, void *dev_id)
 	struct clock_event_device *evt = &fttmr010->clkevt;
 #endif
 
-#ifdef CONFIG_MACH_ASPEED_G6
-	writel(0x1, fttmr010->base + TIMER_INTR_STATE);
-#endif
+	if(fttmr010->aspeed_version == 6)
+		writel(0x1, fttmr010->base + TIMER_INTR_STATE);
 
 	evt->event_handler(evt);
 	return IRQ_HANDLED;
@@ -281,7 +281,7 @@ static int __init fttmr010_common_init(struct device_node *np, bool is_aspeed)
 	int ret;
 	u32 rate;	
 	u32 val;
-	printk("fttmr010_common_init \n");
+
 	/*
 	 * These implementations require a clock reference.
 	 * FIXME: we currently only support clocking using PCLK
@@ -302,7 +302,6 @@ static int __init fttmr010_common_init(struct device_node *np, bool is_aspeed)
 		}
 		rate = clk_get_rate(clk);
 	}
-	printk("ret %d, rate %d \n", ret, rate);
 
 	fttmr010 = kzalloc(sizeof(*fttmr010), GFP_KERNEL);
 	if (!fttmr010) {
@@ -335,6 +334,10 @@ static int __init fttmr010_common_init(struct device_node *np, bool is_aspeed)
 			TIMER_1_CR_ASPEED_INT;
 		/* Downward not available */
 		fttmr010->count_down = true;
+		if (of_device_is_compatible(np, "aspeed,ast2600-timer")) {
+			fttmr010->aspeed_version = 6;
+			printk("ast2600 timer\n");
+		}
 	} else {
 		fttmr010->t1_enable_val = TIMER_1_CR_ENABLE | TIMER_1_CR_INT;
 	}
@@ -343,11 +346,11 @@ static int __init fttmr010_common_init(struct device_node *np, bool is_aspeed)
 	 * Reset the interrupt mask and status
 	 */
 //	writel(TIMER_INT_ALL_MASK, fttmr010->base + TIMER_INTR_MASK);
-#ifdef CONFIG_MACH_ASPEED_G6
-	writel(0xff, fttmr010->base + TIMER_INTR_STATE);
-#else
-	writel(0, fttmr010->base + TIMER_INTR_STATE);
-#endif
+	if(fttmr010->aspeed_version == 6)
+		writel(0xff, fttmr010->base + TIMER_INTR_STATE);
+	else
+		writel(0, fttmr010->base + TIMER_INTR_STATE);
+
 	/*
 	 * Enable timer 1 count up, timer 2 count up, except on Aspeed,
 	 * where everything just counts down.
@@ -457,3 +460,4 @@ CLOCKSOURCE_OF_DECLARE(gemini, "cortina,gemini-timer", fttmr010_timer_init);
 CLOCKSOURCE_OF_DECLARE(moxart, "moxa,moxart-timer", fttmr010_timer_init);
 CLOCKSOURCE_OF_DECLARE(ast2400, "aspeed,ast2400-timer", aspeed_timer_init);
 CLOCKSOURCE_OF_DECLARE(ast2500, "aspeed,ast2500-timer", aspeed_timer_init);
+CLOCKSOURCE_OF_DECLARE(ast2600, "aspeed,ast2600-timer", aspeed_timer_init);
