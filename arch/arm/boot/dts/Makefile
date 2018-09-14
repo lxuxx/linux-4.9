@@ -10,6 +10,7 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	ast2400_evb.dtb \
 	ast2500.dtb \
 	ast2500_evb.dtb \
+	ast2600_arm11.dtb \
 	ast2600.dtb
 dtb-$(CONFIG_ARCH_ALPINE) += \
 	alpine-db.dtb
