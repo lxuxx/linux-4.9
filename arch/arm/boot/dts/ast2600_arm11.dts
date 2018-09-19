@@ -1,0 +1,30 @@
+/dts-v1/;
+
+#include "ast2600_arm11.dtsi"
+
+/ {
+	model = "AST2600 EVB";
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		bootargs = "console=ttyS0,115200n8 root=/dev/ram rw init=/linuxrc";
+	};
+
+};
+
+#if 0
+&spi1 {
+	status = "okay";
+	flash: m25p80@0 {
+		compatible = "mx25l25635e", "m25p80", "jedec,spi-nor";
+		reg = <0x0>;
+		#address-cells = <0x1>;
+		#size-cells = <0x1>;
+		spi-max-frequency = <50000000>;
+		m25p,fast-read;
+	};
+};
+#endif
