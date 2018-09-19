@@ -125,8 +125,8 @@
 	scu_ic: interrupt-controller@0 {
 		#interrupt-cells = <1>;
 		compatible = "aspeed,ast2500-scu-ic";
-		reg = <0x18 0x04>;
-		interrupts = <21>;
+		reg = <0x560 0x20>;
+		interrupts = <12>;
 		interrupt-controller;
 	};
 
