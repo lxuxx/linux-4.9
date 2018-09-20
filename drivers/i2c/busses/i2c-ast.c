@@ -38,81 +38,81 @@
 
 /* Device Register Definition */
 /* 0x00 : I2CD Function Control Register  */
-#define AST_I2CD_BUFF_SEL_MASK				(0x7 << 20)
-#define AST_I2CD_BUFF_SEL(x) 				((x) << 20)	// page 0 ~ 7
+#define AST_I2CD_BUFF_SEL_MASK			(0x7 << 20)
+#define AST_I2CD_BUFF_SEL(x) 			((x) << 20)	// page 0 ~ 7
 
-#define AST_I2CD_BUS_AUTO_RELEASE			(0x1 << 17)	//only support ast_soc_g5
+#define AST_I2CD_BUS_AUTO_RELEASE		BIT(17)	//only support ast_soc_g5
 
-#define AST_I2CD_M_SDA_LOCK_EN				(0x1 << 16)
-#define AST_I2CD_MULTI_MASTER_DIS			(0x1 << 15)
-#define AST_I2CD_M_SCL_DRIVE_EN				(0x1 << 14)
-#define AST_I2CD_MSB_STS				(0x1 << 9)
-#define AST_I2CD_SDA_DRIVE_1T_EN			(0x1 << 8)
-#define AST_I2CD_M_SDA_DRIVE_1T_EN			(0x1 << 7)
-#define AST_I2CD_M_HIGH_SPEED_EN			(0x1 << 6)
-#define AST_I2CD_DEF_ADDR_EN				(0x1 << 5)
-#define AST_I2CD_DEF_ALERT_EN				(0x1 << 4)
-#define AST_I2CD_DEF_ARP_EN				(0x1 << 3)
-#define AST_I2CD_DEF_GCALL_EN				(0x1 << 2)
-#define AST_I2CD_SLAVE_EN				(0x1 << 1)
-#define AST_I2CD_MASTER_EN				(0x1 )
+#define AST_I2CD_M_SDA_LOCK_EN			BIT(16)
+#define AST_I2CD_MULTI_MASTER_DIS		BIT(15)
+#define AST_I2CD_M_SCL_DRIVE_EN			BIT(14)
+#define AST_I2CD_MSB_STS				BIT(9)
+#define AST_I2CD_SDA_DRIVE_1T_EN		BIT(8)
+#define AST_I2CD_M_SDA_DRIVE_1T_EN		BIT(7)
+#define AST_I2CD_M_HIGH_SPEED_EN		BIT(6)
+#define AST_I2CD_DEF_ADDR_EN			BIT(5)
+#define AST_I2CD_DEF_ALERT_EN			BIT(4)
+#define AST_I2CD_DEF_ARP_EN				BIT(3)
+#define AST_I2CD_DEF_GCALL_EN			BIT(2)
+#define AST_I2CD_SLAVE_EN				BIT(1)
+#define AST_I2CD_MASTER_EN				BIT(0)
 
 /* 0x04 : I2CD Clock and AC Timing Control Register #1 */
-#define AST_I2CD_tBUF					(0x1 << 28) 	// 0~7 
-#define AST_I2CD_tHDSTA					(0x1 << 24)	// 0~7 
-#define AST_I2CD_tACST					(0x1 << 20)	// 0~7 
-#define AST_I2CD_tCKHIGH				(0x1 << 16)	// 0~7 
-#define AST_I2CD_tCKLOW					(0x1 << 12)	// 0~7 
-#define AST_I2CD_tHDDAT					(0x1 << 10)	// 0~7 
-#define AST_I2CD_CLK_TO_BASE_DIV			(0x1 << 8)	// 0~3
-#define AST_I2CD_CLK_BASE_DIV				(0x1 )		// 0~0xf
+#define AST_I2CD_tBUF					BIT(28) 	// 0~7 
+#define AST_I2CD_tHDSTA					BIT(24)	// 0~7 
+#define AST_I2CD_tACST					BIT(20)	// 0~7 
+#define AST_I2CD_tCKHIGH				BIT(16)	// 0~7 
+#define AST_I2CD_tCKLOW					BIT(12)	// 0~7 
+#define AST_I2CD_tHDDAT					BIT(10)	// 0~7 
+#define AST_I2CD_CLK_TO_BASE_DIV		BIT(8)	// 0~3
+#define AST_I2CD_CLK_BASE_DIV			BIT(0)		// 0~0xf
 
 /* 0x08 : I2CD Clock and AC Timing Control Register #2 */
-#define AST_I2CD_tTIMEOUT				(0x1 )		// 0~7
+#define AST_I2CD_tTIMEOUT_CYCLE(x)		(x & 0x1f)		// 0~7
 #define AST_NO_TIMEOUT_CTRL				0x0
 
 
 /* 0x0c : I2CD Interrupt Control Register  */
-#define AST_I2CD_INTR_STS_SLAVE_TO_EN			(0x1 << 15)	//support ast_soc_g5
+#define AST_I2CD_INTR_STS_SLAVE_TO_EN		BIT(15)	//support ast_soc_g5
 
-#define AST_I2CD_SDA_DL_TO_INTR_EN			(0x1 << 14)
-#define AST_I2CD_BUS_RECOVER_INTR_EN			(0x1 << 13)
-#define AST_I2CD_SMBUS_ALT_INTR_EN			(0x1 << 12)
-#define AST_I2CD_SLAVE_MATCH_INTR_EN			(0x1 << 7)
-#define AST_I2CD_SCL_TO_INTR_EN				(0x1 << 6)
-#define AST_I2CD_ABNORMAL_INTR_EN			(0x1 << 5)
-#define AST_I2CD_NORMAL_STOP_INTR_EN			(0x1 << 4)
-#define AST_I2CD_ARBIT_LOSS_INTR_EN			(0x1 << 3)
-#define AST_I2CD_RX_DOWN_INTR_EN			(0x1 << 2)
-#define AST_I2CD_TX_NAK_INTR_EN				(0x1 << 1)
-#define AST_I2CD_TX_ACK_INTR_EN				(0x1)
+#define AST_I2CD_SDA_DL_TO_INTR_EN			BIT(14)
+#define AST_I2CD_BUS_RECOVER_INTR_EN		BIT(13)
+#define AST_I2CD_SMBUS_ALT_INTR_EN			BIT(12)
+#define AST_I2CD_SLAVE_MATCH_INTR_EN		BIT(7)
+#define AST_I2CD_SCL_TO_INTR_EN				BIT(6)
+#define AST_I2CD_ABNORMAL_INTR_EN			BIT(5)
+#define AST_I2CD_NORMAL_STOP_INTR_EN		BIT(4)
+#define AST_I2CD_ARBIT_LOSS_INTR_EN			BIT(3)
+#define AST_I2CD_RX_DOWN_INTR_EN			BIT(2)
+#define AST_I2CD_TX_NAK_INTR_EN				BIT(1)
+#define AST_I2CD_TX_ACK_INTR_EN				BIT(0)
 
 /* 0x10 : I2CD Interrupt Status Register   : WC */
-#define AST_I2CD_INTR_STS_SLAVE_TO			(0x1 << 15)	//support ast_soc_g5
+#define AST_I2CD_INTR_STS_SLAVE_TO			BIT(15)	//support ast_soc_g5
 
-#define AST_I2CD_INTR_STS_SDA_DL_TO			(0x1 << 14)
-#define AST_I2CD_INTR_STS_BUS_RECOVER			(0x1 << 13)
-#define AST_I2CD_INTR_STS_SMBUS_ALT			(0x1 << 12)
-#define AST_I2CD_INTR_STS_SMBUS_ARP_ADDR		(0x1 << 11)
-#define AST_I2CD_INTR_STS_SMBUS_DEV_ALT			(0x1 << 10)
-#define AST_I2CD_INTR_STS_SMBUS_DEF_ADDR		(0x1 << 9)
-#define AST_I2CD_INTR_STS_GCALL_ADDR			(0x1 << 8)
-#define AST_I2CD_INTR_STS_SLAVE_MATCH			(0x1 << 7)
-#define AST_I2CD_INTR_STS_SCL_TO			(0x1 << 6)
-#define AST_I2CD_INTR_STS_ABNORMAL			(0x1 << 5)
-#define AST_I2CD_INTR_STS_NORMAL_STOP			(0x1 << 4)
-#define AST_I2CD_INTR_STS_ARBIT_LOSS			(0x1 << 3)
-#define AST_I2CD_INTR_STS_RX_DOWN			(0x1 << 2)
-#define AST_I2CD_INTR_STS_TX_NAK			(0x1 << 1)
-#define AST_I2CD_INTR_STS_TX_ACK			(0x1)
+#define AST_I2CD_INTR_STS_SDA_DL_TO			BIT(14)
+#define AST_I2CD_INTR_STS_BUS_RECOVER		BIT(13)
+#define AST_I2CD_INTR_STS_SMBUS_ALT			BIT(12)
+#define AST_I2CD_INTR_STS_SMBUS_ARP_ADDR	BIT(11)
+#define AST_I2CD_INTR_STS_SMBUS_DEV_ALT		BIT(10)
+#define AST_I2CD_INTR_STS_SMBUS_DEF_ADDR	BIT(9)
+#define AST_I2CD_INTR_STS_GCALL_ADDR		BIT(8)
+#define AST_I2CD_INTR_STS_SLAVE_MATCH		BIT(7)
+#define AST_I2CD_INTR_STS_SCL_TO			BIT(6)
+#define AST_I2CD_INTR_STS_ABNORMAL			BIT(5)
+#define AST_I2CD_INTR_STS_NORMAL_STOP		BIT(4)
+#define AST_I2CD_INTR_STS_ARBIT_LOSS		BIT(3)
+#define AST_I2CD_INTR_STS_RX_DOWN			BIT(2)
+#define AST_I2CD_INTR_STS_TX_NAK			BIT(1)
+#define AST_I2CD_INTR_STS_TX_ACK			BIT(0)
 
 /* 0x14 : I2CD Command/Status Register   */
-#define AST_I2CD_SDA_OE					(0x1 << 28)
-#define AST_I2CD_SDA_O					(0x1 << 27)
-#define AST_I2CD_SCL_OE					(0x1 << 26)
-#define AST_I2CD_SCL_O					(0x1 << 25)
-#define AST_I2CD_TX_TIMING				(0x1 << 24)	// 0 ~3
-#define AST_I2CD_TX_STATUS				(0x1 << 23)
+#define AST_I2CD_SDA_OE					BIT(28)
+#define AST_I2CD_SDA_O					BIT(27)
+#define AST_I2CD_SCL_OE					BIT(26)
+#define AST_I2CD_SCL_O					BIT(25)
+#define AST_I2CD_TX_TIMING				BIT(24)	// 0 ~3
+#define AST_I2CD_TX_STATUS				BIT(23)
 // Tx State Machine
 #define AST_I2CD_IDLE	 				0x0
 #define AST_I2CD_MACTIVE				0x8
@@ -130,45 +130,244 @@
 #define AST_I2CD_SRXACK 				0x7
 #define AST_I2CD_RECOVER 				0x3
 
-#define AST_I2CD_SCL_LINE_STS				(0x1 << 18)
-#define AST_I2CD_SDA_LINE_STS				(0x1 << 17)
-#define AST_I2CD_BUS_BUSY_STS				(0x1 << 16)
-#define AST_I2CD_SDA_OE_OUT_DIR				(0x1 << 15)
-#define AST_I2CD_SDA_O_OUT_DIR				(0x1 << 14)
-#define AST_I2CD_SCL_OE_OUT_DIR				(0x1 << 13)
-#define AST_I2CD_SCL_O_OUT_DIR				(0x1 << 12)
-#define AST_I2CD_BUS_RECOVER_CMD_EN			(0x1 << 11)
-#define AST_I2CD_S_ALT_EN				(0x1 << 10)
+#define AST_I2CD_SCL_LINE_STS			BIT(18)
+#define AST_I2CD_SDA_LINE_STS			BIT(17)
+#define AST_I2CD_BUS_BUSY_STS			BIT(16)
+#define AST_I2CD_SDA_OE_OUT_DIR			BIT(15)
+#define AST_I2CD_SDA_O_OUT_DIR			BIT(14)
+#define AST_I2CD_SCL_OE_OUT_DIR			BIT(13)
+#define AST_I2CD_SCL_O_OUT_DIR			BIT(12)
+#define AST_I2CD_BUS_RECOVER_CMD_EN		BIT(11)
+#define AST_I2CD_S_ALT_EN				BIT(10)
 // 0 : DMA Buffer, 1: Pool Buffer
 //AST1070 DMA register
-#define AST_I2CD_RX_DMA_ENABLE				(0x1 << 9)
-#define AST_I2CD_TX_DMA_ENABLE				(0x1 << 8)
+#define AST_I2CD_RX_DMA_ENABLE			BIT(9)
+#define AST_I2CD_TX_DMA_ENABLE			BIT(8)
 
 /* Command Bit */
-#define AST_I2CD_RX_BUFF_ENABLE				(0x1 << 7)
-#define AST_I2CD_TX_BUFF_ENABLE				(0x1 << 6)
-#define AST_I2CD_M_STOP_CMD				(0x1 << 5)
-#define AST_I2CD_M_S_RX_CMD_LAST			(0x1 << 4)
-#define AST_I2CD_M_RX_CMD				(0x1 << 3)
-#define AST_I2CD_S_TX_CMD				(0x1 << 2)
-#define AST_I2CD_M_TX_CMD				(0x1 << 1)
-#define AST_I2CD_M_START_CMD				(0x1 )
+#define AST_I2CD_RX_BUFF_ENABLE			BIT(7)
+#define AST_I2CD_TX_BUFF_ENABLE			BIT(6)
+#define AST_I2CD_M_STOP_CMD				BIT(5)
+#define AST_I2CD_M_S_RX_CMD_LAST		BIT(4)
+#define AST_I2CD_M_RX_CMD				BIT(3)
+#define AST_I2CD_S_TX_CMD				BIT(2)
+#define AST_I2CD_M_TX_CMD				BIT(1)
+#define AST_I2CD_M_START_CMD			BIT(0)
 
 /* 0x18 : I2CD Slave Device Address Register   */
-#define AST_I2CD_SLAVE2_ENABLE				(0x1 << 5)
+#define AST_I2CD_SLAVE2_ENABLE			BIT(5)
 
 /* 0x1C : I2CD Pool Buffer Control Register   */
 #define AST_I2CD_RX_BUF_ADDR_GET(x)			((x>> 24)& 0xff)
 #define AST_I2CD_RX_BUF_END_ADDR_SET(x)			(x << 16)
-#define AST_I2CD_TX_DATA_BUF_END_SET(x)			((x&0xff) << 8)
-#define AST_I2CD_TX_DATA_BUF_GET(x)			((x >>8) & 0xff)
+#define AST_I2CD_TX_DATA_BUF_END_SET(x)			((x &0xff) << 8)
+#define AST_I2CD_TX_DATA_BUF_GET(x)			((x >> 8) & 0xff)
 #define AST_I2CD_BUF_BASE_ADDR_SET(x)			(x & 0x3f)
 
 /* 0x20 : I2CD Transmit/Receive Byte Buffer Register   */
 #define AST_I2CD_GET_MODE(x)				((x >> 8) & 0x1)
 
 #define AST_I2CD_RX_BYTE_BUFFER				(0xff << 8)
-#define AST_I2CD_TX_BYTE_BUFFER				(0xff )
+#define AST_I2CD_TX_BYTE_BUFFER				(0xff)
+
+/***************************************************************************/
+//AST2600 reg
+#define AST_I2CC_FUN_CTRL		0x00
+#define AST_I2CC_AC_TIMING		0x04
+#define AST_I2CC_BUFF			0x08
+#define AST_I2CC_BUFF_CTRL		0x0C
+#define AST_I2CM_IER			0x10
+#define AST_I2CM_ISR			0x14
+#define AST_I2CM_CMD_STS		0x18
+#define AST_I2CM_DMA_LEN		0x1C
+#define AST_I2CS_IER			0x20
+#define AST_I2CS_ADDR			0x20
+#define AST_I2CS_ISR			0x24
+#define AST_I2CS_CMD_STS		0x28
+#define AST_I2CS_DMA_LEN		0x2C
+#define AST_I2CM_TX_DMA			0x30 	/* I2CM Master DMA Tx Buffer Register   */
+#define AST_I2CM_RX_DMA			0x34	/* I2CM Master DMA Rx Buffer Register   */
+#define AST_I2CS_TX_DMA			0x38 	/* I2CS Slave DMA Tx Buffer Register   */
+#define AST_I2CS_RX_DMA			0x3C	/* I2CS Slave DMA Rx Buffer Register   */
+#define AST_I2CS_ADDR_CTRL		0x40
+
+#define AST_I2CM_DMA_LEN_STS	0x48
+#define AST_I2CS_DMA_LEN_STS	0x4C
+
+/* 0x00 : I2CC Master/Slave Function Control Register  */
+#define AST_I2CC_SLAVE_ADDR_RX_EN 		BIT(19)
+#define AST_I2CC_MASTER_RETRY 			BIT(18)
+#define AST_I2CC_BUS_AUTO_RELEASE		BIT(17)	
+#define AST_I2CC_M_SDA_LOCK_EN			BIT(16)
+#define AST_I2CC_MULTI_MASTER_DIS		BIT(15)
+#define AST_I2CC_M_SCL_DRIVE_EN			BIT(14)
+#define AST_I2CC_MSB_STS				BIT(9)
+#define AST_I2CC_SDA_DRIVE_1T_EN		BIT(8)
+#define AST_I2CC_M_SDA_DRIVE_1T_EN		BIT(7)
+#define AST_I2CC_M_HIGH_SPEED_EN		BIT(6)
+
+#define AST_I2CC_SLAVE_EN				BIT(1)
+#define AST_I2CC_MASTER_EN				BIT(0)
+
+/* 0x04 : I2CC Master/Slave Clock and AC Timing Control Register #1 */
+#define AST_I2CC_tTIMEOUT(x)			((x & 0x1f) << 24)	// 0~7
+
+#define AST_I2CC_tCKHIGHMin(x)			((x & 0xf) << 20)	// 0~f 
+#define AST_I2CC_tCKHIGH(x)				((x & 0xf) << 16)	// 0~7 
+#define AST_I2CC_tCKLOW(x)				((x & 0xf) << 12)	// 0~7 
+#define AST_I2CC_tHDDAT(x)				((x & 0x3) << 10)	// 0~3 
+#define AST_I2CC_toutBaseCLK(x)			((x & 0x3) << 8)	//0~3
+
+#define AST_I2CC_tBaseCLK(x)			(x & 0xf)	// 0~0xf
+
+/* 0x08 : I2CC Master/Skave Transmit/Receive Byte Buffer Register */
+#define AST_I2CC_TX_DIR_MASK			(0x7 << 29)
+#define AST_I2CC_SDA_OE					BIT(28)
+#define AST_I2CC_SDA_O					BIT(27)
+#define AST_I2CC_SCL_OE					BIT(26)
+#define AST_I2CC_SCL_O					BIT(25)
+
+// Tx State Machine
+#define AST_I2CM_IDLE	 				0x0
+#define AST_I2CM_STARTH					0x1
+#define AST_I2CC_STARTW 				0x2
+#define AST_I2CC_STARTR 				0x3
+#define AST_I2CC_SRXD 					0x4
+#define AST_I2CC_STXACK 				0x5
+#define AST_I2CC_STXD					0x6
+#define AST_I2CC_SRXACK 				0x7
+#define AST_I2CM_MACTIVE				0x8
+#define AST_I2CC_MSTART					0x9
+#define AST_I2CC_MSTARTR				0xa
+#define AST_I2CC_MSTOP					0xb
+#define AST_I2CC_MTXD					0xc
+#define AST_I2CC_MRXACK					0xd
+#define AST_I2CC_MRXD 					0xe
+#define AST_I2CC_MTXACK 				0xf
+
+#define AST_I2CC_SCL_LINE_STS			BIT(18)
+#define AST_I2CC_SDA_LINE_STS			BIT(17)
+#define AST_I2CC_BUS_BUSY_STS			BIT(16)
+
+#define AST_I2CC_GET_RX_BUFF_LEN(x)		((x & 0xff00) >> 8)
+#define AST_I2CC_SET_TX_BUFF_LEN(x)		(x & 0xff)
+
+/* 0x0C : I2CC Master/Slave Pool Buffer Control Register  */
+#define AST_I2CC_RX_BUF_ADDR_GET(x)			((x >> 24)& 0x3f)
+#define AST_I2CC_RX_BUF_END_ADDR_SET(x)		(x << 16)
+#define AST_I2CC_TX_DATA_BUF_END_SET(x)		((x & 0xff) << 8)
+#define AST_I2CC_TX_DATA_BUF_GET(x)			((x >>8) & 0x1f)
+#define AST_I2CC_BUF_BASE_ADDR_SET(x)		(x & 0x3f)
+
+/* 0x10 : I2CM Master Interrupt Control Register */
+/* 0x14 : I2CM Master Interrupt Status Register   : WC */
+// Tx State Machine
+#define AST_I2CM_IDLE	 				0x0
+#define AST_I2CM_MACTIVE				0x8
+#define AST_I2CM_MSTART					0x9
+#define AST_I2CM_MSTARTR				0xa
+#define AST_I2CM_MSTOP					0xb
+#define AST_I2CM_MTXD					0xc  
+#define AST_I2CM_MRXACK					0xd
+#define AST_I2CM_MRXD 					0xe
+#define AST_I2CM_MTXACK 				0xf
+#define AST_I2CM_SWAIT					0x1
+#define AST_I2CM_SRXD 					0x4
+#define AST_I2CM_STXACK 				0x5
+#define AST_I2CM_STXD					0x6
+#define AST_I2CM_SRXACK 				0x7
+#define AST_I2CM_RECOVER 				0x3
+
+#define AST_I2CM_PKT_CMD_TO				BIT(18)
+#define AST_I2CM_PKT_CMD_ERR			BIT(17)
+#define AST_I2CM_PKT_CMD_DONE			BIT(16)
+#define AST_I2CM_BUS_RECOVER_ERR		BIT(15)
+#define AST_I2CM_SDA_DL_TO				BIT(14)
+#define AST_I2CM_BUS_RECOVER			BIT(13)
+#define AST_I2CM_SMBUS_ALT				BIT(12)
+
+#define AST_I2CM_SCL_LOW_TO				BIT(6)
+#define AST_I2CM_ABNORMAL_COND			BIT(5)
+#define AST_I2CM_NORMAL_STOP			BIT(4)
+#define AST_I2CM_ARBIT_LOSS				BIT(3)
+#define AST_I2CM_RX_DOWN				BIT(2)
+#define AST_I2CM_TX_NAK					BIT(1)
+#define AST_I2CM_TX_ACK					BIT(0)
+
+/* 0x18 : I2CM Master Command/Status Register   */
+#define AST_I2CM_PKT_ADDR(x)			((x) << 24)	
+#define AST_I2CM_PKT_EN					BIT(16)
+#define AST_I2CM_SDA_OE_OUT_DIR			BIT(15)
+#define AST_I2CM_SDA_O_OUT_DIR			BIT(14)
+#define AST_I2CM_SCL_OE_OUT_DIR			BIT(13)
+#define AST_I2CM_SCL_O_OUT_DIR			BIT(12)
+#define AST_I2CM_RECOVER_CMD_EN			BIT(11)
+
+#define AST_I2CM_RX_DMA_EN				BIT(9)
+#define AST_I2CM_TX_DMA_EN				BIT(8)
+#define AST_I2CM_RX_BUFF_EN				BIT(7)
+#define AST_I2CM_TX_BUFF_EN				BIT(6)
+#define AST_I2CM_STOP_CMD				BIT(5)
+#define AST_I2CM_RX_CMD_LAST			BIT(4)
+#define AST_I2CM_RX_CMD					BIT(3)
+#define AST_I2CM_TX_CMD					BIT(1)
+#define AST_I2CM_START_CMD				BIT(0)
+
+/* 0x1C : I2CM Master DMA Transfer Length Register   */
+#define AST_I2CM_RX_DMA_LEN(x)			((x) << 12)	/* 1 ~ 4096 */
+#define AST_I2CM_GET_RX_DMA_LEN(x)		(((x) & 0x1FFF) >> 16)	
+#define AST_I2CM_TX_DMA_LEN(x)			(x)			/* 1 ~ 4096 */
+
+/* 0x20 : I2CS Slave Interrupt Control Register   */
+/* 0x24 : I2CS Slave Interrupt Status Register   */
+
+#define AST_I2CS_ADDR3_NAK_ISR			BIT(22)
+#define AST_I2CS_ADDR2_NAK_ISR			BIT(21)
+#define AST_I2CS_ADDR1_NAK_ISR			BIT(20)
+
+#define AST_I2CS_PKT_CMD_FAIL_ISR			BIT(17)
+#define AST_I2CS_PKT_CMD_DONE_ISR			BIT(16)
+#define AST_I2CS_INACTIVE_TO_ISR		BIT(15)
+
+#define AST_I2CS_SLAVE_MATCH_ISR		BIT(7)
+
+#define AST_I2CS_ABNOR_STOP_ISR			BIT(5)
+#define AST_I2CS_STOP_ISR				BIT(4)
+#define AST_I2CS_MATCH_NAK_ISR			BIT(3)
+#define AST_I2CS_RX_DONE_ISR			BIT(2)
+#define AST_I2CS_TX_NAK_ISR				BIT(1)
+#define AST_I2CS_TX_ACK_ISR				BIT(0)
+
+/* 0x28 : I2CS Slave CMD/Status Register   */
+#define AST_I2CS_ACTIVE_ALL				(0x3 << 17)
+#define AST_I2CS_PKT_MODE_EN			BIT(16)
+#define AST_I2CS_AUTO_NAK_NA_EN			BIT(15)
+#define AST_I2CS_AUTO_NAK_EN			BIT(14)
+
+#define AST_I2CS_ALT_EN					BIT(10)
+#define AST_I2CS_RX_DMA_EN				BIT(9)
+#define AST_I2CS_TX_DMA_EN				BIT(8)
+#define AST_I2CS_RX_BUFF_EN				BIT(7)
+#define AST_I2CS_TX_BUFF_EN				BIT(6)
+
+#define AST_I2CS_RX_CMD_LAST			BIT(4)
+
+#define AST_I2CS_TX_CMD					BIT(2)
+
+/* 0x2C : I2CS SLAVE DMA Transfer Length Register   */
+#define AST_I2CS_RX_DMA_LEN(x)			((x) << 12)	/* 1 ~ 4096 */
+#define AST_I2CS_TX_DMA_LEN(x)			(x)			/* 1 ~ 4096 */
+
+
+/* 0x40 : Slave Device Address Register */
+#define AST_I2CS_ADDR3_ENABLE			BIT(23)
+#define AST_I2CS_ADDR3(x)				(x << 16)
+
+#define AST_I2CS_ADDR2_ENABLE			BIT(15)
+#define AST_I2CS_ADDR2(x)				(x << 8)
+#define AST_I2CS_ADDR_RANGE_MODE		BIT(7)
+#define AST_I2CS_ADDR1(x)				(x)
+
 /***************************************************************************/
 //#define AST_I2C_S_DEBUG 1
 #ifdef AST_I2C_S_DEBUG
@@ -192,7 +391,7 @@
 #define I2C_S_BUF_SIZE 		256
 #define I2C_S_RX_BUF_NUM 	20
 
-#define AST_LOCKUP_DETECTED 	(0x1 << 15)
+#define AST_LOCKUP_DETECTED 	BIT(15)
 #define AST_I2C_LOW_TIMEOUT 	0x07
 /***************************************************************************/
 #define BYTE_MODE		0
@@ -510,7 +709,7 @@ static struct ast_i2c_timing_table ast_i2c_timing_table[] = {
 };
 
 struct ast_i2c_bus_config   {
-	u8	ast_g5_i2c;
+	u8	aspeed_version;
 	u32	timing_table_size;
 	struct ast_i2c_timing_table *timing_table;
 };
@@ -649,12 +848,106 @@ static void ast_slave_mode_enable(struct ast_i2c_bus *i2c_bus,
 
 #endif
 
-extern void ast_i2c_bus_init(struct ast_i2c_bus *i2c_bus)
+/*
+ *	Issue #1 I2CC00 page control, when init and some interrupt will have miss-match ex when re-init the i2c bus
+ *	Issue #2 Check what condition isr master / slave all have 
+ */
+static void ast_g6_i2c_bus_init(struct ast_i2c_bus *i2c_bus)
+{
+	//I2CG Reset
+	ast_i2c_write(i2c_bus, 0, AST_I2CC_FUN_CTRL);
+
+	ast_i2c_write(i2c_bus, AST_I2CC_SLAVE_ADDR_RX_EN | AST_I2CC_BUS_AUTO_RELEASE | AST_I2CC_MASTER_EN,
+			      AST_I2CC_FUN_CTRL);
+
+#if 0
+	/* Set AC Timing */
+	//TODO  
+	if((i2c_bus->apb_clk /i2c_bus->bus_frequency) <= 32) {
+	  div = 0;
+	  divider_ratio = i2c_bus->apb_clk /i2c_bus->bus_frequency;
+	} else if((i2c_bus->base_clk1 /i2c_bus->bus_frequency) <= 32) {
+	  div = 1;
+	  divider_ratio = i2c_bus->base_clk2 /i2c_bus->bus_frequency;
+	} else if((i2c_bus->base_clk2 /i2c_bus->bus_frequency) <= 32) {
+	  div = 2;
+	  divider_ratio = i2c_bus->base_clk3 /i2c_bus->bus_frequency;	  
+	} else if((i2c_bus->base_clk3 /i2c_bus->bus_frequency) <= 32) {
+	  div = 3;
+	  divider_ratio = i2c_bus->base_clk3 /i2c_bus->bus_frequency;	  
+	} else {
+	  divider_ratio = i2c_bus->base_clk4 /i2c_bus->bus_frequency;	  
+	  div = 4;
+	  inc = 0;
+	  while((divider_ratio + inc) > 32) {
+		  inc |= divider_ratio & 0x1;
+		  divider_ratio >> = 1;
+		  div++;
+	  }
+	  divider_ratio += inc;
+	}
+
+	scl_low = (divider_ratio >> 1) - 1;
+	scl_high = divider_ratio - scl_low -2;
+//	scl_highmin = 
+	ast_i2c_write(i2c_bus, select_i2c_clock(i2c_bus), AST_I2CC_AC_TIMING);
+#else
+	/* Set AC Timing */
+	ast_i2c_write(i2c_bus, 0, AST_I2CC_AC_TIMING);
+#endif
+	
+	//Clear master/slave Interrupt
+	ast_i2c_write(i2c_bus, 0xfffffff, AST_I2CM_ISR);
+	ast_i2c_write(i2c_bus, 0xfffffff, AST_I2CS_ISR);
+
+	/* Set master IER */
+	ast_i2c_write(i2c_bus, 
+			AST_I2CM_PKT_CMD_TO |
+			AST_I2CM_PKT_CMD_ERR |
+			AST_I2CM_PKT_CMD_DONE |
+			AST_I2CM_BUS_RECOVER_ERR |
+			AST_I2CM_SDA_DL_TO |
+			AST_I2CM_BUS_RECOVER |
+			AST_I2CM_SMBUS_ALT |
+			AST_I2CM_SCL_LOW_TO |
+			AST_I2CM_ABNORMAL_COND |
+			AST_I2CM_NORMAL_STOP |
+			AST_I2CM_ARBIT_LOSS |
+			AST_I2CM_RX_DOWN |
+			AST_I2CM_TX_NAK |			
+			AST_I2CM_TX_ACK,
+			AST_I2CM_IER);
+
+
+#ifdef CONFIG_AST_I2C_SLAVE_MODE
+	ast_i2c_slave_buff_init(i2c_bus);
+
+	ast_i2c_write(i2c_bus, 
+			AST_I2CS_ADDR3_NAK_ISR |
+			AST_I2CS_ADDR2_NAK_ISR |
+			AST_I2CS_ADDR1_NAK_ISR |
+			AST_I2CS_PKT_CMD_FAIL_ISR |
+			AST_I2CS_PKT_CMD_DONE_ISR |
+			AST_I2CS_INACTIVE_TO_ISR |
+			AST_I2CS_SLAVE_MATCH_ISR |
+			AST_I2CS_ABNOR_STOP_ISR |
+			AST_I2CS_STOP_ISR |
+			AST_I2CS_MATCH_NAK_ISR |
+			AST_I2CS_RX_DONE_ISR |
+			AST_I2CS_TX_NAK_ISR |
+			AST_I2CS_TX_ACK_ISR,
+			AST_I2CS_IER);
+
+#endif
+
+}
+
+static void ast_i2c_bus_init(struct ast_i2c_bus *i2c_bus)
 {
 	//I2CG Reset
 	ast_i2c_write(i2c_bus, 0, I2C_FUN_CTRL_REG);
 
-	if (i2c_bus->bus_config->ast_g5_i2c) {
+	if (i2c_bus->bus_config->aspeed_version == 5) {
 		//ast_g5 soc support
 		ast_i2c_write(i2c_bus, AST_I2CD_BUS_AUTO_RELEASE | AST_I2CD_MASTER_EN,
 			      I2C_FUN_CTRL_REG);
@@ -682,7 +975,7 @@ extern void ast_i2c_bus_init(struct ast_i2c_bus *i2c_bus)
 	ast_i2c_write(i2c_bus, 0xfffffff, I2C_INTR_STS_REG);
 
 	/* Set interrupt generation of I2C controller */
-	if (i2c_bus->bus_config->ast_g5_i2c) {
+	if (i2c_bus->bus_config->aspeed_version == 5) {
 		ast_i2c_write(i2c_bus,
 			      AST_I2CD_INTR_STS_SLAVE_TO_EN |
 			      AST_I2CD_SDA_DL_TO_INTR_EN |
@@ -1205,7 +1498,7 @@ static void ast_i2c_do_byte_xfer(struct ast_i2c_bus *i2c_bus)
 	u32 cmd = 0;
 
 	dev_dbg(i2c_bus->dev, "ast_i2c_do_byte_xfer \n");
-	if (i2c_bus->slave_operation == 1) {
+	if (i2c_bus->slave_operation) {
 		i2c_bus->slave_xfer_mode = BYTE_MODE;
 		i2c_bus->slave_xfer_len = 1;
 
@@ -1528,7 +1821,7 @@ static void ast_i2c_slave_xfer_done(struct ast_i2c_bus *i2c_bus)
 			i2c_bus->slave_msgs->len++;
 		} else if (i2c_bus->slave_xfer_mode == BUFF_MODE) {
 			xfer_len = AST_I2CD_RX_BUF_ADDR_GET(ast_i2c_read(i2c_bus, I2C_BUF_CTRL_REG));
-			if (!i2c_bus->bus_config->ast_g5_i2c) {
+			if (!i2c_bus->bus_config->aspeed_version == 5) {
 				if (xfer_len == 0)
 					xfer_len = i2c_bus->buff_pool.page_size;
 			}
@@ -1632,7 +1925,7 @@ static void ast_i2c_master_xfer_done(struct ast_i2c_bus *i2c_bus)
 
 			xfer_len = AST_I2CD_RX_BUF_ADDR_GET(ast_i2c_read(i2c_bus, I2C_BUF_CTRL_REG));
 
-			if (!i2c_bus->bus_config->ast_g5_i2c) {
+			if (!i2c_bus->bus_config->aspeed_version == 5) {
 				if (xfer_len == 0)
 					xfer_len = i2c_bus->buff_pool.page_size;
 			}
@@ -1914,7 +2207,7 @@ static irqreturn_t ast_i2c_handler(int irq, void *dev_id)
 		}
 	} else {
 #ifdef CONFIG_AST_I2C_SLAVE_MODE
-		if (i2c_bus->bus_config->ast_g5_i2c) {
+		if (i2c_bus->bus_config->aspeed_version == 5) {
 			if (AST_I2CD_INTR_STS_SLAVE_TO & sts) {
 				//drop package
 				dev_err(i2c_bus->dev, "AST_I2CD_INTR_STS_SLAVE_TO M [%x], S [%x] \n",
@@ -2219,26 +2512,27 @@ static const struct i2c_algorithm i2c_ast_algorithm = {
 };
 
 static struct ast_i2c_bus_config i2c_config = {
-	.ast_g5_i2c = 0,
+	.aspeed_version = 0,
 	.timing_table_size = sizeof(ast_i2c_timing_table),
 	.timing_table = ast_i2c_timing_table,
 };
 
 static struct ast_i2c_bus_config i2c_g5_config = {
-	.ast_g5_i2c = 1,
+	.aspeed_version = 5,
+	.timing_table_size = sizeof(ast_g5_i2c_timing_table),
+	.timing_table = ast_g5_i2c_timing_table,
+};
+
+static struct ast_i2c_bus_config i2c_g6_config = {
+	.aspeed_version = 6,
 	.timing_table_size = sizeof(ast_g5_i2c_timing_table),
 	.timing_table = ast_g5_i2c_timing_table,
 };
 
 static const struct of_device_id ast_i2c_bus_of_table[] = {
-	{
-		.compatible = "aspeed,ast-i2c",
-		.data = &i2c_config,
-	},
-	{
-		.compatible = "aspeed,ast-g5-i2c",
-		.data = &i2c_g5_config,
-	},
+	{	.compatible = "aspeed,ast-i2c", 	.data = &i2c_config, 	},
+	{	.compatible = "aspeed,ast-g5-i2c", 	.data = &i2c_g5_config, },
+	{	.compatible = "aspeed,ast-g6-i2c", 	.data = &i2c_g6_config, },
 	{ },
 };
 
@@ -2314,7 +2608,7 @@ static int ast_i2c_probe(struct platform_device *pdev)
 			goto release_mem;
 		}
 		i2c_bus->buff_pool.page_size = resource_size(res);
-		if (!i2c_bus->bus_config->ast_g5_i2c) {
+		if (!i2c_bus->bus_config->aspeed_version == 5) {
 			//AST2400 buffer mode issue , force I2C slave write use byte mode , read use buffer mode
 			i2c_bus->do_slave_xfer = ast_i2c_do_byte_xfer;
 			ret = of_property_read_u8(pdev->dev.of_node,
@@ -2400,7 +2694,10 @@ static int ast_i2c_probe(struct platform_device *pdev)
 	i2c_bus->slave_operation = 0;
 	i2c_bus->blk_r_flag = 0;
 
-	ast_i2c_bus_init(i2c_bus);
+	if(i2c_bus->bus_config->aspeed_version == 6)
+		ast_g6_i2c_bus_init(i2c_bus);
+	else
+		ast_i2c_bus_init(i2c_bus);
 
 #ifdef CONFIG_AST_I2C_SLAVE_MODE
 	ast_i2c_slave_buff_init(i2c_bus);
