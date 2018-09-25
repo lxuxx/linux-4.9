@@ -23,10 +23,10 @@
 #include <linux/reset.h>
 #include <linux/delay.h>
 
-#define ASPEED_I2CG_ISR		0x00
+#define ASPEED_I2CG_ISR				0x00
 #define ASPEED_I2CG_SLAVE_ISR		0x04	/* ast2600 */
-#define ASPEED_I2CG_OWNER	0x08
-#define ASPEED_I2CG_CTRL	0x0C
+#define ASPEED_I2CG_OWNER			0x08
+#define ASPEED_I2CG_CTRL			0x0C
 #define ASPEED_I2CG_CLK_DIV_CTRL	0x10	/* ast2600 */
 
 /* 0x0C : I2CG SRAM Buffer Enable  */
@@ -34,7 +34,7 @@
 
 /*ast2600 */
 #define ASPEED_I2CG_SLAVE_PKT_NAK		BIT(4)
-
+#define ASPEED_I2CG_M_S_SEPARATE_INTR	BIT(3)
 #define ASPEED_I2CG_CTRL_NEW_REG		BIT(2)
 #define ASPEED_I2CG_CTRL_NEW_CLK_DIV	BIT(1)
 
@@ -59,6 +59,29 @@ static const struct of_device_id aspeed_i2c_ic_of_match[] = {
  * busses, so we use a dummy interrupt chip to translate this single interrupt
  * into multiple interrupts, each associated with a single I2C bus.
  */
+static void aspeed_g6_i2c_ic_irq_handler(struct irq_desc *desc)
+{
+	struct aspeed_i2c_ic *i2c_ic = irq_desc_get_handler_data(desc);
+	struct irq_chip *chip = irq_desc_get_chip(desc);
+	unsigned long bit, status;
+	unsigned int bus_irq;
+
+	if(readl(i2c_ic->base + ASPEED_I2CG_CTRL) & ASPEED_I2CG_M_S_SEPARATE_INTR) {
+		status = readl(i2c_ic->base);
+		status &= i2c_ic->i2c_irq_mask;
+		status |= (readl(i2c_ic->base + ASPEED_I2CG_SLAVE_ISR) & i2c_ic->i2c_irq_mask) << 16;
+	} else {
+		status = readl(i2c_ic->base);
+		status &= i2c_ic->i2c_irq_mask;
+	}
+	chained_irq_enter(chip, desc);
+	for_each_set_bit(bit, &status, i2c_ic->bus_num) {
+		bus_irq = irq_find_mapping(i2c_ic->irq_domain, bit);
+		generic_handle_irq(bus_irq);
+	}
+	chained_irq_exit(chip, desc);
+}
+ 
 static void aspeed_i2c_ic_irq_handler(struct irq_desc *desc)
 {
 	struct aspeed_i2c_ic *i2c_ic = irq_desc_get_handler_data(desc);
@@ -157,20 +180,21 @@ static int aspeed_i2c_ic_probe(struct platform_device *pdev)
 	writel(ASPEED_I2CG_SRAM_BUFFER_ENABLE, i2c_ic->base + ASPEED_I2CG_CTRL);
 
 	/* ast2600 init */
-#if 0	
-	/* only support in ast-g6 platform */
-	writel(ASPEED_I2CG_SLAVE_PKT_NAK | ASPEED_I2CG_CTRL_NEW_REG | ASPEED_I2CG_CTRL_NEW_CLK_DIV, i2c_irq->regs + ASPEED_I2CG_CTRL);
+	if(of_device_is_compatible(node, "aspeed,ast2600-i2c-ic")) {
+		/* only support in ast-g6 platform */
+		writel(ASPEED_I2CG_SLAVE_PKT_NAK | ASPEED_I2CG_CTRL_NEW_REG | ASPEED_I2CG_CTRL_NEW_CLK_DIV, i2c_ic->base + ASPEED_I2CG_CTRL);
 
-
-	/* assign 4 base clock 
-	 * base clk1 : 1M for 1KHz
-	 * base clk2 : 4M for 400KHz	 
-	 * base clk3 : 10M for 1MHz	 
-	 * base clk4 : 35M for 3.4MHz	 
-	*/
-	writel(xx , i2c_irq->regs + ASPEED_I2CG_CLK_DIV_CTRL);
-#endif	
-
+		/* assign 4 base clock 
+		 * base clk1 : 1M for 1KHz
+		 * base clk2 : 4M for 400KHz	 
+		 * base clk3 : 10M for 1MHz	 
+		 * base clk4 : 35M for 3.4MHz	 
+		*/
+		//TODO ~~
+		//get i2c clk source first 
+		//writel(xx , i2c_ic->base + ASPEED_I2CG_CLK_DIV_CTRL);
+	}
+	
 	if (!of_property_read_u32(node, "bus-owner", &bus_owner)) {
 		writel(bus_owner, i2c_ic->base + ASPEED_I2CG_OWNER);
 		i2c_ic->i2c_irq_mask = ~bus_owner;
@@ -190,9 +214,13 @@ static int aspeed_i2c_ic_probe(struct platform_device *pdev)
 
 	i2c_ic->irq_domain->name = "aspeed-i2c-domain";
 
-	irq_set_chained_handler_and_data(i2c_ic->parent_irq,
-					 aspeed_i2c_ic_irq_handler, i2c_ic);
-
+	if(of_device_is_compatible(node, "aspeed,ast2600-i2c-ic")) {
+		irq_set_chained_handler_and_data(i2c_ic->parent_irq,
+						 aspeed_g6_i2c_ic_irq_handler, i2c_ic);
+	} else {
+		irq_set_chained_handler_and_data(i2c_ic->parent_irq,
+						 aspeed_i2c_ic_irq_handler, i2c_ic);
+	}
 	pr_info("i2c controller registered, irq %d\n", i2c_ic->parent_irq);
 
 	return 0;

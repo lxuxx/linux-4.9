@@ -10,9 +10,6 @@
 	#size-cells = <1>;
 	interrupt-parent = <&vic>;
 
-	memory@80000000 {
-		reg = <0x80000000 0x20000000>;
-	};
 
 	cpus {
 		#address-cells = <1>;
@@ -23,6 +20,11 @@
 			device_type = "cpu";
 			reg = <0>;
 		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x80000000 0>;
 	};
 
 	apb {
@@ -83,14 +85,14 @@
 			pinctrl-1 = <&pinctrl_spi2cs1_default>;
 		};
 
-		mac0: ftgmac@1e660000 {
+		mac0: ethernet@1e660000 {
 			compatible = "aspeed,ast2500-mac", "faraday,ftgmac100";
 			reg = <0x1e660000 0x180>;
 			interrupts = <2>;
 			clocks = <&syscon ASPEED_CLK_GATE_MAC1CLK>;
 		};
 
-		mac1: ftgmac@1e680000 {
+		mac1: ethernet@1e680000 {
 			compatible = "aspeed,ast2500-mac", "faraday,ftgmac100";
 			reg = <0x1e680000 0x180>;
 			interrupts = <3>;

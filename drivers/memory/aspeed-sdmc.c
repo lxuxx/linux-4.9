@@ -18,13 +18,15 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
+
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/delay.h>
 #include <linux/io.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
-#include <linux/hwmon-sysfs.h>
+#include <linux/of_address.h>
+#include <linux/of_irq.h>
+#include <linux/of_platform.h>
 #include <linux/aspeed-sdmc.h>
 
 #define ASPEED_SDMC_PROTECT				0x00		/*	protection key register	*/
@@ -32,22 +34,29 @@
 #define ASPEED_SDMC_MEM_REQ				0x08		/*	Graphics Memory Protection register */
 
 #define ASPEED_SDMC_ISR					0x50		/*	Interrupt Control/Status Register */
+#define ASPEED_SDMC_CACHE_ECC_RANGE                 0x54            /*      ECC/CACHE Address Range Control Register */
 
 /*	ASPEED_SDMC_PROTECT: 0x00  - protection key register */
 #define SDMC_PROTECT_UNLOCK			0xFC600309
 
 /*	ASPEED_SDMC_CONFIG :0x04	 - Configuration register */
-#define SDMC_CONFIG_VER_NEW			(0x1 << 28)
-#define SDMC_CONFIG_MEM_GET(x)		(x & 0x3)
+#define SDMC_CONFIG_VER_GET(x)		((x >> 28) & 0x3)
+#define ASPEED_LEGACY_SDMC			0
+#define ASPEED_G5_SDMC				1
+#define ASPEED_G6_SDMC				3
 
-#define SDMC_CONFIG_CACHE_EN			(0x1 << 10)
-#define SDMC_CONFIG_EEC_EN			(0x1 << 7)
-#define SDMC_CONFIG_DDR4				(0x1 << 4)
+#define SDMC_G5_CONFIG_CACHE_EN		BIT(10)	//only in ast2500 
+
+#define SDMC_CONFIG_EEC_EN			BIT(7)
+#define SDMC_G5_CONFIG_DDR4			BIT(4) //only in ast2500/ast2600
+
+#define SDMC_CONFIG_VRAM_GET(x)		((x >> 2) & 0x3)
+#define SDMC_CONFIG_MEM_GET(x)		(x & 0x3)
 
 
 /*	#define ASPEED_SDMC_ISR	 : 0x50	- Interrupt Control/Status Register */
-#define SDMC_ISR_CLR					(0x1 << 31)
-#define SDMC_ISR_RW_ACCESS			(0x1 << 29)
+#define SDMC_ISR_CLR				BIT(31)
+#define SDMC_ISR_RW_ACCESS			BIT(29)
 
 #define SDMC_ISR_GET_ECC_RECOVER(x)	((x >> 16) & 0xff)
 #define SDMC_ISR_GET_ECC_UNRECOVER(x)	((x >> 12) & 0xf)
@@ -65,131 +74,117 @@
 
 void __iomem	*ast_sdmc_base = 0;
 
-static inline u32 
-ast_sdmc_read(u32 reg)
-{
-	u32 val;
-		
-	val = readl(ast_sdmc_base + reg);
-	
-	SDMCDBUG("ast_sdmc_read : reg = 0x%08x, val = 0x%08x\n", reg, val);
-	
-	return val;
-}
+struct aspeed_sdmc_device {
+	void __iomem	*reg;
+	struct kobject *ast_sdmc_kobj;
+	int aspeed_version;
+};
 
-static inline void
-ast_sdmc_write(u32 val, u32 reg) 
-{
-	SDMCDBUG("ast_sdmc_write : reg = 0x%08x, val = 0x%08x\n", reg, val);
-#ifdef CONFIG_ASPEED_SDMC_LOCK
-	//unlock 
-	writel(SDMC_PROTECT_UNLOCK, ast_sdmc_base);
-	writel(val, ast_sdmc_base + reg);
-	//lock
-	writel(0xaa,ast_sdmc_base);	
-#else
-	writel(SDMC_PROTECT_UNLOCK, ast_sdmc_base);
-
-	writel(val, ast_sdmc_base + reg);
-#endif
-}
+struct aspeed_sdmc_device *aspeed_sdmc;
 
 extern u8
 ast_sdmc_get_ecc(void)
 {
-	if(ast_sdmc_read(ASPEED_SDMC_CONFIG) & SDMC_CONFIG_EEC_EN)
+	if(readl(aspeed_sdmc->reg + ASPEED_SDMC_CONFIG) & SDMC_CONFIG_EEC_EN)
 		return 1;
 	else
 		return 0;
 }
-
-#ifdef CONFIG_MACH_ASPEED_G5
 
 extern u8
 ast_sdmc_get_cache(void)
 {
-	if(ast_sdmc_read(ASPEED_SDMC_CONFIG) & SDMC_CONFIG_CACHE_EN)
-		return 1;
-	else
-		return 0;
+	if(aspeed_sdmc->aspeed_version == 5) {
+		if(readl(aspeed_sdmc->reg + ASPEED_SDMC_CONFIG) & SDMC_G5_CONFIG_CACHE_EN)
+			return 1;
+		else
+			return 0;		
+	} else
+		return 0;	
 }
-
-extern void
-ast_sdmc_set_cache(u8 enable)
-{
-	if(enable) 
-		ast_sdmc_write(ast_sdmc_read(ASPEED_SDMC_CONFIG) | SDMC_CONFIG_CACHE_EN, ASPEED_SDMC_CONFIG);
-	else
-		ast_sdmc_write(ast_sdmc_read(ASPEED_SDMC_CONFIG) & ~SDMC_CONFIG_CACHE_EN, ASPEED_SDMC_CONFIG);
-}
-
 
 extern u8
 ast_sdmc_get_dram(void)
 {
-	if(ast_sdmc_read(ASPEED_SDMC_CONFIG) & SDMC_CONFIG_DDR4)
+	if(aspeed_sdmc->aspeed_version == 4)
+		return 0;
+
+	if(readl(aspeed_sdmc->reg + ASPEED_SDMC_CONFIG) & SDMC_G5_CONFIG_DDR4)
 		return 1;
 	else
 		return 0;
 }
-#endif
 
-extern void
-ast_sdmc_disable_mem_protection(u8 req)
+static const u32 aspeed_vram_table[] = {
+	0x00800000,	//8MB
+	0x01000000,	//16MB
+	0x02000000,	//32MB
+	0x04000000,	//64MB
+};
+
+extern u32
+ast_sdmc_get_vram_size(void)
 {
-	ast_sdmc_write(ast_sdmc_read(ASPEED_SDMC_MEM_REQ) & ~(1<< req), ASPEED_SDMC_MEM_REQ);
+	u32 size_conf = SDMC_CONFIG_VRAM_GET(readl(aspeed_sdmc->reg + ASPEED_SDMC_CONFIG));
+	return aspeed_vram_table[size_conf];
 }
+
+static const u32 ast2400_dram_table[] = {
+	0x04000000,	//64MB
+	0x08000000,	//128MB
+	0x10000000, //256MB
+	0x20000000,	//512MB
+};
+
+static const u32 ast2500_dram_table[] = {
+	0x08000000,	//128MB
+	0x10000000,	//256MB
+	0x20000000,	//512MB
+	0x40000000,	//1024MB
+};
+
+static const u32 ast2600_dram_table[] = {
+	0x10000000,	//256MB
+	0x20000000,	//512MB
+	0x40000000,	//1024MB
+	0x80000000,	//2048MB
+};
 
 extern u32
 ast_sdmc_get_mem_size(void)
 {
 	u32 size = 0;
-	u32 conf = ast_sdmc_read(ASPEED_SDMC_CONFIG);
+	u32 conf = readl(aspeed_sdmc->reg + ASPEED_SDMC_CONFIG);
+	u32 size_conf = SDMC_CONFIG_MEM_GET(conf); 
 	
-	if(conf & SDMC_CONFIG_VER_NEW) {
-		switch(SDMC_CONFIG_MEM_GET(conf)) {
-			case 0:
-				size = 128*1024*1024;
-				break;
-			case 1:
-				size = 256*1024*1024;
-				break;
-			case 2:
-				size = 512*1024*1024;
-				break;
-			case 3:
-				size = 1024*1024*1024;
-				break;
-				
-			default:
-				SDMCMSG("error ddr size \n");
-				break;
-		}
-		
-	} else {
-		switch(SDMC_CONFIG_MEM_GET(conf)) {
-			case 0:
-				size = 64*1024*1024;
-				break;
-			case 1:
-				size = 128*1024*1024;
-				break;
-			case 2:
-				size = 256*1024*1024;
-				break;
-			case 3:
-				size = 512*1024*1024;
-				break;
-				
-			default:
-				SDMCMSG("error ddr size \n");
-				break;
-		}
+	switch(SDMC_CONFIG_MEM_GET(conf)) {
+		case ASPEED_LEGACY_SDMC:
+			size = ast2400_dram_table[size_conf];
+			break;
+		case ASPEED_G5_SDMC:
+			size = ast2500_dram_table[size_conf];
+			break;
+		case ASPEED_G6_SDMC:
+			size = ast2600_dram_table[size_conf];
+			break;
 	}
+
 	return size;
 }
 
 EXPORT_SYMBOL(ast_sdmc_get_mem_size);
+
+extern u32
+ast_sdmc_get_ecc_size(void)
+{
+	return readl(aspeed_sdmc->reg + ASPEED_SDMC_CACHE_ECC_RANGE);
+}
+
+extern void
+ast_sdmc_disable_mem_protection(u8 req)
+{
+	writel(readl(aspeed_sdmc->reg + ASPEED_SDMC_MEM_REQ) & ~(1<< req), aspeed_sdmc->reg + ASPEED_SDMC_MEM_REQ);
+}
 
 static ssize_t show_ecc(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -203,8 +198,8 @@ static ssize_t show_ecc_counter(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	return sprintf(buf, "recoverable count %d: un-recoverable count %d\n", 
-			SDMC_ISR_GET_ECC_RECOVER(ast_sdmc_read(ASPEED_SDMC_ISR)), 
-			SDMC_ISR_GET_ECC_UNRECOVER(ast_sdmc_read(ASPEED_SDMC_ISR)));
+			SDMC_ISR_GET_ECC_RECOVER(readl(aspeed_sdmc->reg + ASPEED_SDMC_ISR)), 
+			SDMC_ISR_GET_ECC_UNRECOVER(readl(aspeed_sdmc->reg + ASPEED_SDMC_ISR)));
 }
 
 static ssize_t store_ecc_counter(struct device *dev,
@@ -215,14 +210,12 @@ static ssize_t store_ecc_counter(struct device *dev,
 	val = simple_strtoul(buf, NULL, 10);
 
 	if(val)
-		ast_sdmc_write(ast_sdmc_read(ASPEED_SDMC_ISR) | SDMC_ISR_CLR, ASPEED_SDMC_ISR);
+		writel(readl(aspeed_sdmc->reg + ASPEED_SDMC_ISR) | SDMC_ISR_CLR, aspeed_sdmc->reg + ASPEED_SDMC_ISR);
 	
 	return count;
 }
 
 static DEVICE_ATTR(ecc_counter, S_IRUGO | S_IWUSR, show_ecc_counter, store_ecc_counter); 
-
-#ifdef CONFIG_MACH_ASPEED_G5
 
 static ssize_t show_cache(struct device *dev, struct device_attribute *attr, char *buf)
 {
@@ -241,15 +234,11 @@ static ssize_t show_dram(struct device *dev,
 
 static DEVICE_ATTR(dram, S_IRUGO, show_dram, NULL); 
 
-#endif
-
 static struct attribute *ast_sdmc_attributes[] = {
 	&dev_attr_ecc.attr,
 	&dev_attr_ecc_counter.attr,	
-#ifdef CONFIG_MACH_ASPEED_G5
 	&dev_attr_cache.attr,
 	&dev_attr_dram.attr,
-#endif	
 	NULL
 };
 
@@ -257,32 +246,44 @@ static const struct attribute_group sdmc_attribute_group = {
 	.attrs = ast_sdmc_attributes
 };
 
-static struct kobject *ast_sdmc_kobj;
+static const struct of_device_id aspeed_sdmc_of_match[] = {
+	{ .compatible = "aspeed,ast2400-sdmc", .data = (void *)4, },
+	{ .compatible = "aspeed,ast2500-sdmc", .data = (void *)5, },
+	{ .compatible = "aspeed,ast2600-sdmc", .data = (void *)6, },
+	{ }
+};
 
 static int aspeed_sdmc_probe(struct platform_device *pdev)
 {
 	struct resource *res;
+	const struct of_device_id *dev_id;
 	int ret;
 
 	SDMCDBUG("\n");
+
+	aspeed_sdmc = devm_kzalloc(&pdev->dev, sizeof(struct aspeed_sdmc_device), GFP_KERNEL);
+	if (!aspeed_sdmc)
+		return -ENOMEM;
+	
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	ast_sdmc_base = devm_ioremap_resource(&pdev->dev, res);
+	aspeed_sdmc->reg = devm_ioremap_resource(&pdev->dev, res);
+
+	dev_id = of_match_node(aspeed_sdmc_of_match, pdev->dev.of_node);
+	if (!dev_id)
+		return -EINVAL;
+
+	aspeed_sdmc->aspeed_version = (int)dev_id->data;
 
 	//show in /sys/kernel/dram
-	ast_sdmc_kobj = kobject_create_and_add("dram", kernel_kobj);
-	if (!ast_sdmc_kobj)
+	aspeed_sdmc->ast_sdmc_kobj = kobject_create_and_add("dram", kernel_kobj);
+	if (!aspeed_sdmc->ast_sdmc_kobj)
 		return -ENOMEM;
-	ret = sysfs_create_group(ast_sdmc_kobj, &sdmc_attribute_group);
-	if (ret)
-			kobject_put(ast_sdmc_kobj);
+	ret = sysfs_create_group(aspeed_sdmc->ast_sdmc_kobj, &sdmc_attribute_group);
+	if (ret < 0)
+		return ret;
+	
 	return ret;
 }
-
-static const struct of_device_id aspeed_sdmc_of_match[] = {
-	{ .compatible = "aspeed,ast2500-sdmc", },
-	{ .compatible = "aspeed,ast2400-sdmc", },
-	{ }
-};
 
 static struct platform_driver aspeed_sdmc_driver = {
 	.probe = aspeed_sdmc_probe,

@@ -15,7 +15,6 @@
 #include <linux/of_device.h>
 #include <linux/of.h>
 #include <asm/io.h>
-#include <mach/ast-ahbc.h>
 /***********************  Registers for AHBC ***************************/
 #define AST_AHBC_PROTECT		0x00	/* Protection Key Register */
 #define AST_AHBC_PRIORITY_CTRL	0x80	/* Priority Cortrol Register */

@@ -1,0 +1,16 @@
+/dts-v1/;
+
+#include "ast2600.dtsi"
+
+/ {
+	model = "AST2600 EVB";
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		bootargs = "console=ttyS0,115200n8 root=/dev/ram rw init=/linuxrc";
+	};
+
+};
