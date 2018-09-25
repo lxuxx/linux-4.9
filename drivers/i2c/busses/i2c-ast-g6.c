@@ -213,6 +213,7 @@ static struct ast_i2c_timing_table ast_g5_i2c_timing_table[] = {
 	{3072, 	0x77700300 | (0x7) | (0xb << 16) | (0xb << 12) },
 };
 
+
 struct ast_i2c_bus {
 //	struct ast_i2c_driver_data *ast_i2c_data;
 	struct device			*dev;
@@ -245,11 +246,8 @@ struct ast_i2c_bus {
 	u8				slave_ioctl_idx;
 	struct i2c_msg			slave_rx_msg[I2C_S_RX_BUF_NUM];
 	struct i2c_msg			slave_tx_msg;
-
 #endif
 };
-
-
 
 static inline void
 ast_i2c_write(struct ast_i2c_bus *i2c_bus, u32 val, u32 reg)
