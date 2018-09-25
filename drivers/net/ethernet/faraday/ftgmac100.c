@@ -1689,7 +1689,6 @@ static int ftgmac100_probe(struct platform_device *pdev)
 					   "Unsupported PHY mode %s !\n",
 					   phy_modes(phy_intf));
 			}
-			printk("phy_intf %d -==---------------------\n", phy_intf);
 		}
 #if 1		
 		err = ftgmac100_setup_mdio(netdev);
