@@ -43,6 +43,7 @@ struct timeriomem_rng_private_data {
 	struct completion	completion;
 
 	struct hwrng		timeriomem_rng_ops;
+	int 				is_aspeed;
 };
 
 #define to_rng_priv(rng) \
@@ -55,11 +56,12 @@ static int timeriomem_rng_data_present(struct hwrng *rng, int wait)
 {
 	struct timeriomem_rng_private_data *priv = to_rng_priv(rng);
 
-	if (!wait || priv->present)
-		return priv->present;
-
-	wait_for_completion(&priv->completion);
-
+	if(priv->period) {
+		if (!wait || priv->present)
+			return priv->present;
+	//printk("timeriomem_rng_data_present \n");
+		wait_for_completion(&priv->completion);
+	}
 	return 1;
 }
 
@@ -69,19 +71,23 @@ static int timeriomem_rng_data_read(struct hwrng *rng, u32 *data)
 	unsigned long cur;
 	s32 delay;
 
-	*data = readl(priv->io_base);
+	if(priv->is_aspeed) 
+		*data = readl(priv->io_base + 0x4);
+	else
+		*data = readl(priv->io_base);
 
-	cur = jiffies;
+	if(priv->period) {
+		cur = jiffies;
 
-	delay = cur - priv->expires;
-	delay = priv->period - (delay % priv->period);
+		delay = cur - priv->expires;
+		delay = priv->period - (delay % priv->period);
 
-	priv->expires = cur + delay;
-	priv->present = 0;
+		priv->expires = cur + delay;
+		priv->present = 0;
 
-	reinit_completion(&priv->completion);
-	mod_timer(&priv->timer, priv->expires);
-
+		reinit_completion(&priv->completion);
+		mod_timer(&priv->timer, priv->expires);
+	}
 	return 4;
 }
 
@@ -91,8 +97,82 @@ static void timeriomem_rng_trigger(unsigned long data)
 			= (struct timeriomem_rng_private_data *)data;
 
 	priv->present = 1;
-	complete(&priv->completion);
+	if(priv->period)
+		complete(&priv->completion);
 }
+
+#define RNG_TYPE_MASK			(0x7 << 1) 
+#define RNG_SET_TYPE(x)			((x) << 1) 
+#define RNG_GET_TYPE(x)			(((x) >> 1)  & 0x7)
+#define RNG_ENABLE				0x1
+
+static ssize_t enable_show(struct device *dev,
+			 struct device_attribute *attr, char *buf)
+{
+	struct timeriomem_rng_private_data *priv = dev_get_drvdata(dev);
+	u32 reg;
+
+	reg = readl(priv->io_base) & RNG_ENABLE;
+
+	return snprintf(buf, PAGE_SIZE - 1, "%u\n", reg);
+}
+
+static ssize_t enable_store(struct device *dev, struct device_attribute *attr,
+			  const char *buf, size_t count)
+{
+	struct timeriomem_rng_private_data *priv = dev_get_drvdata(dev);
+	unsigned long val;
+	int err;
+
+	err = kstrtoul(buf, 0, &val);
+	if (err)
+		return err;
+
+	if(val)
+		writel(readl(priv->io_base) | RNG_ENABLE, priv->io_base);
+	else
+		writel(readl(priv->io_base) & ~RNG_ENABLE, priv->io_base);
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(enable);
+
+static ssize_t type_show(struct device *dev,
+			 struct device_attribute *attr, char *buf)
+{
+	struct timeriomem_rng_private_data *priv = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE - 1, "%u\n", RNG_GET_TYPE(readl(priv->io_base)));
+}
+
+static ssize_t type_store(struct device *dev, struct device_attribute *attr,
+			  const char *buf, size_t count)
+{
+	struct timeriomem_rng_private_data *priv = dev_get_drvdata(dev);
+	unsigned long val;
+	int err;
+
+	err = kstrtoul(buf, 0, &val);
+	if (err)
+		return err;
+
+	writel(((readl(priv->io_base) & ~RNG_TYPE_MASK) | RNG_SET_TYPE(val)), priv->io_base);
+
+	return count;
+}
+
+static DEVICE_ATTR_RW(type);
+
+static struct attribute *aspeed_rng_attrs[] = {
+	&dev_attr_enable.attr,
+	&dev_attr_type.attr,
+	NULL,
+};
+
+static const struct attribute_group aspeed_rng_attr_group = {
+	.attrs = aspeed_rng_attrs,
+};
 
 static int timeriomem_rng_probe(struct platform_device *pdev)
 {
@@ -111,11 +191,13 @@ static int timeriomem_rng_probe(struct platform_device *pdev)
 	if (!res)
 		return -ENXIO;
 
+#if 0
 	if (res->start % 4 != 0 || resource_size(res) != 4) {
 		dev_err(&pdev->dev,
 			"address must be four bytes wide and aligned\n");
 		return -EINVAL;
 	}
+#endif
 
 	/* Allocate memory for the device structure (and zero it) */
 	priv = devm_kzalloc(&pdev->dev,
@@ -139,24 +221,38 @@ static int timeriomem_rng_probe(struct platform_device *pdev)
 		period = pdata->period;
 	}
 
-	priv->period = usecs_to_jiffies(period);
-	if (priv->period < 1) {
-		dev_err(&pdev->dev, "period is less than one jiffy\n");
-		return -EINVAL;
-	}
-
+	if(period) {
+		priv->period = usecs_to_jiffies(period);
+		if (priv->period < 1) {
+			dev_err(&pdev->dev, "period is less than one jiffy\n");
+			return -EINVAL;
+		}
+	} else
+		priv->period = 0;
+		
 	priv->expires	= jiffies;
 	priv->present	= 1;
 
-	init_completion(&priv->completion);
-	complete(&priv->completion);
+	if(priv->period) {
+		init_completion(&priv->completion);
+		complete(&priv->completion);
 
-	setup_timer(&priv->timer, timeriomem_rng_trigger, (unsigned long)priv);
-
+		setup_timer(&priv->timer, timeriomem_rng_trigger, (unsigned long)priv);
+	}
+	
 	priv->timeriomem_rng_ops.name		= dev_name(&pdev->dev);
 	priv->timeriomem_rng_ops.data_present	= timeriomem_rng_data_present;
 	priv->timeriomem_rng_ops.data_read	= timeriomem_rng_data_read;
 	priv->timeriomem_rng_ops.priv		= (unsigned long)priv;
+
+	if (pdev->dev.of_node && of_device_is_compatible(pdev->dev.of_node, "aspeed-rng")) {
+		priv->is_aspeed = 1;
+		err = sysfs_create_group(&pdev->dev.kobj, &aspeed_rng_attr_group);
+		if (err < 0)
+			return err;
+	} else {
+		priv->is_aspeed = 0;
+	}
 
 	priv->io_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(priv->io_base)) {
@@ -186,7 +282,10 @@ static int timeriomem_rng_remove(struct platform_device *pdev)
 
 	hwrng_unregister(&priv->timeriomem_rng_ops);
 
-	del_timer_sync(&priv->timer);
+	if(priv->is_aspeed)
+		sysfs_remove_group(&pdev->dev.kobj, &aspeed_rng_attr_group);
+	if(priv->period)
+		del_timer_sync(&priv->timer);
 
 	return 0;
 }

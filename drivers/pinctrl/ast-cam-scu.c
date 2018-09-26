@@ -414,37 +414,6 @@ ast_scu_get_soc_dram_base(void)
 		return AST_DRAM_BASE_4;
 }
 
-extern void
-ast_scu_hw_random_enable(u8 enable)
-{
-	if(enable)
-		ast_scu_write(ast_scu_read(AST_SCU_RAMDOM_GEN) | RNG_ENABLE, AST_SCU_RAMDOM_GEN);
-	else
-		ast_scu_write(ast_scu_read(AST_SCU_RAMDOM_GEN) & ~RNG_ENABLE, AST_SCU_RAMDOM_GEN);
-}
-EXPORT_SYMBOL(ast_scu_hw_random_enable);
-
-extern u32
-ast_scu_hw_random_read(void)
-{
-	return (ast_scu_read(AST_SCU_RAMDOM_DATA));
-}
-EXPORT_SYMBOL(ast_scu_hw_random_read);
-
-extern u8
-ast_scu_get_hw_random_type(void)
-{
-	return (RNG_GET_TYPE(ast_scu_read(AST_SCU_RAMDOM_GEN)));
-}
-EXPORT_SYMBOL(ast_scu_get_hw_random_type);
-
-extern void
-ast_scu_set_hw_random_type(u8 type)
-{
-	ast_scu_write(((ast_scu_read(AST_SCU_RAMDOM_GEN) & ~RNG_TYPE_MASK) | RNG_SET_TYPE(type)), AST_SCU_RAMDOM_GEN);
-}
-EXPORT_SYMBOL(ast_scu_set_hw_random_type);
-
 static int ast_cam_scu_probe(struct platform_device *pdev)
 {
 	int ret = 0;

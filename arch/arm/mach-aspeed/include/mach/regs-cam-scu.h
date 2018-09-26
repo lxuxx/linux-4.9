@@ -306,11 +306,6 @@
 #define SCU_HW_STRAP_SPI_AUTO_FATCH	(0x1 << 2)
 #define SCU_HW_STRAP_DIS_BOOT 		(1)
 
-/*	AST_SCU_RAMDOM_GEN		0x74		random number generator register */
-#define RNG_TYPE_MASK			(0x7 << 1) 
-#define RNG_SET_TYPE(x)			((x) << 1) 
-#define RNG_GET_TYPE(x)			(((x) >> 1)  & 0x7)
-#define RNG_ENABLE				0x1
 /*	AST_SCU_RAMDOM_DATA		0x78		random number generator data output*/
 
 /*	AST_SCU_MULTI_FUNC_2	0x78 */

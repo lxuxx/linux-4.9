@@ -10,6 +10,28 @@
 	#size-cells = <1>;
 	interrupt-parent = <&vic>;
 
+	aliases {
+		i2c0 = &i2c0;
+		i2c1 = &i2c1;
+		i2c2 = &i2c2;
+		i2c3 = &i2c3;
+		i2c4 = &i2c4;
+		i2c5 = &i2c5;
+		i2c6 = &i2c6;
+		i2c7 = &i2c7;
+		i2c8 = &i2c8;
+		i2c9 = &i2c9;
+		i2c10 = &i2c10;
+		i2c11 = &i2c11;
+		i2c12 = &i2c12;
+		i2c13 = &i2c13;
+		serial0 = &uart5;
+		serial1 = &uart1;
+		serial2 = &uart2;
+		serial3 = &uart3;
+		serial4 = &uart4;
+		serial5 = &vuart;
+	};
 
 	cpus {
 		#address-cells = <1>;
@@ -85,6 +107,15 @@
 			pinctrl-1 = <&pinctrl_spi2cs1_default>;
 		};
 
+		vic: interrupt-controller@1e6c0080 {
+			compatible = "aspeed,ast2500-vic";
+			interrupt-controller;
+			#interrupt-cells = <1>;
+			valid-sources = <0xfefff7ff 0x0807ffff>;
+			reg = <0x1e6c0080 0x80>;
+		};
+
+
 		mac0: ethernet@1e660000 {
 			compatible = "aspeed,ast2500-mac", "faraday,ftgmac100";
 			reg = <0x1e660000 0x180>;
@@ -135,14 +166,6 @@
 			list_mode = <0>;
 		};
 
-		vic: interrupt-controller@1e6c0080 {
-			compatible = "aspeed,ast2500-vic";
-			interrupt-controller;
-			#interrupt-cells = <1>;
-			valid-sources = <0xfefff7ff 0x0807ffff>;
-			reg = <0x1e6c0080 0x80>;
-		};
-
 #if 0
 		ast_mbx@0x1e6c2000 {
 			compatible = "aspeed,ast-coldfire-mbx";
@@ -174,6 +197,13 @@
 				compatible = "aspeed,g5-pinctrl";
 				aspeed,external-nodes = <&gfx &lhc>;
 			};
+		};
+
+		rng: hwrng@1e6e2078 {
+			compatible = "timeriomem_rng", "aspeed-rng";
+			reg = <0x1e6e2074 0x8>;
+			period = <0>;
+			quality = <100>;
 		};
 
 		hace: hace@1e6e3000 {
@@ -285,10 +315,6 @@
 			interrupts = <46>;
 		};
 
-		ast_rng: rng {
-			compatible = "aspeed,ast-rng";
-		};
-
 		timer: timer@1e782000 {
 			/* This timer is a Faraday FTTMR010 derivative */
 			compatible = "aspeed,ast2500-timer";
@@ -300,19 +326,20 @@
 
 		uart1: serial@1e783000 {
 			compatible = "ns16550a";
-			reg = <0x1e783000 0x1000>;
+			reg = <0x1e783000 0x20>;
 			reg-shift = <2>;
 			interrupts = <9>;
 			clocks = <&syscon ASPEED_CLK_GATE_UART1CLK>;
+			resets = <&lpc_reset 4>;
 			no-loopback-test;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_txd1_default &pinctrl_rxd1_default>;
 			status = "disabled";
 		};
 
-		uart0: serial@1e784000 {
+		uart5: serial@1e784000 {
 			compatible = "ns16550a";
-			reg = <0x1e784000 0x1000>;
+			reg = <0x1e784000 0x20>;
 			reg-shift = <2>;
 			interrupts = <10>;
 			clocks = <&syscon ASPEED_CLK_GATE_UART5CLK>;
@@ -401,10 +428,11 @@
 
 		uart2: serial@1e78d000 {
 			compatible = "ns16550a";
-			reg = <0x1e78d000 0x1000>;
+			reg = <0x1e78d000 0x20>;
 			reg-shift = <2>;
 			interrupts = <32>;
 			clocks = <&syscon ASPEED_CLK_GATE_UART2CLK>;
+			resets = <&lpc_reset 5>;
 			no-loopback-test;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_txd2_default &pinctrl_rxd2_default>;
@@ -413,10 +441,11 @@
 
 		uart3: serial@1e78e000 {
 			compatible = "ns16550a";
-			reg = <0x1e78e000 0x1000>;
+			reg = <0x1e78e000 0x20>;
 			reg-shift = <2>;
 			interrupts = <33>;
 			clocks = <&syscon ASPEED_CLK_GATE_UART3CLK>;
+			resets = <&lpc_reset 6>;
 			no-loopback-test;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_txd3_default &pinctrl_rxd3_default>;
@@ -424,10 +453,11 @@
 
 		uart4: serial@1e78f000 {
 			compatible = "ns16550a";
-			reg = <0x1e78f000 0x1000>;
+			reg = <0x1e78f000 0x20>;
 			reg-shift = <2>;
 			interrupts = <34>;
 			clocks = <&syscon ASPEED_CLK_GATE_UART4CLK>;
+			resets = <&lpc_reset 7>;
 			no-loopback-test;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_txd4_default &pinctrl_rxd4_default>;
