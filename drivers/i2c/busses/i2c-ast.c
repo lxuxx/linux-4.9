@@ -873,162 +873,6 @@ static void ast_slave_mode_enable(struct ast_i2c_bus *i2c_bus,
 
 #endif
 
-/*
- *	Issue #1 I2CC00 page control, when init and some interrupt will have miss-match ex when re-init the i2c bus
- *	Issue #2 Check what condition isr master / slave all have 
- */
-static void ast_g6_i2c_bus_init(struct ast_i2c_bus *i2c_bus)
-{
-	//I2CG Reset
-	ast_i2c_write(i2c_bus, 0, AST_I2CC_FUN_CTRL);
-
-	ast_i2c_write(i2c_bus, AST_I2CC_SLAVE_ADDR_RX_EN | AST_I2CC_BUS_AUTO_RELEASE | AST_I2CC_MASTER_EN,
-			      AST_I2CC_FUN_CTRL);
-
-#if 0
-	/* Set AC Timing */
-	//TODO  
-	if((i2c_bus->apb_clk /i2c_bus->bus_frequency) <= 32) {
-	  div = 0;
-	  divider_ratio = i2c_bus->apb_clk /i2c_bus->bus_frequency;
-	} else if((i2c_bus->base_clk1 /i2c_bus->bus_frequency) <= 32) {
-	  div = 1;
-	  divider_ratio = i2c_bus->base_clk2 /i2c_bus->bus_frequency;
-	} else if((i2c_bus->base_clk2 /i2c_bus->bus_frequency) <= 32) {
-	  div = 2;
-	  divider_ratio = i2c_bus->base_clk3 /i2c_bus->bus_frequency;	  
-	} else if((i2c_bus->base_clk3 /i2c_bus->bus_frequency) <= 32) {
-	  div = 3;
-	  divider_ratio = i2c_bus->base_clk3 /i2c_bus->bus_frequency;	  
-	} else {
-	  divider_ratio = i2c_bus->base_clk4 /i2c_bus->bus_frequency;	  
-	  div = 4;
-	  inc = 0;
-	  while((divider_ratio + inc) > 32) {
-		  inc |= divider_ratio & 0x1;
-		  divider_ratio >> = 1;
-		  div++;
-	  }
-	  divider_ratio += inc;
-	}
-
-	scl_low = (divider_ratio >> 1) - 1;
-	scl_high = divider_ratio - scl_low -2;
-//	scl_highmin = 
-	ast_i2c_write(i2c_bus, select_i2c_clock(i2c_bus), AST_I2CC_AC_TIMING);
-#else
-	/* Set AC Timing */
-	ast_i2c_write(i2c_bus, 0, AST_I2CC_AC_TIMING);
-#endif
-	
-	//Clear master/slave Interrupt
-	ast_i2c_write(i2c_bus, 0xfffffff, AST_I2CM_ISR);
-	ast_i2c_write(i2c_bus, 0xfffffff, AST_I2CS_ISR);
-
-	/* Set master IER */
-	ast_i2c_write(i2c_bus, 
-			AST_I2CM_PKT_CMD_TO |
-			AST_I2CM_PKT_CMD_ERR |
-			AST_I2CM_PKT_CMD_DONE |
-			AST_I2CM_BUS_RECOVER_ERR |
-			AST_I2CM_SDA_DL_TO |
-			AST_I2CM_BUS_RECOVER |
-			AST_I2CM_SMBUS_ALT |
-			AST_I2CM_SCL_LOW_TO |
-			AST_I2CM_ABNORMAL_COND |
-			AST_I2CM_NORMAL_STOP |
-			AST_I2CM_ARBIT_LOSS |
-			AST_I2CM_RX_DOWN |
-			AST_I2CM_TX_NAK |			
-			AST_I2CM_TX_ACK,
-			AST_I2CM_IER);
-
-
-#ifdef CONFIG_AST_I2C_SLAVE_MODE
-	ast_i2c_slave_buff_init(i2c_bus);
-
-	ast_i2c_write(i2c_bus, 
-			AST_I2CS_ADDR3_NAK_ISR |
-			AST_I2CS_ADDR2_NAK_ISR |
-			AST_I2CS_ADDR1_NAK_ISR |
-			AST_I2CS_PKT_CMD_FAIL_ISR |
-			AST_I2CS_PKT_CMD_DONE_ISR |
-			AST_I2CS_INACTIVE_TO_ISR |
-			AST_I2CS_SLAVE_MATCH_ISR |
-			AST_I2CS_ABNOR_STOP_ISR |
-			AST_I2CS_STOP_ISR |
-			AST_I2CS_MATCH_NAK_ISR |
-			AST_I2CS_RX_DONE_ISR |
-			AST_I2CS_TX_NAK_ISR |
-			AST_I2CS_TX_ACK_ISR,
-			AST_I2CS_IER);
-
-#endif
-
-}
-
-static void ast_i2c_bus_init(struct ast_i2c_bus *i2c_bus)
-{
-	//I2CG Reset
-	ast_i2c_write(i2c_bus, 0, I2C_FUN_CTRL_REG);
-
-	if (i2c_bus->bus_config->aspeed_version == 5) {
-		//ast_g5 soc support
-		ast_i2c_write(i2c_bus, AST_I2CD_BUS_AUTO_RELEASE | AST_I2CD_MASTER_EN,
-			      I2C_FUN_CTRL_REG);
-	} else {
-		ast_i2c_write(i2c_bus, AST_I2CD_MASTER_EN, I2C_FUN_CTRL_REG);
-	}
-
-	//High SPEED mode
-#if 0
-	ast_i2c_write(i2c_bus, ast_i2c_read(i2c_bus, I2C_FUN_CTRL_REG) |
-		      AST_I2CD_M_HIGH_SPEED_EN |
-		      AST_I2CD_M_SDA_DRIVE_1T_EN |
-		      AST_I2CD_SDA_DRIVE_1T_EN
-		      , I2C_FUN_CTRL_REG);
-
-#endif
-	/* Set AC Timing */
-	ast_i2c_write(i2c_bus, select_i2c_clock(i2c_bus), I2C_AC_TIMING_REG1);
-	ast_i2c_write(i2c_bus, AST_NO_TIMEOUT_CTRL, I2C_AC_TIMING_REG2);
-//      ast_i2c_write(i2c_bus, AST_I2C_LOW_TIMEOUT, I2C_AC_TIMING_REG2);
-//      ast_i2c_write(i2c_bus, 0x77743335, I2C_AC_TIMING_REG1);
-
-	//Clear Interrupt
-	ast_i2c_write(i2c_bus, 0xfffffff, I2C_INTR_STS_REG);
-
-	/* Set interrupt generation of I2C controller */
-	if (i2c_bus->bus_config->aspeed_version == 5) {
-		ast_i2c_write(i2c_bus,
-			      AST_I2CD_INTR_STS_SLAVE_TO_EN |
-			      AST_I2CD_SDA_DL_TO_INTR_EN |
-			      AST_I2CD_BUS_RECOVER_INTR_EN |
-			      AST_I2CD_SMBUS_ALT_INTR_EN |
-			      AST_I2CD_SCL_TO_INTR_EN |
-			      AST_I2CD_ABNORMAL_INTR_EN |
-			      AST_I2CD_NORMAL_STOP_INTR_EN |
-			      AST_I2CD_ARBIT_LOSS_INTR_EN |
-			      AST_I2CD_RX_DOWN_INTR_EN |
-			      AST_I2CD_TX_NAK_INTR_EN |
-			      AST_I2CD_TX_ACK_INTR_EN,
-			      I2C_INTR_CTRL_REG);
-	} else {
-		ast_i2c_write(i2c_bus,
-			      AST_I2CD_SDA_DL_TO_INTR_EN |
-			      AST_I2CD_BUS_RECOVER_INTR_EN |
-			      AST_I2CD_SMBUS_ALT_INTR_EN |
-			      AST_I2CD_SCL_TO_INTR_EN |
-			      AST_I2CD_ABNORMAL_INTR_EN |
-			      AST_I2CD_NORMAL_STOP_INTR_EN |
-			      AST_I2CD_ARBIT_LOSS_INTR_EN |
-			      AST_I2CD_RX_DOWN_INTR_EN |
-			      AST_I2CD_TX_NAK_INTR_EN |
-			      AST_I2CD_TX_ACK_INTR_EN,
-			      I2C_INTR_CTRL_REG);
-	}
-}
-
 static u8
 ast_i2c_bus_error_recover(struct ast_i2c_bus *i2c_bus)
 {
@@ -2694,6 +2538,162 @@ out:
 
 //	printk("%d-dwn 0x14[%x] M[%d] S[%d]\n", i2c_bus->adap.nr, ast_i2c_read(i2c_bus,I2C_CMD_REG), i2c_bus->master_operation, i2c_bus->slave_operation);
 	return ret;
+}
+
+/*
+ *	Issue #1 I2CC00 page control, when init and some interrupt will have miss-match ex when re-init the i2c bus
+ *	Issue #2 Check what condition isr master / slave all have 
+ */
+static void ast_g6_i2c_bus_init(struct ast_i2c_bus *i2c_bus)
+{
+	//I2CG Reset
+	ast_i2c_write(i2c_bus, 0, AST_I2CC_FUN_CTRL);
+
+	ast_i2c_write(i2c_bus, AST_I2CC_SLAVE_ADDR_RX_EN | AST_I2CC_BUS_AUTO_RELEASE | AST_I2CC_MASTER_EN,
+			      AST_I2CC_FUN_CTRL);
+
+#if 0
+	/* Set AC Timing */
+	//TODO  
+	if((i2c_bus->apb_clk /i2c_bus->bus_frequency) <= 32) {
+	  div = 0;
+	  divider_ratio = i2c_bus->apb_clk /i2c_bus->bus_frequency;
+	} else if((i2c_bus->base_clk1 /i2c_bus->bus_frequency) <= 32) {
+	  div = 1;
+	  divider_ratio = i2c_bus->base_clk2 /i2c_bus->bus_frequency;
+	} else if((i2c_bus->base_clk2 /i2c_bus->bus_frequency) <= 32) {
+	  div = 2;
+	  divider_ratio = i2c_bus->base_clk3 /i2c_bus->bus_frequency;	  
+	} else if((i2c_bus->base_clk3 /i2c_bus->bus_frequency) <= 32) {
+	  div = 3;
+	  divider_ratio = i2c_bus->base_clk3 /i2c_bus->bus_frequency;	  
+	} else {
+	  divider_ratio = i2c_bus->base_clk4 /i2c_bus->bus_frequency;	  
+	  div = 4;
+	  inc = 0;
+	  while((divider_ratio + inc) > 32) {
+		  inc |= divider_ratio & 0x1;
+		  divider_ratio >> = 1;
+		  div++;
+	  }
+	  divider_ratio += inc;
+	}
+
+	scl_low = (divider_ratio >> 1) - 1;
+	scl_high = divider_ratio - scl_low -2;
+//	scl_highmin = 
+	ast_i2c_write(i2c_bus, select_i2c_clock(i2c_bus), AST_I2CC_AC_TIMING);
+#else
+	/* Set AC Timing */
+	ast_i2c_write(i2c_bus, 0, AST_I2CC_AC_TIMING);
+#endif
+	
+	//Clear master/slave Interrupt
+	ast_i2c_write(i2c_bus, 0xfffffff, AST_I2CM_ISR);
+	ast_i2c_write(i2c_bus, 0xfffffff, AST_I2CS_ISR);
+
+	/* Set master IER */
+	ast_i2c_write(i2c_bus, 
+			AST_I2CM_PKT_CMD_TO |
+			AST_I2CM_PKT_CMD_ERR |
+			AST_I2CM_PKT_CMD_DONE |
+			AST_I2CM_BUS_RECOVER_ERR |
+			AST_I2CM_SDA_DL_TO |
+			AST_I2CM_BUS_RECOVER |
+			AST_I2CM_SMBUS_ALT |
+			AST_I2CM_SCL_LOW_TO |
+			AST_I2CM_ABNORMAL_COND |
+			AST_I2CM_NORMAL_STOP |
+			AST_I2CM_ARBIT_LOSS |
+			AST_I2CM_RX_DOWN |
+			AST_I2CM_TX_NAK |			
+			AST_I2CM_TX_ACK,
+			AST_I2CM_IER);
+
+
+#ifdef CONFIG_AST_I2C_SLAVE_MODE
+	ast_i2c_slave_buff_init(i2c_bus);
+
+	ast_i2c_write(i2c_bus, 
+			AST_I2CS_ADDR3_NAK_ISR |
+			AST_I2CS_ADDR2_NAK_ISR |
+			AST_I2CS_ADDR1_NAK_ISR |
+			AST_I2CS_PKT_CMD_FAIL_ISR |
+			AST_I2CS_PKT_CMD_DONE_ISR |
+			AST_I2CS_INACTIVE_TO_ISR |
+			AST_I2CS_SLAVE_MATCH_ISR |
+			AST_I2CS_ABNOR_STOP_ISR |
+			AST_I2CS_STOP_ISR |
+			AST_I2CS_MATCH_NAK_ISR |
+			AST_I2CS_RX_DONE_ISR |
+			AST_I2CS_TX_NAK_ISR |
+			AST_I2CS_TX_ACK_ISR,
+			AST_I2CS_IER);
+
+#endif
+
+}
+
+static void ast_i2c_bus_init(struct ast_i2c_bus *i2c_bus)
+{
+	//I2CG Reset
+	ast_i2c_write(i2c_bus, 0, I2C_FUN_CTRL_REG);
+
+	if (i2c_bus->bus_config->aspeed_version == 5) {
+		//ast_g5 soc support
+		ast_i2c_write(i2c_bus, AST_I2CD_BUS_AUTO_RELEASE | AST_I2CD_MASTER_EN,
+			      I2C_FUN_CTRL_REG);
+	} else {
+		ast_i2c_write(i2c_bus, AST_I2CD_MASTER_EN, I2C_FUN_CTRL_REG);
+	}
+
+	//High SPEED mode
+#if 0
+	ast_i2c_write(i2c_bus, ast_i2c_read(i2c_bus, I2C_FUN_CTRL_REG) |
+		      AST_I2CD_M_HIGH_SPEED_EN |
+		      AST_I2CD_M_SDA_DRIVE_1T_EN |
+		      AST_I2CD_SDA_DRIVE_1T_EN
+		      , I2C_FUN_CTRL_REG);
+
+#endif
+	/* Set AC Timing */
+	ast_i2c_write(i2c_bus, select_i2c_clock(i2c_bus), I2C_AC_TIMING_REG1);
+	ast_i2c_write(i2c_bus, AST_NO_TIMEOUT_CTRL, I2C_AC_TIMING_REG2);
+//      ast_i2c_write(i2c_bus, AST_I2C_LOW_TIMEOUT, I2C_AC_TIMING_REG2);
+//      ast_i2c_write(i2c_bus, 0x77743335, I2C_AC_TIMING_REG1);
+
+	//Clear Interrupt
+	ast_i2c_write(i2c_bus, 0xfffffff, I2C_INTR_STS_REG);
+
+	/* Set interrupt generation of I2C controller */
+	if (i2c_bus->bus_config->aspeed_version == 5) {
+		ast_i2c_write(i2c_bus,
+			      AST_I2CD_INTR_STS_SLAVE_TO_EN |
+			      AST_I2CD_SDA_DL_TO_INTR_EN |
+			      AST_I2CD_BUS_RECOVER_INTR_EN |
+			      AST_I2CD_SMBUS_ALT_INTR_EN |
+			      AST_I2CD_SCL_TO_INTR_EN |
+			      AST_I2CD_ABNORMAL_INTR_EN |
+			      AST_I2CD_NORMAL_STOP_INTR_EN |
+			      AST_I2CD_ARBIT_LOSS_INTR_EN |
+			      AST_I2CD_RX_DOWN_INTR_EN |
+			      AST_I2CD_TX_NAK_INTR_EN |
+			      AST_I2CD_TX_ACK_INTR_EN,
+			      I2C_INTR_CTRL_REG);
+	} else {
+		ast_i2c_write(i2c_bus,
+			      AST_I2CD_SDA_DL_TO_INTR_EN |
+			      AST_I2CD_BUS_RECOVER_INTR_EN |
+			      AST_I2CD_SMBUS_ALT_INTR_EN |
+			      AST_I2CD_SCL_TO_INTR_EN |
+			      AST_I2CD_ABNORMAL_INTR_EN |
+			      AST_I2CD_NORMAL_STOP_INTR_EN |
+			      AST_I2CD_ARBIT_LOSS_INTR_EN |
+			      AST_I2CD_RX_DOWN_INTR_EN |
+			      AST_I2CD_TX_NAK_INTR_EN |
+			      AST_I2CD_TX_ACK_INTR_EN,
+			      I2C_INTR_CTRL_REG);
+	}
 }
 
 static u32 ast_i2c_functionality(struct i2c_adapter *adap)
