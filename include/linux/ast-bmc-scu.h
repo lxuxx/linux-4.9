@@ -100,10 +100,6 @@ extern void ast_scu_multi_func_sdhc_slot(u8 slot);
 extern void ast_scu_multi_nic_switch(u8 enable);
 extern void ast_scu_multi_func_sgpio(void);
 
-extern void ast_scu_hw_random_enable(u8 enable);
-extern u32 ast_scu_hw_random_read(void);
-extern u8 ast_scu_get_hw_random_type(void);
-extern void ast_scu_set_hw_random_type(u8 type);
 extern u8 ast_scu_adc_trim_read(void);
 
 #endif

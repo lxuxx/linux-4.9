@@ -199,6 +199,13 @@
 			};
 		};
 
+		rng: hwrng@1e6e2078 {
+			compatible = "timeriomem_rng", "aspeed-rng";
+			reg = <0x1e6e2074 0x8>;
+			period = <0>;
+			quality = <100>;
+		};
+
 		hace: hace@1e6e3000 {
 			compatible = "aspeed,ast2500-crypto";
 			reg = <0x1e6e3000 0x200 0x1e728000 0x1000>;
@@ -306,10 +313,6 @@
 			compatible = "aspeed,ast-mailbox";
 			reg = <0x1e789200 0x80>;
 			interrupts = <46>;
-		};
-
-		ast_rng: rng {
-			compatible = "aspeed,ast-rng";
 		};
 
 		timer: timer@1e782000 {
