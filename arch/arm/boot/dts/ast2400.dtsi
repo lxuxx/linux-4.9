@@ -82,10 +82,11 @@
 			pinctrl-0 = <&pinctrl_usb2h_default>;
 		};
 
-		uhci: uhci@0x1e6b0000 {
-			compatible = "aspeed,ast-uhci", "generic-uhci";
+		uhci: usb@1e6b0000 {
+			compatible = "aspeed,ast2400-uhci", "generic-uhci";
 			reg = <0x1e6b0000 0x100>;
 			interrupts = <14>;
+			#ports = <2>;
 			clocks = <&syscon ASPEED_CLK_GATE_USBUHCICLK>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_usb11h_default>;
