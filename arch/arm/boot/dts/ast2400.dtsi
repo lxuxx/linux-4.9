@@ -10,8 +10,27 @@
 	#size-cells = <1>;
 	interrupt-parent = <&vic>;
 
-	memory@40000000 {
-		reg = <0x40000000 0x10000000>;
+	aliases {
+		i2c0 = &i2c0;
+		i2c1 = &i2c1;
+		i2c2 = &i2c2;
+		i2c3 = &i2c3;
+		i2c4 = &i2c4;
+		i2c5 = &i2c5;
+		i2c6 = &i2c6;
+		i2c7 = &i2c7;
+		i2c8 = &i2c8;
+		i2c9 = &i2c9;
+		i2c10 = &i2c10;
+		i2c11 = &i2c11;
+		i2c12 = &i2c12;
+		i2c13 = &i2c13;
+		serial0 = &uart1;
+		serial1 = &uart2;
+		serial2 = &uart3;
+		serial3 = &uart4;
+		serial4 = &uart5;
+		serial5 = &vuart;
 	};
 
 	cpus {
@@ -23,6 +42,11 @@
 			device_type = "cpu";
 			reg = <0>;
 		};
+	};
+
+	memory@40000000 {
+		device_type = "memory";
+		reg = <0x40000000 0>;
 	};
 
 	apb {
@@ -247,19 +271,20 @@
 
 		uart1: serial@1e783000 {
 			compatible = "ns16550a";
-			reg = <0x1e783000 0x1000>;
+			reg = <0x1e783000 0x20>;
 			reg-shift = <2>;
 			interrupts = <9>;
 			clocks = <&syscon ASPEED_CLK_GATE_UART1CLK>;
+			resets = <&lpc_reset 4>;
 			no-loopback-test;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_txd1_default &pinctrl_rxd1_default>;
 			status = "disabled";
 		};
 
-		uart0: serial@1e784000 {
+		uart5: serial@1e784000 {
 			compatible = "ns16550a";
-			reg = <0x1e784000 0x1000>;
+			reg = <0x1e784000 0x20>;
 			reg-shift = <2>;
 			interrupts = <10>;
 			clocks = <&syscon ASPEED_CLK_GATE_UART5CLK>;
@@ -341,10 +366,11 @@
 
 		uart2: serial@1e78d000 {
 			compatible = "ns16550a";
-			reg = <0x1e78d000 0x1000>;
+			reg = <0x1e78d000 0x20>;
 			reg-shift = <2>;
 			interrupts = <32>;
 			clocks = <&syscon ASPEED_CLK_GATE_UART2CLK>;
+			resets = <&lpc_reset 5>;
 			no-loopback-test;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_txd2_default &pinctrl_rxd2_default>;
@@ -353,10 +379,11 @@
 
 		uart3: serial@1e78e000 {
 			compatible = "ns16550a";
-			reg = <0x1e78e000 0x1000>;
+			reg = <0x1e78e000 0x20>;
 			reg-shift = <2>;
 			interrupts = <33>;
 			clocks = <&syscon ASPEED_CLK_GATE_UART3CLK>;
+			resets = <&lpc_reset 6>;
 			no-loopback-test;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_txd3_default &pinctrl_rxd3_default>;
@@ -364,10 +391,11 @@
 
 		uart4: serial@1e78f000 {
 			compatible = "ns16550a";
-			reg = <0x1e78f000 0x1000>;
+			reg = <0x1e78f000 0x20>;
 			reg-shift = <2>;
 			interrupts = <34>;
 			clocks = <&syscon ASPEED_CLK_GATE_UART4CLK>;
+			resets = <&lpc_reset 7>;
 			no-loopback-test;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_txd4_default &pinctrl_rxd4_default>;
