@@ -288,20 +288,17 @@ static int __init fttmr010_common_init(struct device_node *np, bool is_aspeed)
 	 * and using EXTCLK is not supported in the driver.
 	 */
 
-	ret = of_property_read_u32(np, "clock-frequency", &rate);
-	if (ret) {
-		clk = of_clk_get_by_name(np, "PCLK");
-		if (IS_ERR(clk)) {
-			pr_err("could not get PCLK\n");
-			return PTR_ERR(clk);
-		}
-		ret = clk_prepare_enable(clk);
-		if (ret) {
-			pr_err("failed to enable PCLK\n");
-			return ret;
-		}
-		rate = clk_get_rate(clk);
+	clk = of_clk_get_by_name(np, "PCLK");
+	if (IS_ERR(clk)) {
+		pr_err("could not get PCLK\n");
+		return PTR_ERR(clk);
 	}
+	ret = clk_prepare_enable(clk);
+	if (ret) {
+		pr_err("failed to enable PCLK\n");
+		return ret;
+	}
+	rate = clk_get_rate(clk);
 
 	fttmr010 = kzalloc(sizeof(*fttmr010), GFP_KERNEL);
 	if (!fttmr010) {

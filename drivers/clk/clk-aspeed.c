@@ -790,6 +790,59 @@ static void __init aspeed_ast2500_cc(struct regmap *map)
 	aspeed_clk_data->hws[ASPEED_CLK_APB] = hw;
 };
 
+static void __init aspeed_ast2600_cc(struct regmap *map)
+{
+	struct clk_hw *hw;
+	u32 val, freq, div;
+	printk("aspeed_ast2600_cc \n");
+	/* CLKIN is the crystal oscillator, always 25MHz selected, in FPGA xilinx is 25Mhz, altera is 24Mhz */
+#if 0	
+	freq = 25000000;
+#else
+	freq = 24000000;
+#endif
+	hw = clk_hw_register_fixed_rate(NULL, "clkin", NULL, 0, freq);
+	pr_debug("clkin @%u MHz\n", freq / 1000000);
+
+#if 1
+	/*
+	 * High-speed PLL clock derived from the crystal. This the CPU clock,
+	 * and we assume that it is enabled
+	 */
+	hw = clk_hw_register_fixed_rate(NULL, "hpll", NULL, 0, freq);
+	aspeed_clk_data->hws[ASPEED_CLK_HPLL] = hw;
+
+	hw = clk_hw_register_fixed_rate(NULL, "ahb", NULL, 0, freq);
+	aspeed_clk_data->hws[ASPEED_CLK_AHB] = hw;
+
+	hw = clk_hw_register_fixed_rate(NULL, "apb", NULL, 0, freq);
+	aspeed_clk_data->hws[ASPEED_CLK_APB] = hw;
+
+#else
+	/*
+	 * High-speed PLL clock derived from the crystal. This the CPU clock,
+	 * and we assume that it is enabled
+	 */
+	regmap_read(map, ASPEED_HPLL_PARAM, &val);
+	aspeed_clk_data->hws[ASPEED_CLK_HPLL] = aspeed_ast2600_calc_pll("hpll", val);
+
+	/* Strap bits 11:9 define the AXI/AHB clock frequency ratio (aka HCLK)*/
+	regmap_read(map, ASPEED_STRAP, &val);
+	val = (val >> 9) & 0x7;
+	WARN(val == 0, "strapping is zero: cannot determine ahb clock");
+	div = 2 * (val + 1);
+	hw = clk_hw_register_fixed_factor(NULL, "ahb", "hpll", 0, 1, div);
+	aspeed_clk_data->hws[ASPEED_CLK_AHB] = hw;
+
+	/* APB clock clock selection register SCU08 (aka PCLK) */
+	regmap_read(map, ASPEED_CLK_SELECTION, &val);
+	val = (val >> 23) & 0x7;
+	div = 4 * (val + 1);
+	hw = clk_hw_register_fixed_factor(NULL, "apb", "hpll", 0, 1, div);
+	aspeed_clk_data->hws[ASPEED_CLK_APB] = hw;
+#endif
+};
+
 static void __init aspeed_cc_init(struct device_node *np)
 {
 	struct regmap *map;
@@ -835,6 +888,8 @@ static void __init aspeed_cc_init(struct device_node *np)
 		aspeed_ast2400_cc(map);
 	else if (of_device_is_compatible(np, "aspeed,ast2500-scu"))
 		aspeed_ast2500_cc(map);
+	else if (of_device_is_compatible(np, "aspeed,ast2600-scu"))
+		aspeed_ast2600_cc(map);	
 	else
 		pr_err("unknown platform, failed to add clocks\n");
 
@@ -843,5 +898,6 @@ static void __init aspeed_cc_init(struct device_node *np)
 	if (ret)
 		pr_err("failed to add DT provider: %d\n", ret);
 };
+CLK_OF_DECLARE_DRIVER(aspeed_cc_g6, "aspeed,ast2600-scu", aspeed_cc_init);
 CLK_OF_DECLARE_DRIVER(aspeed_cc_g5, "aspeed,ast2500-scu", aspeed_cc_init);
 CLK_OF_DECLARE_DRIVER(aspeed_cc_g4, "aspeed,ast2400-scu", aspeed_cc_init);
