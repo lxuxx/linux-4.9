@@ -1,4 +1,4 @@
-#include "skeleton.dtsi"
+// SPDX-License-Identifier: GPL-2.0+
 #include <dt-bindings/clock/aspeed-clock.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/aspeed-scu-irq.h>
@@ -108,8 +108,8 @@
 			clocks = <&syscon ASPEED_CLK_GATE_MAC2CLK>;
 		};
 
-		ehci0: ehci@0x1e6a1000 {
-			compatible = "aspeed,ast-ehci", "generic-ehci";
+		ehci0: usb@1e6a1000 {
+			compatible = "aspeed,ast2500-ehci", "generic-ehci";
 			reg = <0x1e6a1000 0x100>;
 			interrupts = <5>;
 			clocks = <&syscon ASPEED_CLK_GATE_USBPORT1CLK>;
@@ -118,8 +118,8 @@
 			status = "disabled";
 		};
 
-		ehci1: ehci@0x1e6a3000 {
-			compatible = "aspeed,ast-ehci", "generic-ehci";
+		ehci1: usb@1e6a3000 {
+			compatible = "aspeed,ast2500-ehci", "generic-ehci";
 			reg = <0x1e6a3000 0x100>;
 			interrupts = <13>;
 			clocks = <&syscon ASPEED_CLK_GATE_USBPORT2CLK>;
