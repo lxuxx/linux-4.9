@@ -39,19 +39,19 @@
 /* register ************************************************************************************/
 #define ASPEED_XDMA_HOST_CMDQ_LOW 		0x00
 #define ASPEED_XDMA_HOST_CMDQ_ENDP 		0x04
-#define ASPEED_XDMA_HOST_CMDQ_WRITEP 	0x08
-#define ASPEED_XDMA_HOST_CMDQ_READP 	0x0C
+#define ASPEED_XDMA_HOST_CMDQ_WRITEP 		0x08
+#define ASPEED_XDMA_HOST_CMDQ_READP 		0x0C
 #define ASPEED_XDMA_BMC_CMDQ_BASE 		0x10
 #define ASPEED_XDMA_BMC_CMDQ_ENDP 		0x14
-#define ASPEED_XDMA_BMC_CMDQ_WRITEP 	0x18
+#define ASPEED_XDMA_BMC_CMDQ_WRITEP 		0x18
 #define ASPEED_XDMA_BMC_CMDQ_READP 		0x1C
-#define ASPEED_XDMA_CTRL_IER 				0x20
-#define ASPEED_XDMA_CTRL_ISR 				0x24
+#define ASPEED_XDMA_CTRL_IER 			0x20
+#define ASPEED_XDMA_CTRL_ISR 			0x24
 #define ASPEED_XDMA_DS_TX_SIZE			0x28
-#define ASPEED_XDMA_DS_PCIE				0x30
-#define ASPEED_XDMA_US_PCIE				0x34
-#define ASPEED_XDMA_DS_CMD1				0x38
-#define ASPEED_XDMA_DS_CMD2				0x3C
+#define ASPEED_XDMA_DS_PCIE			0x30
+#define ASPEED_XDMA_US_PCIE			0x34
+#define ASPEED_XDMA_DS_CMD1			0x38
+#define ASPEED_XDMA_DS_CMD2			0x3C
 #define ASPEED_XDMA_US_CMD0_LOW			0x40
 #define ASPEED_XDMA_US_CMD0_HIGH		0x44
 #define ASPEED_XDMA_US_CMD1_LOW			0x48
@@ -66,45 +66,45 @@
 #define XDMA_DS_DATA_TO_EN			(1 << 28)
 #define XDMA_DS_PKS_256				(1 << 17)
 #define XDMA_DS_PKS_512				(2 << 17)
-#define XDMA_DS_PKS_1K					(3 << 17)
-#define XDMA_DS_PKS_2K					(4 << 17)
-#define XDMA_DS_PKS_4K					(5 << 17)
+#define XDMA_DS_PKS_1K				(3 << 17)
+#define XDMA_DS_PKS_2K				(4 << 17)
+#define XDMA_DS_PKS_4K				(5 << 17)
 
 #define XDMA_DS_DIRTY_FRAME			(1 << 6)
-#define XDMA_DS_COMPLETE				(1 << 5)
-#define XDMA_US_COMPLETE				(1 << 4)
+#define XDMA_DS_COMPLETE			(1 << 5)
+#define XDMA_US_COMPLETE			(1 << 4)
 /*************************************************************************************/
 #define ASPEED_XDMA_CMD_DESC_NUM		2
 
 //CMD0 Format	(0x00)
-#define PCIE_DATA_ADDR(x)				(x << 3)
+#define PCIE_DATA_ADDR(x)			(x << 3)
 //CMD1 Format	(0x08)
-#define UP_STREAM_XFER					(1 << 31)
+#define UP_STREAM_XFER				(1 << 31)
 //ast -g 5
 //16byte align
-#define G5_BYTE_ALIGN						16
-#define G5_BMC_ADDR(x)						(x & 0x3ffffff0)
+#define G5_BYTE_ALIGN				16
+#define G5_BMC_ADDR(x)				(x & 0x3ffffff0)
 //old ast soc
 //8byte align
-#define BYTE_ALIGN						8
-#define BMC_ADDR(x)						(x & 0x1ffffff8)
+#define BYTE_ALIGN				8
+#define BMC_ADDR(x)				(x & 0x1ffffff8)
 
-#define CMD1_XFER_ID							(1)
+#define CMD1_XFER_ID				(1)
 
 //CMD2 Format	(0x10)
-#define INTER_CMD_FINISH						(1 << 31)
-#define FRAM_LINE_NUM(x)						(x << 16)
-#define INTER_DIRECTION_BMC					(1 << 15)
+#define INTER_CMD_FINISH			(1 << 31)
+#define FRAM_LINE_NUM(x)			(x << 16)
+#define INTER_DIRECTION_BMC			(1 << 15)
 //g5
-#define G5_FRAM_LINE_BYTE(x)						((x & 0x7ff) << 4)
+#define G5_FRAM_LINE_BYTE(x)			((x & 0x7ff) << 4)
 //old soc
-#define FRAM_LINE_BYTE(x)						((x & 0xfff) << 3)
+#define FRAM_LINE_BYTE(x)			((x & 0xfff) << 3)
 
-#define CMD2_XFER_ID							(2)
+#define CMD2_XFER_ID				(2)
 /*************************************************************************************/
 //ast g5
-#define G5_UPDATE_WRITE_POINT				4
-#define G5_DEFAULT_END_POINT					8
+#define G5_UPDATE_WRITE_POINT			4
+#define G5_DEFAULT_END_POINT			8
 struct aspeed_g5_xdma_cmd_desc {
 	u32 cmd0_low;
 	u32 cmd0_high;
@@ -116,8 +116,8 @@ struct aspeed_g5_xdma_cmd_desc {
 	u32 resv_high;
 };
 
-#define UPDATE_WRITE_POINT				3
-#define DEFAULT_END_POINT					5
+#define UPDATE_WRITE_POINT			3
+#define DEFAULT_END_POINT			5
 struct aspeed_xdma_cmd_desc {
 	u32 cmd0_low;
 	u32 cmd0_high;
@@ -132,16 +132,16 @@ struct aspeed_xdma_cmd_desc {
 
 struct aspeed_xdma_xfer {
 	unsigned char stream_dir;
-	unsigned char	xfer_buff[MAX_XFER_BUFF_SIZE];
+	unsigned char xfer_buff[MAX_XFER_BUFF_SIZE];
 	unsigned int xfer_len;
 	unsigned int bmc_addr;
 	unsigned int host_addr_low;
 	unsigned int host_addr_high;
 };
 
-#define XDMAIOC_BASE       'D'
+#define XDMAIOC_BASE		'D'
 
-#define ASPEED_XDMA_IOCXFER		_IOWR(XDMAIOC_BASE, 0x0, struct aspeed_xdma_xfer)
+#define ASPEED_XDMA_IOCXFER	_IOWR(XDMAIOC_BASE, 0x0, struct aspeed_xdma_xfer)
 /*************************************************************************************/
 //#define ASPEED_XDMA_DEBUG
 
@@ -154,11 +154,11 @@ struct aspeed_xdma_xfer {
 #define XDMA_MSG(fmt, args...) printk(fmt, ## args)
 
 struct aspeed_xdma_info {
-	void __iomem	*reg_base;
-	int irq;				//XDMA IRQ number
+	void __iomem *reg_base;
+	int irq;					//XDMA IRQ number
 	struct reset_control *reset;
 	u32 dram_base;
-	u8 				aspeed_g5;
+	u8 aspeed_g5;
 	wait_queue_head_t xdma_wq;
 
 	u8 desc_index;
@@ -358,15 +358,15 @@ static void aspeed_xdma_ctrl_init(struct aspeed_xdma_info *aspeed_xdma)
 {
 	//xfer buff
 	aspeed_xdma->xfer_data = dma_alloc_coherent(NULL,
-						  4096,
-						  &aspeed_xdma->xfer_data_dma, GFP_KERNEL);
+				 4096,
+				 &aspeed_xdma->xfer_data_dma, GFP_KERNEL);
 
 	XDMA_DBUG("xfer buff %x , dma %x \n", (u32)aspeed_xdma->xfer_data, (u32)aspeed_xdma->xfer_data_dma);
 
 	//tx cmd
 	aspeed_xdma->xfer_cmd_desc = dma_alloc_coherent(NULL,
-							  sizeof(struct aspeed_xdma_cmd_desc) * ASPEED_XDMA_CMD_DESC_NUM,
-							  &aspeed_xdma->xfer_cmd_desc_dma, GFP_KERNEL);
+				     sizeof(struct aspeed_xdma_cmd_desc) * ASPEED_XDMA_CMD_DESC_NUM,
+				     &aspeed_xdma->xfer_cmd_desc_dma, GFP_KERNEL);
 
 	if (((u32)aspeed_xdma->xfer_cmd_desc & 0xff) != 0x00)
 		printk("ERROR dma addr !!!!\n");
@@ -385,7 +385,7 @@ static void aspeed_xdma_ctrl_init(struct aspeed_xdma_info *aspeed_xdma)
 
 	//register
 	aspeed_xdma_write(aspeed_xdma, XDMA_CK_DS_CMD_ID_EN | XDMA_DS_DATA_TO_EN | XDMA_DS_PKS_256 |
-				   XDMA_DS_DIRTY_FRAME | XDMA_DS_COMPLETE | XDMA_US_COMPLETE, ASPEED_XDMA_CTRL_IER);
+			  XDMA_DS_DIRTY_FRAME | XDMA_DS_COMPLETE | XDMA_US_COMPLETE, ASPEED_XDMA_CTRL_IER);
 
 }
 
@@ -393,15 +393,15 @@ static void aspeed_g5_xdma_ctrl_init(struct aspeed_xdma_info *aspeed_xdma)
 {
 	//xfer buff
 	aspeed_xdma->xfer_data = dma_alloc_coherent(NULL,
-						  4096,
-						  &aspeed_xdma->xfer_data_dma, GFP_KERNEL);
+				 4096,
+				 &aspeed_xdma->xfer_data_dma, GFP_KERNEL);
 
 	XDMA_DBUG("xfer buff %x , dma %x \n", (u32)aspeed_xdma->xfer_data, (u32)aspeed_xdma->xfer_data_dma);
 
 	//tx cmd
 	aspeed_xdma->xfer_cmd_desc = dma_alloc_coherent(NULL,
-							  sizeof(struct aspeed_g5_xdma_cmd_desc) * ASPEED_XDMA_CMD_DESC_NUM,
-							  &aspeed_xdma->xfer_cmd_desc_dma, GFP_KERNEL);
+				     sizeof(struct aspeed_g5_xdma_cmd_desc) * ASPEED_XDMA_CMD_DESC_NUM,
+				     &aspeed_xdma->xfer_cmd_desc_dma, GFP_KERNEL);
 
 	if (((u32)aspeed_xdma->xfer_cmd_desc & 0xff) != 0x00)
 		printk("ERROR dma addr !!!!\n");
@@ -420,12 +420,12 @@ static void aspeed_g5_xdma_ctrl_init(struct aspeed_xdma_info *aspeed_xdma)
 
 	//register
 	aspeed_xdma_write(aspeed_xdma, XDMA_CK_DS_CMD_ID_EN | XDMA_DS_DATA_TO_EN | XDMA_DS_PKS_256 |
-				   XDMA_DS_DIRTY_FRAME | XDMA_DS_COMPLETE | XDMA_US_COMPLETE, ASPEED_XDMA_CTRL_IER);
+			  XDMA_DS_DIRTY_FRAME | XDMA_DS_COMPLETE | XDMA_US_COMPLETE, ASPEED_XDMA_CTRL_IER);
 
 }
 
 static long xdma_ioctl(struct file *file, unsigned int cmd,
-					   unsigned long arg)
+		       unsigned long arg)
 {
 	int ret = 0;
 	struct miscdevice *c = file->private_data;
@@ -495,10 +495,10 @@ static int xdma_release(struct inode *inode, struct file *file)
 }
 
 static const struct file_operations aspeed_xdma_fops = {
-	.owner			= THIS_MODULE,
+	.owner		= THIS_MODULE,
 	.unlocked_ioctl	= xdma_ioctl,
-	.open			= xdma_open,
-	.release			= xdma_release,
+	.open		= xdma_open,
+	.release	= xdma_release,
 };
 
 struct miscdevice aspeed_xdma_misc = {
@@ -636,7 +636,7 @@ static const struct of_device_id aspeed_xdma_match[] = {
 };
 
 static struct platform_driver aspeed_xdma_driver = {
-	.probe		= aspeed_xdma_probe,
+	.probe			= aspeed_xdma_probe,
 	.remove 		= aspeed_xdma_remove,
 #ifdef CONFIG_PM
 	.suspend		= aspeed_xdma_suspend,
