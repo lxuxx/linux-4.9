@@ -105,16 +105,14 @@ static const struct aspeed_gate_data aspeed_gates[] = {
 	[ASPEED_CLK_GATE_UART2CLK] =	{ 16, -1, "uart2clk-gate",	"uart",	0 }, /* UART2 */
 	[ASPEED_CLK_GATE_UART5CLK] =	{ 17, -1, "uart5clk-gate",	"uart",	0 }, /* UART5 */
 	[ASPEED_CLK_GATE_ESPICLK] =	{ 19, -1, "espiclk-gate",	NULL,	0 }, /* eSPI */
-	//TODO magic number mac reset 11/12 
 	[ASPEED_CLK_GATE_MAC1CLK] =	{ 20, 11, "mac1clk-gate",	"mac",	0 }, /* MAC1 */
 	[ASPEED_CLK_GATE_MAC2CLK] =	{ 21, 12, "mac2clk-gate",	"mac",	0 }, /* MAC2 */
 	[ASPEED_CLK_GATE_RSACLK] =	{ 24,  4, "rsaclk-gate",	NULL,	0 }, /* RSA */
 	[ASPEED_CLK_GATE_UART3CLK] =	{ 25, -1, "uart3clk-gate",	"uart",	0 }, /* UART3 */
 	[ASPEED_CLK_GATE_UART4CLK] =	{ 26, -1, "uart4clk-gate",	"uart",	0 }, /* UART4 */
-	[ASPEED_CLK_GATE_SDCLKCLK] =	{ 27, 16, "sdclk-gate",		NULL,	0 }, /* SDIO/SD */
+	[ASPEED_CLK_GATE_SDCLK] =	{ 27, 16, "sdclk-gate",		NULL,	0 }, /* SDIO/SD */
 	[ASPEED_CLK_GATE_LHCCLK] =	{ 28, -1, "lhclk-gate",		"lhclk", 0 }, /* LPC master/LPC+ */
-	//offset  0x08 
-//	[ASPEED_CLK_GATE_SDEXTCLK] =	{ 15, -1, "sd-extclk-gate",		"hpll",	0 }, /* For card clk */		
+	[ASPEED_CLK_GATE_SDEXTCLK] = { 29, -1, "sdextclk-gate",		"sdio",	0 }, /* For card clk */		
 };
 
 static const struct clk_div_table ast2500_eclk_div_table[] = {
@@ -261,6 +259,13 @@ struct aspeed_clk_soc_data {
 	struct clk_hw *(*calc_pll)(const char *name, u32 val);
 };
 
+static const struct aspeed_clk_soc_data ast2600_data = {
+	.div_table = ast2500_div_table,
+	.mac_div_table = ast2500_mac_div_table,
+	.eclk_div_table = ast2500_eclk_div_table,	
+	.calc_pll = aspeed_ast2500_calc_pll,
+};
+
 static const struct aspeed_clk_soc_data ast2500_data = {
 	.div_table = ast2500_div_table,
 	.mac_div_table = ast2500_mac_div_table,
@@ -361,12 +366,13 @@ static int aspeed_clk_enable(struct clk_hw *hw)
 	}
 
 	/* Enable clock */
-	enval = (gate->flags & CLK_GATE_SET_TO_DISABLE) ? 0 : clk;
-	regmap_update_bits(gate->map, ASPEED_CLK_STOP_CTRL, clk, enval);
-
-	/* sd ext clk */
-	if (gate->reset_idx == aspeed_resets[ASPEED_RESET_SDHCI]) {
+	if(gate->clock_idx == aspeed_gates[ASPEED_CLK_GATE_SDEXTCLK].clock_idx) {
+		/* sd ext clk */
 		regmap_update_bits(gate->map, ASPEED_CLK_SELECTION, ASPEED_SDIO_CLK_EN, ASPEED_SDIO_CLK_EN);
+		printk("enable sd card clk\n");
+	} else {
+		enval = (gate->flags & CLK_GATE_SET_TO_DISABLE) ? 0 : clk;
+		regmap_update_bits(gate->map, ASPEED_CLK_STOP_CTRL, clk, enval);
 	}
 
 	if (gate->reset_idx >= 0) {
@@ -667,6 +673,7 @@ else
 static const struct of_device_id aspeed_clk_dt_ids[] = {
 	{ .compatible = "aspeed,ast2400-scu", .data = &ast2400_data },
 	{ .compatible = "aspeed,ast2500-scu", .data = &ast2500_data },
+	{ .compatible = "aspeed,ast2600-scu", .data = &ast2600_data },
 	{ }
 };
 
@@ -796,7 +803,7 @@ static void __init aspeed_ast2600_cc(struct regmap *map)
 	u32 val, freq, div;
 	printk("aspeed_ast2600_cc \n");
 	/* CLKIN is the crystal oscillator, always 25MHz selected, in FPGA xilinx is 25Mhz, altera is 24Mhz */
-#if 0	
+#if 0
 	freq = 25000000;
 #else
 	freq = 24000000;

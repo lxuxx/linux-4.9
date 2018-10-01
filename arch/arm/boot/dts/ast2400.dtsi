@@ -405,7 +405,8 @@
 		reg = <0x0 0x100>;
 		interrupts = <26>;
 		interrupt-controller;
-		clocks = <&syscon ASPEED_CLK_GATE_SDCLKCLK>;
+		clocks = <&syscon ASPEED_CLK_GATE_SDCLK>, <&syscon ASPEED_CLK_GATE_SDEXTCLK>;
+		clock-names = "sdclk", "sdextclk";
 	};
 
 	sdhci_slot0: sdhci_slot0@100 {

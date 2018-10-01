@@ -69,6 +69,7 @@ static int irq_aspeed_sdhci_probe(struct platform_device *pdev)
 {
 	struct aspeed_sdhci_irq *sdhci_irq;
 	struct clk *sdclk;
+	struct clk *sdcardclk;
 	u32 slot0_clk_delay, slot1_clk_delay;
 
 	sdhci_irq = kzalloc(sizeof(*sdhci_irq), GFP_KERNEL);
@@ -83,13 +84,21 @@ static int irq_aspeed_sdhci_probe(struct platform_device *pdev)
 	if (IS_ERR(sdhci_irq->regs))
 		return PTR_ERR(sdhci_irq->regs);
 
-	sdclk = devm_clk_get(&pdev->dev, NULL);
+	sdclk = devm_clk_get(&pdev->dev, "sdclk");
 	if (IS_ERR(sdclk)) {
 		dev_err(&pdev->dev, "no sdclk clock defined\n");
 		return PTR_ERR(sdclk);
 	}
 
 	clk_prepare_enable(sdclk);
+
+	sdcardclk = devm_clk_get(&pdev->dev, "sdextclk");
+	if (IS_ERR(sdcardclk)) {
+		dev_err(&pdev->dev, "no sdcardclk clock defined\n");
+		return PTR_ERR(sdcardclk);
+	}
+
+	clk_prepare_enable(sdcardclk);
 
 	sdhci_irq->parent_irq = irq_of_parse_and_map(pdev->dev.of_node, 0);
 	if (sdhci_irq->parent_irq < 0)
