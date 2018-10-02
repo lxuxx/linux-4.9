@@ -146,12 +146,7 @@ static struct platform_driver irq_aspeed_sdhci_device_driver = {
 	}
 };
 
-static int __init irq_aspeed_sdhci_init(void)
-{
-	return platform_driver_register(&irq_aspeed_sdhci_device_driver);
-}
-core_initcall(irq_aspeed_sdhci_init);
-
+module_platform_driver(irq_aspeed_sdhci_device_driver);
 
 MODULE_AUTHOR("Ryan Chen");
 MODULE_DESCRIPTION("ASPEED SOC SDHCI IRQ Driver");
