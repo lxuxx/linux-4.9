@@ -176,6 +176,10 @@
 				compatible = "aspeed,g5-pinctrl";
 				aspeed,external-nodes = <&gfx &lhc>;
 			};
+
+			vga_scratch: scratch {
+				compatible = "aspeed,bmc-misc";
+			};
 		};
 
 		rng: hwrng@1e6e2078 {
