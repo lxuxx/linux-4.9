@@ -2,6 +2,7 @@
 # Makefile for the ASPEED drivers.
 #
 
+obj-$(CONFIG_ASPEED_BMC_MISC) += aspeed-bmc-misc.o
 obj-$(CONFIG_AST_VGAVIDEO)	+= ast_vgavideo.o
 obj-$(CONFIG_AST_VIDEO)		+= ast_video.o
 obj-$(CONFIG_AST_LPC)		+= ast-lpc.o ast-lpc_plus.o 
