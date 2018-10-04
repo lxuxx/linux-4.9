@@ -101,6 +101,8 @@
 #define FRAM_LINE_BYTE(x)			((x & 0xfff) << 3)
 
 #define CMD2_XFER_ID				(2)
+
+#define CMD_QUEUE_SETTING_PSWD			0xEE882266
 /*************************************************************************************/
 //ast g5
 #define G5_UPDATE_WRITE_POINT			4
@@ -321,23 +323,6 @@ static void aspeed_g5_xdma_xfer(struct aspeed_xdma_info *aspeed_xdma, struct asp
 
 static void aspeed_xdma_ctrl_init(struct aspeed_xdma_info *aspeed_xdma)
 {
-	//xfer buff
-	aspeed_xdma->xfer_data = dma_alloc_coherent(NULL,
-				 4096,
-				 &aspeed_xdma->xfer_data_dma, GFP_KERNEL);
-
-	XDMA_DBUG("xfer buff %x , dma %x \n", (u32)aspeed_xdma->xfer_data, (u32)aspeed_xdma->xfer_data_dma);
-
-	//tx cmd
-	aspeed_xdma->xfer_cmd_desc = dma_alloc_coherent(NULL,
-				     sizeof(struct aspeed_xdma_cmd_desc) * ASPEED_XDMA_CMD_DESC_NUM,
-				     &aspeed_xdma->xfer_cmd_desc_dma, GFP_KERNEL);
-
-	if (((u32)aspeed_xdma->xfer_cmd_desc & 0xff) != 0x00)
-		printk("ERROR dma addr !!!!\n");
-
-	XDMA_DBUG("xfer cmd desc %x , cmd desc dma %x \n", (u32)aspeed_xdma->xfer_cmd_desc, (u32)aspeed_xdma->xfer_cmd_desc_dma);
-
 	memset(aspeed_xdma->xfer_cmd_desc, 0,  sizeof(struct aspeed_xdma_cmd_desc) * 2);
 
 	aspeed_xdma->xfer_cmd_desc[0].cmd1_high = 0x00080008;
@@ -351,28 +336,10 @@ static void aspeed_xdma_ctrl_init(struct aspeed_xdma_info *aspeed_xdma)
 	//register
 	aspeed_xdma_write(aspeed_xdma, XDMA_CK_DS_CMD_ID_EN | XDMA_DS_DATA_TO_EN | XDMA_DS_PKS_256 |
 			  XDMA_DS_DIRTY_FRAME | XDMA_DS_COMPLETE | XDMA_US_COMPLETE, ASPEED_XDMA_CTRL_IER);
-
 }
 
 static void aspeed_g5_xdma_ctrl_init(struct aspeed_xdma_info *aspeed_xdma)
 {
-	//xfer buff
-	aspeed_xdma->xfer_data = dma_alloc_coherent(NULL,
-				 4096,
-				 &aspeed_xdma->xfer_data_dma, GFP_KERNEL);
-
-	XDMA_DBUG("xfer buff %x , dma %x \n", (u32)aspeed_xdma->xfer_data, (u32)aspeed_xdma->xfer_data_dma);
-
-	//tx cmd
-	aspeed_xdma->g5_xfer_cmd_desc = dma_alloc_coherent(NULL,
-					sizeof(struct aspeed_g5_xdma_cmd_desc) * ASPEED_XDMA_CMD_DESC_NUM,
-					&aspeed_xdma->xfer_cmd_desc_dma, GFP_KERNEL);
-
-	if (((u32)aspeed_xdma->g5_xfer_cmd_desc & 0xff) != 0x00)
-		printk("ERROR dma addr !!!!\n");
-
-	XDMA_DBUG("xfer cmd desc %x , cmd desc dma %x \n", (u32)aspeed_xdma->g5_xfer_cmd_desc, (u32)aspeed_xdma->xfer_cmd_desc_dma);
-
 	memset(aspeed_xdma->g5_xfer_cmd_desc, 0,  sizeof(struct aspeed_g5_xdma_cmd_desc) * 2);
 
 	aspeed_xdma->g5_xfer_cmd_desc[0].cmd1_high = 0x00080008;
@@ -381,13 +348,12 @@ static void aspeed_g5_xdma_ctrl_init(struct aspeed_xdma_info *aspeed_xdma)
 
 	aspeed_xdma_write(aspeed_xdma, aspeed_xdma->xfer_cmd_desc_dma, ASPEED_XDMA_BMC_CMDQ_BASE);
 	aspeed_xdma_write(aspeed_xdma, G5_DEFAULT_END_POINT, ASPEED_XDMA_BMC_CMDQ_ENDP);
-	aspeed_xdma_write(aspeed_xdma, 0xEE882266, ASPEED_XDMA_BMC_CMDQ_READP);
+	aspeed_xdma_write(aspeed_xdma, CMD_QUEUE_SETTING_PSWD, ASPEED_XDMA_BMC_CMDQ_READP);
 	aspeed_xdma_write(aspeed_xdma, 0, ASPEED_XDMA_BMC_CMDQ_WRITEP);
 
 	//register
 	aspeed_xdma_write(aspeed_xdma, XDMA_CK_DS_CMD_ID_EN | XDMA_DS_DATA_TO_EN | XDMA_DS_PKS_256 |
 			  XDMA_DS_DIRTY_FRAME | XDMA_DS_COMPLETE | XDMA_US_COMPLETE, ASPEED_XDMA_CTRL_IER);
-
 }
 
 static irqreturn_t aspeed_pcie_raise_isr(int this_irq, void *dev_id)
@@ -614,9 +580,41 @@ static int aspeed_xdma_probe(struct platform_device *pdev)
 	aspeed_xdma->xdma_version = (unsigned long)xdma_dev_id->data;
 	switch (aspeed_xdma->xdma_version) {
 	case 0:
+		//xfer buff
+		aspeed_xdma->xfer_data = dma_alloc_coherent(NULL,
+					 4096,
+					 &aspeed_xdma->xfer_data_dma, GFP_KERNEL);
+
+		XDMA_DBUG("xfer buff %x , dma %x \n", (u32)aspeed_xdma->xfer_data, (u32)aspeed_xdma->xfer_data_dma);
+
+		//tx cmd
+		aspeed_xdma->xfer_cmd_desc = dma_alloc_coherent(NULL,
+					     sizeof(struct aspeed_xdma_cmd_desc) * ASPEED_XDMA_CMD_DESC_NUM,
+					     &aspeed_xdma->xfer_cmd_desc_dma, GFP_KERNEL);
+
+		if (((u32)aspeed_xdma->xfer_cmd_desc & 0xff) != 0x00)
+			printk("ERROR dma addr !!!!\n");
+
+		XDMA_DBUG("xfer cmd desc %x , cmd desc dma %x \n", (u32)aspeed_xdma->xfer_cmd_desc, (u32)aspeed_xdma->xfer_cmd_desc_dma);
 		aspeed_xdma_ctrl_init(aspeed_xdma);
 		break;
 	case 5:
+		//xfer buff
+		aspeed_xdma->xfer_data = dma_alloc_coherent(NULL,
+					 4096,
+					 &aspeed_xdma->xfer_data_dma, GFP_KERNEL);
+
+		XDMA_DBUG("xfer buff %x , dma %x \n", (u32)aspeed_xdma->xfer_data, (u32)aspeed_xdma->xfer_data_dma);
+
+		//tx cmd
+		aspeed_xdma->g5_xfer_cmd_desc = dma_alloc_coherent(NULL,
+						sizeof(struct aspeed_g5_xdma_cmd_desc) * ASPEED_XDMA_CMD_DESC_NUM,
+						&aspeed_xdma->xfer_cmd_desc_dma, GFP_KERNEL);
+
+		if (((u32)aspeed_xdma->g5_xfer_cmd_desc & 0xff) != 0x00)
+			printk("ERROR dma addr !!!!\n");
+
+		XDMA_DBUG("xfer cmd desc %x , cmd desc dma %x \n", (u32)aspeed_xdma->g5_xfer_cmd_desc, (u32)aspeed_xdma->xfer_cmd_desc_dma);
 		aspeed_g5_xdma_ctrl_init(aspeed_xdma);
 		break;
 	}
