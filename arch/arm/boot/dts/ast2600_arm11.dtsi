@@ -151,12 +151,8 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x80 0x80 0xC00 0x20>;
-		compatible = "aspeed,ast-g5-i2c", "aspeed,ast-byte-i2c";
-#if 1
-		clock-frequency = <1846154>;
-#else
+		compatible = "aspeed,ast-g5-i2c";
 		clocks = <&syscon ASPEED_CLK_APB>;
-#endif
 		bus-frequency = <100000>;
 		interrupts = <0>;
 		interrupt-parent = <&i2c_ic>;
@@ -169,7 +165,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x100 0x80 0xC20 0x20>;
-		compatible = "aspeed,ast-g5-i2c", "aspeed,ast-buff-i2c";
+		compatible = "aspeed,ast-g5-i2c";
 		clocks = <&syscon ASPEED_CLK_APB>;
 		bus-frequency = <100000>;
 		interrupts = <1>;
@@ -182,7 +178,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x180 0x80 0xC40 0x20>;
-		compatible = "aspeed,ast-g5-i2c", "aspeed,ast-buff-i2c";
+		compatible = "aspeed,ast-g5-i2c";
 		clocks = <&syscon ASPEED_CLK_APB>;
 		bus-frequency = <100000>;
 		interrupts = <2>;
