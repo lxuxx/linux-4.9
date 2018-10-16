@@ -177,12 +177,10 @@ static int aspeed_i2c_ic_probe(struct platform_device *pdev)
 
 	i2c_ic->bus_num = (int) match->data;
 
-	writel(ASPEED_I2CG_SRAM_BUFFER_ENABLE, i2c_ic->base + ASPEED_I2CG_CTRL);
-
 	/* ast2600 init */
 	if(of_device_is_compatible(node, "aspeed,ast2600-i2c-ic")) {
 		/* only support in ast-g6 platform */
-		writel(ASPEED_I2CG_SLAVE_PKT_NAK | ASPEED_I2CG_CTRL_NEW_REG | ASPEED_I2CG_CTRL_NEW_CLK_DIV, i2c_ic->base + ASPEED_I2CG_CTRL);
+//		writel(ASPEED_I2CG_SLAVE_PKT_NAK | ASPEED_I2CG_CTRL_NEW_REG | ASPEED_I2CG_CTRL_NEW_CLK_DIV, i2c_ic->base + ASPEED_I2CG_CTRL);
 
 		/* assign 4 base clock 
 		 * base clk1 : 1M for 1KHz
@@ -193,6 +191,10 @@ static int aspeed_i2c_ic_probe(struct platform_device *pdev)
 		//TODO ~~
 		//get i2c clk source first 
 		//writel(xx , i2c_ic->base + ASPEED_I2CG_CLK_DIV_CTRL);
+	} else if(of_device_is_compatible(node, "aspeed,ast2500-i2c-ic")) {		
+		writel(ASPEED_I2CG_SRAM_BUFFER_ENABLE, i2c_ic->base + ASPEED_I2CG_CTRL);
+	} else {
+		
 	}
 	
 	if (!of_property_read_u32(node, "bus-owner", &bus_owner)) {
