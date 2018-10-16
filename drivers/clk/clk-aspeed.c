@@ -53,7 +53,9 @@ static void __iomem *scu_base;
  * @flags: standard clock framework flags
  */
 struct aspeed_gate_data {
+//	u32		clk_offset;
 	u8		clock_idx;
+//	u32		reset_offset;
 	s8		reset_idx;
 	const char	*name;
 	const char	*parent_name;
@@ -175,6 +177,95 @@ static const struct clk_div_table ast2500_div_table[] = {
 	{ 0 }
 };
 
+static u8 ast2600_resets[] = {
+	/* SCU40 resets */
+//	[ASPEED_RESET_GRAPHIC] = 26, ???
+	[ASPEED_RESET_XDMA]	= 25,
+	[ASPEED_RESET_MCTP]	= 24,
+	[ASPEED_RESET_P2X]	= 24,	
+//	reserved bit 23	
+	[ASPEED_RESET_JTAG_MASTER] = 22,
+//	reserved bit 21
+//	reserved bit 20	
+//	reserved bit 19	
+	[ASPEED_RESET_MIC]	= 18,
+//	reserved bit 17
+	[ASPEED_RESET_SDHCI]	= 16,
+	[ASPEED_RESET_UHCI]	= 15,
+	[ASPEED_RESET_EHCI_P1]	= 14,
+	[ASPEED_RESET_CRT]		= 13,
+	[ASPEED_RESET_MAC2]	= 12,
+	[ASPEED_RESET_MAC1]	= 11,
+//	reserved bit 10	
+//	reserved bit 9 
+//	[ASPEED_RESET_PCI_VGA]	= 8,	???
+	[ASPEED_RESET_2D]	= 7,
+	[ASPEED_RESET_VIDEO]	= 6,
+//	reserved bit 5
+	[ASPEED_RESET_HACE]	= 4,
+	[ASPEED_RESET_EHCI_P2]	= 3,
+//	reserved bit 2
+	[ASPEED_RESET_AHB]	=  1,	
+	[ASPEED_RESET_SRAM_CTRL]	=  0,
+
+	/*
+	 * SCU50 resets start at an offset to separate them from
+	 */
+//	[ASPEED_RESET_PCIE_DIR] = 21,
+//	[ASPEED_RESET_PCIE] 	= 20,
+	 
+	 
+//	[ASPEED_RESET_CRT1]	= ASPEED_RESET2_OFFSET + 5,
+	
+	[ASPEED_RESET_ADC]	= ASPEED_RESET2_OFFSET + 23,
+//	[ASPEED_RESET_JTAG_MASTER2fs] = ASPEED_RESET2_OFFSET + 22,
+//	[ASPEED_RESET_MAC4]	= ASPEED_RESET2_OFFSET + 21,
+//	[ASPEED_RESET_MAC3]	= ASPEED_RESET2_OFFSET + 20,
+//	reserved bit 6	
+	[ASPEED_RESET_PWM]	= ASPEED_RESET2_OFFSET + 5,	 
+	[ASPEED_RESET_PECI] = ASPEED_RESET2_OFFSET + 4,	
+//	[ASPEED_RESET_MII] = ASPEED_RESET2_OFFSET + 3,
+	[ASPEED_RESET_I2C]	= ASPEED_RESET2_OFFSET + 2,	
+//	reserved bit 1
+	[ASPEED_RESET_LPC]	= ASPEED_RESET2_OFFSET + 0,	
+	[ASPEED_RESET_ESPI]	= ASPEED_RESET2_OFFSET + 0,
+};
+
+static u8 aspeed_resets[] = {
+	/* SCU04 resets */
+	[ASPEED_RESET_ESPI]	= 5,
+	[ASPEED_RESET_XDMA]	= 25,
+	[ASPEED_RESET_MCTP]	= 24,
+	[ASPEED_RESET_P2X]	= 24,	
+	[ASPEED_RESET_ADC]	= 23,
+	[ASPEED_RESET_JTAG_MASTER] = 22,
+	[ASPEED_RESET_PCIE_DIR]	= 21,
+	[ASPEED_RESET_PCIE]		= 20,
+	[ASPEED_RESET_MIC]	= 18,
+	[ASPEED_RESET_SDHCI]	= 16,
+	[ASPEED_RESET_UHCI]	= 15,
+	[ASPEED_RESET_EHCI_P1]	= 14,
+	[ASPEED_RESET_CRT]		= 13,
+	[ASPEED_RESET_MAC2]	= 12,
+	[ASPEED_RESET_MAC1]	= 11,
+	[ASPEED_RESET_PECI]	= 10,
+	[ASPEED_RESET_PWM]	=  9,
+	[ASPEED_RESET_2D]	= 7,
+	[ASPEED_RESET_VIDEO]	= 6,
+	[ASPEED_RESET_LPC]		= 5,
+	[ASPEED_RESET_HACE]	= 4,
+	[ASPEED_RESET_EHCI_P2]	= 3,
+	[ASPEED_RESET_I2C]	=  2,
+	[ASPEED_RESET_AHB]	=  1,
+	[ASPEED_RESET_SRAM_CTRL]	=  0,
+
+	/*
+	 * SCUD4 resets start at an offset to separate them from
+	 * the SCU04 resets.
+	 */
+	[ASPEED_RESET_CRT1]	= ASPEED_RESET2_OFFSET + 5,
+};
+
 /*************************************************************************/
 #define SCU_HW_STRAP_VGA_SIZE_GET(x)		((x >> 2)& 0x3)
 
@@ -257,6 +348,11 @@ struct aspeed_clk_soc_data {
 	const struct clk_div_table *mac_div_table;
 	const struct clk_div_table *eclk_div_table;
 	struct clk_hw *(*calc_pll)(const char *name, u32 val);
+	u32		reset_reg1;
+	u32		reset_reg2;
+	int new_version;
+	unsigned int nr_resets;
+	u8		*reset_table;
 };
 
 static const struct aspeed_clk_soc_data ast2600_data = {
@@ -264,6 +360,11 @@ static const struct aspeed_clk_soc_data ast2600_data = {
 	.mac_div_table = ast2500_mac_div_table,
 	.eclk_div_table = ast2500_eclk_div_table,	
 	.calc_pll = aspeed_ast2500_calc_pll,
+	.reset_reg1 = 0x40,
+	.reset_reg2 = 0x50,
+	.new_version = 1,
+	.nr_resets = ARRAY_SIZE(ast2600_resets),
+	.reset_table = ast2600_resets,
 };
 
 static const struct aspeed_clk_soc_data ast2500_data = {
@@ -271,6 +372,11 @@ static const struct aspeed_clk_soc_data ast2500_data = {
 	.mac_div_table = ast2500_mac_div_table,
 	.eclk_div_table = ast2500_eclk_div_table,	
 	.calc_pll = aspeed_ast2500_calc_pll,
+	.reset_reg1 = 0x04,
+	.reset_reg2 = 0xD4,
+	.new_version = 0,	
+	.nr_resets = ARRAY_SIZE(aspeed_resets),
+	.reset_table = aspeed_resets,
 };
 
 static const struct aspeed_clk_soc_data ast2400_data = {
@@ -278,6 +384,11 @@ static const struct aspeed_clk_soc_data ast2400_data = {
 	.mac_div_table = ast2400_div_table,
 	.eclk_div_table = ast2400_eclk_div_table,
 	.calc_pll = aspeed_ast2400_calc_pll,
+	.reset_reg1 = 0x04,
+	.reset_reg2 = 0x00,
+	.new_version = 0,	
+	.nr_resets = ARRAY_SIZE(aspeed_resets),
+	.reset_table = aspeed_resets,
 };
 
 static int aspeed_clk_is_enabled(struct clk_hw *hw)
@@ -382,70 +493,44 @@ static const struct clk_ops aspeed_clk_gate_ops = {
 struct aspeed_reset {
 	struct regmap			*map;
 	struct reset_controller_dev	rcdev;
+	u32		reset_reg1;
+	u32		reset_reg2;
+	int 	new_version;
+	u8		*reset_table;
 };
 
 #define to_aspeed_reset(p) container_of((p), struct aspeed_reset, rcdev)
-
-static const u8 aspeed_resets[] = {
-	/* SCU04 resets */
-	[ASPEED_RESET_ESPI]	= 5,
-	[ASPEED_RESET_XDMA]	= 25,
-	[ASPEED_RESET_MCTP]	= 24,
-	[ASPEED_RESET_P2X]	= 24,	
-	[ASPEED_RESET_ADC]	= 23,
-	[ASPEED_RESET_JTAG_MASTER] = 22,
-	[ASPEED_RESET_PCIE_DIR]	= 21,
-	[ASPEED_RESET_PCIE]		= 20,
-	[ASPEED_RESET_MIC]	= 18,
-	[ASPEED_RESET_SDHCI]	= 16,
-	[ASPEED_RESET_UHCI]	= 15,
-	[ASPEED_RESET_EHCI_P1]	= 14,
-	[ASPEED_RESET_CRT]		= 13,
-	[ASPEED_RESET_MAC2]	= 12,
-	[ASPEED_RESET_MAC1]	= 11,
-	[ASPEED_RESET_PECI]	= 10,
-	[ASPEED_RESET_PWM]	=  9,
-	[ASPEED_RESET_2D]	= 7,
-	[ASPEED_RESET_VIDEO]	= 6,
-	[ASPEED_RESET_LPC]		= 5,
-	[ASPEED_RESET_HACE]	= 4,
-	[ASPEED_RESET_EHCI_P2]	= 3,
-	[ASPEED_RESET_I2C]	=  2,
-	[ASPEED_RESET_AHB]	=  1,
-	[ASPEED_RESET_SRAM_CTRL]	=  0,
-
-	/*
-	 * SCUD4 resets start at an offset to separate them from
-	 * the SCU04 resets.
-	 */
-	[ASPEED_RESET_CRT1]	= ASPEED_RESET2_OFFSET + 5,
-};
 
 static int aspeed_reset_deassert(struct reset_controller_dev *rcdev,
 				 unsigned long id)
 {
 	struct aspeed_reset *ar = to_aspeed_reset(rcdev);
-	u32 reg = ASPEED_RESET_CTRL;
-	u32 bit = aspeed_resets[id];
+	u32 reg = ar->reset_reg1;
+	u32 bit = ar->reset_table[id];
 
 	if (bit >= ASPEED_RESET2_OFFSET) {
 		bit -= ASPEED_RESET2_OFFSET;
-		reg = ASPEED_RESET_CTRL2;
+		reg = ar->reset_reg2;
 	}
 
-	return regmap_update_bits(ar->map, reg, BIT(bit), 0);
+	if(ar->new_version) {
+		reg += 0x04;
+		return regmap_update_bits(ar->map, reg, BIT(bit), BIT(bit));
+	} else {
+		return regmap_update_bits(ar->map, reg, BIT(bit), 0);
+	}
 }
 
 static int aspeed_reset_assert(struct reset_controller_dev *rcdev,
 			       unsigned long id)
 {
 	struct aspeed_reset *ar = to_aspeed_reset(rcdev);
-	u32 reg = ASPEED_RESET_CTRL;
-	u32 bit = aspeed_resets[id];
+	u32 reg = ar->reset_reg1;
+	u32 bit = ar->reset_table[id];
 
 	if (bit >= ASPEED_RESET2_OFFSET) {
 		bit -= ASPEED_RESET2_OFFSET;
-		reg = ASPEED_RESET_CTRL2;
+		reg = ar->reset_reg2;
 	}
 
 	return regmap_update_bits(ar->map, reg, BIT(bit), BIT(bit));
@@ -455,13 +540,13 @@ static int aspeed_reset_status(struct reset_controller_dev *rcdev,
 			       unsigned long id)
 {
 	struct aspeed_reset *ar = to_aspeed_reset(rcdev);
-	u32 reg = ASPEED_RESET_CTRL;
-	u32 bit = aspeed_resets[id];
+	u32 reg = ar->reset_reg1;
+	u32 bit = ar->reset_table[id];
 	int ret, val;
 
 	if (bit >= ASPEED_RESET2_OFFSET) {
 		bit -= ASPEED_RESET2_OFFSET;
-		reg = ASPEED_RESET_CTRL2;
+		reg = ar->reset_reg2;
 	}
 
 	ret = regmap_read(ar->map, reg, &val);
@@ -524,6 +609,13 @@ static int aspeed_clk_probe(struct platform_device *pdev)
 	u32 val, rate;
 	int i, ret;
 
+	/* SoC generations share common layouts but have different divisors */
+	soc_data = of_device_get_match_data(dev);
+	if (!soc_data) {
+		dev_err(dev, "no match data for platform\n");
+		return -EINVAL;
+	}
+
 	map = syscon_node_to_regmap(dev->of_node);
 	if (IS_ERR(map)) {
 		dev_err(dev, "no syscon regmap\n");
@@ -535,22 +627,20 @@ static int aspeed_clk_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	ar->map = map;
+	ar->reset_reg1 = soc_data->reset_reg1;
+	ar->reset_reg2 = soc_data->reset_reg2;	
+	ar->new_version = soc_data->new_version;
+	ar->reset_table = soc_data->reset_table;	
+	printk("ar->new_version %d table size\n", ar->new_version);
 	ar->rcdev.owner = THIS_MODULE;
-	ar->rcdev.nr_resets = ARRAY_SIZE(aspeed_resets);
 	ar->rcdev.ops = &aspeed_reset_ops;
 	ar->rcdev.of_node = dev->of_node;
+	ar->rcdev.nr_resets = soc_data->nr_resets;
 
 	ret = devm_reset_controller_register(dev, &ar->rcdev);
 	if (ret) {
 		dev_err(dev, "could not register reset controller\n");
 		return ret;
-	}
-
-	/* SoC generations share common layouts but have different divisors */
-	soc_data = of_device_get_match_data(dev);
-	if (!soc_data) {
-		dev_err(dev, "no match data for platform\n");
-		return -EINVAL;
 	}
 
 	/* UART clock div13 setting */
