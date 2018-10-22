@@ -1865,7 +1865,7 @@ static void ast_i2c_slave_xfer_done(struct ast_i2c_bus *i2c_bus)
 			i2c_bus->slave_msgs->len++;
 		} else if (i2c_bus->slave_xfer_mode == BUFF_MODE) {
 			xfer_len = AST_I2CD_RX_BUF_ADDR_GET(ast_i2c_read(i2c_bus, I2C_BUF_CTRL_REG));
-			if (!i2c_bus->bus_config->aspeed_version == 5) {
+			if (i2c_bus->bus_config->aspeed_version == 4) {
 				if (xfer_len == 0)
 					xfer_len = i2c_bus->buff_pool.page_size;
 			}
@@ -1967,7 +1967,7 @@ static void ast_i2c_master_xfer_done(struct ast_i2c_bus *i2c_bus)
 		} else if (i2c_bus->master_xfer_mode == BUFF_MODE) {
 			pool_buf = (u8 *)i2c_bus->buff_pool.page_addr;
 			xfer_len = AST_I2CD_RX_BUF_ADDR_GET(ast_i2c_read(i2c_bus, I2C_BUF_CTRL_REG));
-			if (!i2c_bus->bus_config->aspeed_version == 5) {
+			if (i2c_bus->bus_config->aspeed_version == 4) {
 				if (xfer_len == 0)
 					xfer_len = i2c_bus->buff_pool.page_size;
 			}
@@ -2806,7 +2806,7 @@ static int ast_i2c_probe(struct platform_device *pdev)
 			goto release_mem;
 		}
 		i2c_bus->buff_pool.page_size = resource_size(res);
-		if (!i2c_bus->bus_config->aspeed_version == 5) {
+		if (i2c_bus->bus_config->aspeed_version == 4) {
 			//AST2400 buffer mode issue , force I2C slave write use byte mode , read use buffer mode
 			i2c_bus->do_slave_xfer = ast_i2c_do_byte_xfer;
 			ret = of_property_read_u8(pdev->dev.of_node,
@@ -2828,7 +2828,7 @@ static int ast_i2c_probe(struct platform_device *pdev)
 	}
 
 	if (of_device_is_compatible(pdev->dev.of_node, "aspeed,ast-dma-i2c")) {
-		if (!i2c_bus->bus_config->aspeed_version == 6) {
+		if (i2c_bus->bus_config->aspeed_version == 6) {
 			i2c_bus->master_dma = G6_DMA_MODE;
 			i2c_bus->slave_dma = G6_DMA_MODE;
 			i2c_bus->do_master_xfer = aspeed_g6_i2c_do_dma_xfer;

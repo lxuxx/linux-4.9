@@ -6,7 +6,6 @@
  * This file is based on uhci-grlib.c
  * (C) Copyright 2004-2007 Alan Stern, stern@rowland.harvard.edu
  */
-#include <linux/clk.h>
 
 #include <linux/of.h>
 #include <linux/device.h>
@@ -18,7 +17,7 @@ static int uhci_platform_init(struct usb_hcd *hcd)
 
 	/* Probe number of ports if not already provided by DT */
 	if (!uhci->rh_numports)
-	uhci->rh_numports = uhci_count_ports(hcd);
+		uhci->rh_numports = uhci_count_ports(hcd);
 
 	/* Set up pointers to to generic functions */
 	uhci->reset_hc = uhci_generic_reset_hc;
@@ -71,7 +70,6 @@ static int uhci_hcd_platform_probe(struct platform_device *pdev)
 	struct uhci_hcd	*uhci;
 	struct resource *res;
 	int ret;
-	struct clk 			*clk;
 
 	if (usb_disabled())
 		return -ENODEV;
@@ -90,6 +88,8 @@ static int uhci_hcd_platform_probe(struct platform_device *pdev)
 	if (!hcd)
 		return -ENOMEM;
 
+	uhci = hcd_to_uhci(hcd);
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	hcd->regs = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(hcd->regs)) {
@@ -98,17 +98,6 @@ static int uhci_hcd_platform_probe(struct platform_device *pdev)
 	}
 	hcd->rsrc_start = res->start;
 	hcd->rsrc_len = resource_size(res);
-
-	if (of_device_is_compatible(np, "aspeed,ast-uhci")) {
-		clk = devm_clk_get(&pdev->dev, NULL);
-		if (IS_ERR(clk)) {
-			dev_err(&pdev->dev, "no clock defined\n");
-			return -ENODEV;
-		}
-		clk_prepare_enable(clk);
-	}
-
-	uhci = hcd_to_uhci(hcd);
 
 	uhci->regs = hcd->regs;
 
@@ -122,19 +111,35 @@ static int uhci_hcd_platform_probe(struct platform_device *pdev)
 				"Detected %d ports from device-tree\n",
 				num_ports);
 		}
-		if (of_device_is_compatible(np, "aspeed,ast-uhci")) {
+		if (of_device_is_compatible(np, "aspeed,ast2400-uhci") ||
+		    of_device_is_compatible(np, "aspeed,ast2500-uhci")) {
 			uhci->is_aspeed = 1;
 			dev_info(&pdev->dev,
 				 "Enabled Aspeed implementation workarounds\n");
 		}
 	}
+
+	/* Get and enable clock if any specified */
+	uhci->clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(uhci->clk)) {
+		ret = PTR_ERR(uhci->clk);
+		goto err_rmr;
+	}
+	ret = clk_prepare_enable(uhci->clk);
+	if (ret) {
+		dev_err(&pdev->dev, "Error couldn't enable clock (%d)\n", ret);
+		goto err_rmr;
+	}
+
 	ret = usb_add_hcd(hcd, pdev->resource[1].start, IRQF_SHARED);
 	if (ret)
-		goto err_rmr;
+		goto err_clk;
 
 	device_wakeup_enable(hcd->self.controller);
 	return 0;
 
+err_clk:
+	clk_disable_unprepare(uhci->clk);
 err_rmr:
 	usb_put_hcd(hcd);
 
@@ -144,7 +149,9 @@ err_rmr:
 static int uhci_hcd_platform_remove(struct platform_device *pdev)
 {
 	struct usb_hcd *hcd = platform_get_drvdata(pdev);
+	struct uhci_hcd *uhci = hcd_to_uhci(hcd);
 
+	clk_disable_unprepare(uhci->clk);
 	usb_remove_hcd(hcd);
 	usb_put_hcd(hcd);
 

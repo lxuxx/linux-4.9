@@ -139,7 +139,7 @@ static int fttmr010_timer_set_next_event(unsigned long cycles,
 		cr &= ~fttmr010->t1_enable_val;
 		writel(cr, fttmr010->base + TIMER_CR);
 	}
-
+#if 0
 	/* Setup the match register forward/backward in time */
 	cr = readl(fttmr010->base + TIMER1_COUNT);
 	if (fttmr010->count_down)
@@ -147,7 +147,19 @@ static int fttmr010_timer_set_next_event(unsigned long cycles,
 	else
 		cr += cycles;
 	writel(cr, fttmr010->base + TIMER1_MATCH1);
-
+#else
+	if (fttmr010->count_down) {
+		/*
+		* ASPEED Timer Controller will load TIMER1_LOAD register
+		* into TIMER1_COUNT register when the timer is re-enabled.
+		*/
+		writel(cycles, fttmr010->base + TIMER1_LOAD);
+	} else {
+		/* Setup the match register forward in time */
+		cr = readl(fttmr010->base + TIMER1_COUNT);
+		writel(cr + cycles, fttmr010->base + TIMER1_MATCH1);
+	}
+#endif
 	/* Start */
 	cr = readl(fttmr010->base + TIMER_CR);
 	cr |= fttmr010->t1_enable_val;
@@ -197,18 +209,17 @@ static int fttmr010_timer_set_oneshot(struct clock_event_device *evt)
 
 	/* Setup counter start from 0 or ~0 */
 	writel(0, fttmr010->base + TIMER1_COUNT);
-	if (fttmr010->count_down)
+	if (fttmr010->count_down) {
 		writel(~0, fttmr010->base + TIMER1_LOAD);
-	else
+	} else {
 		writel(0, fttmr010->base + TIMER1_LOAD);
 
-	/* Enable interrupt */
-#if 0	
-	cr = readl(fttmr010->base + TIMER_INTR_MASK);
-	cr &= ~(TIMER_1_INT_OVERFLOW | TIMER_1_INT_MATCH2);
-	cr |= TIMER_1_INT_MATCH1;
-	writel(cr, fttmr010->base + TIMER_INTR_MASK);
-#endif
+		/* Enable interrupt */
+		cr = readl(fttmr010->base + TIMER_INTR_MASK);
+		cr &= ~(TIMER_1_INT_OVERFLOW | TIMER_1_INT_MATCH2);
+		cr |= TIMER_1_INT_MATCH1;
+		writel(cr, fttmr010->base + TIMER_INTR_MASK);
+	}
 	return 0;
 }
 
@@ -288,20 +299,17 @@ static int __init fttmr010_common_init(struct device_node *np, bool is_aspeed)
 	 * and using EXTCLK is not supported in the driver.
 	 */
 
-	ret = of_property_read_u32(np, "clock-frequency", &rate);
-	if (ret) {
-		clk = of_clk_get_by_name(np, "PCLK");
-		if (IS_ERR(clk)) {
-			pr_err("could not get PCLK\n");
-			return PTR_ERR(clk);
-		}
-		ret = clk_prepare_enable(clk);
-		if (ret) {
-			pr_err("failed to enable PCLK\n");
-			return ret;
-		}
-		rate = clk_get_rate(clk);
+	clk = of_clk_get_by_name(np, "PCLK");
+	if (IS_ERR(clk)) {
+		pr_err("could not get PCLK\n");
+		return PTR_ERR(clk);
 	}
+	ret = clk_prepare_enable(clk);
+	if (ret) {
+		pr_err("failed to enable PCLK\n");
+		return ret;
+	}
+	rate = clk_get_rate(clk);
 
 	fttmr010 = kzalloc(sizeof(*fttmr010), GFP_KERNEL);
 	if (!fttmr010) {
