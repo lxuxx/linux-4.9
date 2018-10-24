@@ -889,15 +889,19 @@ static void __init aspeed_ast2500_cc(struct regmap *map)
 
 static void __init aspeed_ast2600_cc(struct regmap *map)
 {
+	struct device_node *cpu_node;
 	struct clk_hw *hw;
 	u32 val, freq, div;
+	const u32 *pfreq;
+
 	printk("aspeed_ast2600_cc \n");
+
+	cpu_node = of_find_node_by_name(NULL, "cpu");
+	pfreq = of_get_property(cpu_node, "clock-frequency", NULL);
+
 	/* CLKIN is the crystal oscillator, always 25MHz selected, in FPGA xilinx is 25Mhz, altera is 24Mhz */
-#if 0
-	freq = 25000000;
-#else
-	freq = 24000000;
-#endif
+	freq = be32_to_cpup(pfreq);
+
 	hw = clk_hw_register_fixed_rate(NULL, "clkin", NULL, 0, freq);
 	pr_debug("clkin @%u MHz\n", freq / 1000000);
 
