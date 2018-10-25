@@ -25,7 +25,7 @@
 #include <linux/dma-mapping.h>
 /* I2C Register */
 
-#define  I2C_DMA_BASE_REG				0x24
+
 #define  I2C_DMA_LEN_REG				0x28
 
 /* 0x28 : I2C_DMA_LEN_REG	*/
@@ -501,7 +501,6 @@ static u32 aspeed_select_i2c_clock(struct aspeed_i2c_bus *i2c_bus)
 
 	return data;
 }
-
 
 #ifdef CONFIG_AST_I2C_SLAVE_MODE
 /* AST I2C Slave mode  */
@@ -1033,12 +1032,7 @@ static void ast_i2c_slave_xfer_done(struct aspeed_i2c_bus *i2c_bus)
 			xfer_len = AST_I2CC_TX_DATA_BUF_GET(aspeed_i2c_read(i2c_bus, AST_I2CC_BUFF_CTRL));
 			xfer_len++;
 			dev_dbg(i2c_bus->dev, "S tx buff done len %d \n", xfer_len);
-		} else if (i2c_bus->slave_xfer_mode == INC_DMA_MODE) {
-			//DMA mode
-			xfer_len = aspeed_i2c_read(i2c_bus, I2C_DMA_LEN_REG);
-			xfer_len = i2c_bus->slave_xfer_len - xfer_len;
-			dev_dbg(i2c_bus->dev, "S tx tx dma done len %d \n", xfer_len);
-		} else if (i2c_bus->slave_xfer_mode == G6_DMA_MODE) {
+		} else if (i2c_bus->slave_xfer_mode == DMA_MODE) {
 			xfer_len = AST_G6_I2CD_GET_DMA_LEN(aspeed_i2c_read(i2c_bus, I2C_DMA_LEN_REG));
 			dev_dbg(i2c_bus->dev, "S tx tx dma done len %d \n", xfer_len);
 		} else {
@@ -1249,13 +1243,13 @@ static void aspeed_i2c_slave_do_dma_xfer(struct aspeed_i2c_bus *i2c_bus)
 		for (i = 0; i < i2c_bus->slave_xfer_len; i++)
 			i2c_bus->dma_buf[i] = i2c_bus->slave_msgs->buf[i2c_bus->slave_xfer_cnt + i];
 
-		aspeed_i2c_write(i2c_bus, i2c_bus->dma_addr, I2C_DMA_BASE_REG);
+		aspeed_i2c_write(i2c_bus, i2c_bus->dma_addr, AST_I2CS_TX_DMA);
 		aspeed_i2c_write(i2c_bus, i2c_bus->slave_xfer_len, I2C_DMA_LEN_REG);
 		aspeed_i2c_write(i2c_bus, AST_I2CS_TX_DMA_EN | AST_I2CS_TX_CMD, AST_I2CS_CMD_STS);
 	} else {
 		//DMA prepare rx
 		dev_dbg(i2c_bus->dev, "(-->) slave prepare rx DMA len %d \n", ASPEED_I2C_DMA_SIZE);
-		aspeed_i2c_write(i2c_bus, i2c_bus->dma_addr, I2C_DMA_BASE_REG);
+		aspeed_i2c_write(i2c_bus, i2c_bus->dma_addr, AST_I2CS_RX_DMA);
 		aspeed_i2c_write(i2c_bus, ASPEED_I2C_DMA_SIZE, I2C_DMA_LEN_REG);
 		aspeed_i2c_write(i2c_bus, AST_I2CS_RX_DMA_EN, AST_I2CS_CMD_STS);
 	}
