@@ -370,7 +370,7 @@ config I2C_AST1070
 
 config AST_I2C_SLAVE_MODE
         bool "AST I2C Slave mode"
-	depends on I2C_AST
+	depends on I2C_AST || I2C_ASPEED
 
 config I2C_AU1550
 	tristate "Au1550/Au1200/Au1300 SMBus interface"
