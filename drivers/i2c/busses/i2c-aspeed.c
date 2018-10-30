@@ -211,14 +211,6 @@
 #define AST_I2CS_ADDR1(x)				(x)
 
 /***************************************************************************/
-//#define AST_I2C_M_DEBUG 1
-
-#ifdef AST_I2C_M_DEBUG
-#define I2C_M_DBUG(fmt, args...) printk(fmt, ## args)
-#else
-#define I2C_M_DBUG(fmt, args...)
-#endif
-
 /* Use platform_data instead of module parameters */
 /* Fast Mode = 400 kHz, Standard = 100 kHz */
 //static int clock = 100; /* Default: 100 kHz */
@@ -2079,7 +2071,7 @@ static int aspeed_i2c_probe(struct platform_device *pdev)
 	i2c_bus->master_dma = BYTE_MODE;
 	i2c_bus->slave_dma = BYTE_MODE;
 	i2c_bus->do_master_xfer = aspeed_i2c_master_do_byte_xfer;
-	i2c_bus->do_slave_xfer = aspeed_i2c_slave_do_byte_xfer;
+//	i2c_bus->do_slave_xfer = aspeed_i2c_slave_do_byte_xfer;
 
 	//TODO
 #if 0
@@ -2111,7 +2103,7 @@ static int aspeed_i2c_probe(struct platform_device *pdev)
 		i2c_bus->master_dma = DMA_MODE;
 		i2c_bus->slave_dma = DMA_MODE;
 		i2c_bus->do_master_xfer = aspeed_i2c_master_do_dma_xfer;
-		i2c_bus->do_slave_xfer = aspeed_i2c_master_do_dma_xfer;
+//		i2c_bus->do_slave_xfer = aspeed_i2c_master_do_dma_xfer;
 	}
 
 	dev_dbg(&pdev->dev, "master mode  [%d] slave mode [%d]\n", i2c_bus->master_dma,
