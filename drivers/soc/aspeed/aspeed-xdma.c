@@ -39,19 +39,19 @@
 /* register ************************************************************************************/
 #define ASPEED_XDMA_HOST_CMDQ_LOW 		0x00
 #define ASPEED_XDMA_HOST_CMDQ_ENDP 		0x04
-#define ASPEED_XDMA_HOST_CMDQ_WRITEP 		0x08
-#define ASPEED_XDMA_HOST_CMDQ_READP 		0x0C
+#define ASPEED_XDMA_HOST_CMDQ_WRITEP 	0x08
+#define ASPEED_XDMA_HOST_CMDQ_READP 	0x0C
 #define ASPEED_XDMA_BMC_CMDQ_BASE 		0x10
 #define ASPEED_XDMA_BMC_CMDQ_ENDP 		0x14
-#define ASPEED_XDMA_BMC_CMDQ_WRITEP 		0x18
+#define ASPEED_XDMA_BMC_CMDQ_WRITEP 	0x18
 #define ASPEED_XDMA_BMC_CMDQ_READP 		0x1C
 #define ASPEED_XDMA_CTRL_IER 			0x20
 #define ASPEED_XDMA_CTRL_ISR 			0x24
 #define ASPEED_XDMA_DS_TX_SIZE			0x28
-#define ASPEED_XDMA_DS_PCIE			0x30
-#define ASPEED_XDMA_US_PCIE			0x34
-#define ASPEED_XDMA_DS_CMD1			0x38
-#define ASPEED_XDMA_DS_CMD2			0x3C
+#define ASPEED_XDMA_DS_PCIE				0x30
+#define ASPEED_XDMA_US_PCIE				0x34
+#define ASPEED_XDMA_DS_CMD1				0x38
+#define ASPEED_XDMA_DS_CMD2				0x3C
 #define ASPEED_XDMA_US_CMD0_LOW			0x40
 #define ASPEED_XDMA_US_CMD0_HIGH		0x44
 #define ASPEED_XDMA_US_CMD1_LOW			0x48
@@ -61,33 +61,33 @@
 #define ASPEED_XDMA_HOST_CMDQ_HIGH 		0x60
 
 /* ASPEED_XDMA_CTRL_IER - 0x20 : Interrupt Enable and Engine Control */
-#define XDMA_PCIE_64Bits_MODE_EN		(1 << 31)
-#define XDMA_CK_DS_CMD_ID_EN			(1 << 29)
-#define XDMA_DS_DATA_TO_EN			(1 << 28)
+#define XDMA_PCIE_64Bits_MODE_EN	BIT(31)
+#define XDMA_CK_DS_CMD_ID_EN		BIT(29)
+#define XDMA_DS_DATA_TO_EN			BIT(28)
 #define XDMA_DS_PKS_256				(1 << 17)
 #define XDMA_DS_PKS_512				(2 << 17)
 #define XDMA_DS_PKS_1K				(3 << 17)
 #define XDMA_DS_PKS_2K				(4 << 17)
 #define XDMA_DS_PKS_4K				(5 << 17)
 
-#define XDMA_DS_DIRTY_FRAME			(1 << 6)
-#define XDMA_DS_COMPLETE			(1 << 5)
-#define XDMA_US_COMPLETE			(1 << 4)
+#define XDMA_DS_DIRTY_FRAME			BIT(6)
+#define XDMA_DS_COMPLETE			BIT(5)
+#define XDMA_US_COMPLETE			BIT(4)
 /*************************************************************************************/
 #define ASPEED_XDMA_CMD_DESC_NUM		2
 
 //CMD0 Format	(0x00)
 #define PCIE_DATA_ADDR(x)			(x << 3)
 //CMD1 Format	(0x08)
-#define UP_STREAM_XFER				(1 << 31)
+#define UP_STREAM_XFER				BIT(31)
 //ast -g 5
 //16byte align
 #define G5_BYTE_ALIGN				16
 #define G5_BMC_ADDR(x)				(x & 0x3ffffff0)
 //old ast soc
 //8byte align
-#define BYTE_ALIGN				8
-#define BMC_ADDR(x)				(x & 0x1ffffff8)
+#define BYTE_ALIGN					8
+#define BMC_ADDR(x)					(x & 0x1ffffff8)
 
 #define CMD1_XFER_ID				(1)
 
@@ -96,13 +96,13 @@
 #define FRAM_LINE_NUM(x)			(x << 16)
 #define INTER_DIRECTION_BMC			(1 << 15)
 //g5
-#define G5_FRAM_LINE_BYTE(x)			((x & 0x7ff) << 4)
+#define G5_FRAM_LINE_BYTE(x)		((x & 0x7ff) << 4)
 //old soc
 #define FRAM_LINE_BYTE(x)			((x & 0xfff) << 3)
 
 #define CMD2_XFER_ID				(2)
 
-#define CMD_QUEUE_SETTING_PSWD			0xEE882266
+#define CMD_QUEUE_SETTING_PSWD		0xEE882266
 /*************************************************************************************/
 //ast g5
 #define G5_UPDATE_WRITE_POINT			4
