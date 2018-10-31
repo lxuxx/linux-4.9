@@ -37,6 +37,79 @@
 #include <linux/of_device.h>
 #include <asm/uaccess.h>
 /* register ************************************************************************************/
+//
+#define ASPEED_G6_XDMA_HOST_CMDQ_LADDR	0x00
+#define ASPEED_G6_XDMA_HOST_CMDQ_HADDR 	0x04
+#define ASPEED_G6_XDMA_HOST_CMDQ_ENDP 	0x08
+#define ASPEED_G6_XDMA_HOST_CMDQ_WRITEP 0x0C
+#define ASPEED_G6_XDMA_HOST_CMDQ_READP 	0x10
+#define ASPEED_G6_XDMA_BMC_CMDQ_BASE 	0x14
+#define ASPEED_G6_XDMA_BMC_CMDQ_ENDP 	0x18
+#define ASPEED_G6_XDMA_BMC_CMDQ_WRITEP 	0x1C
+#define ASPEED_G6_XDMA_BMC_CMDQ_READP 	0x20
+#define ASPEED_G6_XDMA_VGA_CMDQ_LADDR	0x24
+#define ASPEED_G6_XDMA_VGA_CMDQ_HADDR 	0x28
+#define ASPEED_G6_XDMA_VGA_CMDQ_ENDP 	0x2C
+#define ASPEED_G6_XDMA_VGA_CMDQ_WRITEP 	0x30
+#define ASPEED_G6_XDMA_VGA_CMDQ_READP 	0x34
+#define ASPEED_G6_XDMA_CTRL_IER 		0x38
+#define ASPEED_G6_XDMA_CTRL_ISR 		0x3C
+#define ASPEED_G6_XDMA_DS_CMD0_LOW		0x40
+#define ASPEED_G6_XDMA_DS_CMD0_HIGH		0x44
+#define ASPEED_G6_XDMA_DS_CMD1_LOW		0x48
+#define ASPEED_G6_XDMA_DS_CMD1_HIGH		0x4C
+#define ASPEED_G6_XDMA_DS_CMD2_LOW		0x50
+#define ASPEED_G6_XDMA_DS_CMD2_HIGH		0x54
+#define ASPEED_G6_XDMA_US_CMD0_LOW		0x58
+#define ASPEED_G6_XDMA_US_CMD0_HIGH		0x5C
+#define ASPEED_G6_XDMA_US_CMD1_LOW		0x60
+#define ASPEED_G6_XDMA_US_CMD1_HIGH		0x64
+#define ASPEED_G6_XDMA_US_CMD2_LOW		0x68
+#define ASPEED_G6_XDMA_US_CMD2_HIGH		0x6C
+
+/* AST_XDMA_CTRL_IER - 0x38 : Interrupt Enable and Engine Control */
+#define XDMA_PCIE_64Bits_MODE_EN	BIT(31)
+#define XDMA_EDGE_INT				BIT(24)
+#define XDMA_DS_REQ_SIZE_MASK		(0x7 << 20)
+#define XDMA_DS_REQ_SIZE_256		(0x1 << 20)
+#define XDMA_DS_REQ_512				(0x2 << 20)
+#define XDMA_DS_REQ_1K				(0x3 << 20)
+#define XDMA_DS_REQ_2K				(0x4 << 20)
+#define XDMA_DS_REQ_4K				(0x5 << 20)
+
+#define XDMA_BMC_DS_DIRTY			BIT(18)
+#define XDMA_BMC_DS_DONE			BIT(17)
+#define XDMA_BMC_US_DONE			BIT(16)
+#define XDMA_VGA_DS_DONE			BIT(15)
+#define XDMA_VGA_US_DONE			BIT(14)
+#define XDMA_HOST_DS_DONE			BIT(13)
+#define XDMA_HOST_US_DONE			BIT(12)
+
+/* AST_XDMA_CTRL_ISR - 0x3C : Interrupt Flag and Engine Status */
+#define XDMA_ALL_IDEL				BIT(31)
+#define XDMA_HOST_CMDQ_IDLE			BIT(30)
+#define XDMA_BMC_CMDQ_IDLE			BIT(29)
+#define XDMA_DS_IDLE				BIT(28)
+#define XDMA_US_IDLE				BIT(27)
+#define XDMA_VGA_CMDQ_IDLE			BIT(26)
+#define XDMA_HOST_CMDQ_DIRTY		BIT(25)
+#define XDMA_VGA_CMDQ_DIRTY			BIT(24)
+
+#define XDMA_BMC_DS_DIRTY_STS		BIT(23)
+#define XDMA_VGA_DS_DIRTY_STS		BIT(22)
+#define XDMA_HOST_DS_DIRTY_STS		BIT(21)
+/*
+#define XDMA_BMC_DS_DIRTY			(0x1 << 18)
+#define XDMA_BMC_DS_DONE			(0x1 << 17)
+#define XDMA_BMC_US_DONE			(0x1 << 16)
+#define XDMA_VGA_DS_DONE			(0x1 << 15)
+#define XDMA_VGA_US_DONE			(0x1 << 14)
+#define XDMA_HOST_DS_DONE			(0x1 << 13)
+#define XDMA_HOST_US_DONE			(0x1 << 12)
+*/
+
+//
+
 #define ASPEED_XDMA_HOST_CMDQ_LOW 		0x00
 #define ASPEED_XDMA_HOST_CMDQ_ENDP 		0x04
 #define ASPEED_XDMA_HOST_CMDQ_WRITEP 	0x08
@@ -75,6 +148,20 @@
 #define XDMA_US_COMPLETE			BIT(4)
 /*************************************************************************************/
 #define ASPEED_XDMA_CMD_DESC_NUM		2
+/*************************************************************************************/
+//ast2600
+//CMD0 Format	(0x00) : Base address of PCIe data [63:3]
+//CMD1 Format	(0x08) : Pitch and Base Address 
+
+//CMD2 Format Low	(0x10) : Fire Command
+#define G6_FRAM_LINE_NUM(x)			((x & 0xfff) << 16)
+#define G6_FRAM_LINE_BYTE(x)		(x & 0x7fff)
+
+//CMD2 Format HIGH	(0x14) : Fire Command
+#define G6_CMD_BINT_EN				BIT(5)
+#define G6_CMD_HINT_EN				BIT(4)
+#define G6_CMD_US_DIR				BIT(0)
+/*************************************************************************************/
 
 //CMD0 Format	(0x00)
 #define PCIE_DATA_ADDR(x)			(x << 3)
@@ -104,7 +191,9 @@
 
 #define CMD_QUEUE_SETTING_PSWD		0xEE882266
 /*************************************************************************************/
-//ast g5
+#define G6_UPDATE_WRITE_POINT			4
+#define G6_DEFAULT_END_POINT			8
+//use for ast2600
 #define G5_UPDATE_WRITE_POINT			4
 #define G5_DEFAULT_END_POINT			8
 struct aspeed_g5_xdma_cmd_desc {
@@ -120,6 +209,8 @@ struct aspeed_g5_xdma_cmd_desc {
 
 #define UPDATE_WRITE_POINT			3
 #define DEFAULT_END_POINT			5
+
+//use for ast2400/ast2600
 struct aspeed_xdma_cmd_desc {
 	u32 cmd0_low;
 	u32 cmd0_high;
@@ -162,7 +253,6 @@ struct aspeed_xdma_info {
 	struct reset_control *reset;
 	u32 dram_base;
 	int xdma_version;
-	wait_queue_head_t xdma_wq;
 
 	u8 desc_index;
 	struct aspeed_xdma_cmd_desc *xfer_cmd_desc;
@@ -171,10 +261,9 @@ struct aspeed_xdma_info {
 
 	u8 *xfer_data;
 	dma_addr_t xfer_data_dma;
+	struct completion		cmd_complete;
 
-	u32 flag;
 	bool is_open;
-	u32 state;
 };
 
 /******************************************************************************/
@@ -199,26 +288,14 @@ aspeed_xdma_write(struct aspeed_xdma_info *aspeed_xdma, u32 val, u32 reg)
 }
 
 /*************************************************************************************/
-void aspeed_xdma_wait_us_complete(struct aspeed_xdma_info *aspeed_xdma)
-{
-	wait_event_interruptible(aspeed_xdma->xdma_wq, (aspeed_xdma->flag == XDMA_US_COMPLETE));
-	XDMA_DBUG("\n");
-	aspeed_xdma->flag = 0;
-}
-
-void aspeed_xdma_wait_ds_complete(struct aspeed_xdma_info *aspeed_xdma)
-{
-	wait_event_interruptible(aspeed_xdma->xdma_wq, (aspeed_xdma->flag == XDMA_DS_COMPLETE));
-	XDMA_DBUG("\n");
-	aspeed_xdma->flag = 0;
-}
-
 static void aspeed_xdma_xfer(struct aspeed_xdma_info *aspeed_xdma, struct aspeed_xdma_xfer *xdma_xfer)
 {
 	u32 xfer_len = 0;
 	u32 bmc_addr = 0;
 
 	XDMA_DBUG("\n");
+	init_completion(&aspeed_xdma->cmd_complete);
+
 	if (xdma_xfer->bmc_addr == 0)
 		bmc_addr = aspeed_xdma->xfer_data_dma;
 	else
@@ -257,10 +334,9 @@ static void aspeed_xdma_xfer(struct aspeed_xdma_info *aspeed_xdma, struct aspeed
 
 	aspeed_xdma->desc_index++;
 
-	if (xdma_xfer->stream_dir) {
-		aspeed_xdma_wait_us_complete(aspeed_xdma);
-	} else {
-		aspeed_xdma_wait_ds_complete(aspeed_xdma);
+	wait_for_completion(&aspeed_xdma->cmd_complete);
+
+	if (!xdma_xfer->stream_dir) {
 		if (xdma_xfer->bmc_addr == 0)
 			memcpy(xdma_xfer->xfer_buff, aspeed_xdma->xfer_data, xdma_xfer->xfer_len);
 	}
@@ -273,6 +349,8 @@ static void aspeed_g5_xdma_xfer(struct aspeed_xdma_info *aspeed_xdma, struct asp
 	u32 bmc_addr = 0;
 
 	XDMA_DBUG("\n");
+	init_completion(&aspeed_xdma->cmd_complete);
+
 	if (xdma_xfer->bmc_addr == 0)
 		bmc_addr = aspeed_xdma->xfer_data_dma;
 	else
@@ -311,14 +389,64 @@ static void aspeed_g5_xdma_xfer(struct aspeed_xdma_info *aspeed_xdma, struct asp
 
 	aspeed_xdma->desc_index++;
 
-	if (xdma_xfer->stream_dir) {
-		aspeed_xdma_wait_us_complete(aspeed_xdma);
-	} else {
-		aspeed_xdma_wait_ds_complete(aspeed_xdma);
+	wait_for_completion(&aspeed_xdma->cmd_complete);
+
+	if (!xdma_xfer->stream_dir) {
 		if (xdma_xfer->bmc_addr == 0)
 			memcpy(xdma_xfer->xfer_buff, aspeed_xdma->xfer_data, xdma_xfer->xfer_len);
 	}
 
+}
+
+static void aspeed_g6_xdma_xfer(struct aspeed_xdma_info *aspeed_xdma, struct aspeed_xdma_xfer *xdma_xfer)
+{
+	u32 xfer_len = 0;
+	u32 bmc_addr = 0;
+
+	XDMA_DBUG("\n");
+	init_completion(&aspeed_xdma->cmd_complete);
+
+	if (xdma_xfer->bmc_addr == 0)
+		bmc_addr = aspeed_xdma->xfer_data_dma;
+	else
+		bmc_addr = xdma_xfer->bmc_addr;
+
+	aspeed_xdma->desc_index %= 2;
+
+	XDMA_DBUG("cmd index [%x] : bmc addr : %x , host addr : %x (L) %x (H), size : %d \n", aspeed_xdma->desc_index, bmc_addr, xdma_xfer->host_addr_low, xdma_xfer->host_addr_high, xdma_xfer->xfer_len);
+
+	xfer_len = xdma_xfer->xfer_len;
+
+	aspeed_xdma->xfer_cmd_desc[aspeed_xdma->desc_index].cmd0_high = xdma_xfer->host_addr_high;
+	aspeed_xdma->xfer_cmd_desc[aspeed_xdma->desc_index].cmd0_low = xdma_xfer->host_addr_low;
+
+	if (xdma_xfer->stream_dir) {
+		aspeed_xdma->xfer_cmd_desc[aspeed_xdma->desc_index].cmd2_high = G6_CMD_US_DIR | G6_CMD_HINT_EN | G6_CMD_US_DIR;
+		XDMA_DBUG("US cmd desc %x \n", aspeed_xdma->xfer_cmd_desc[aspeed_xdma->desc_index].cmd1_low);
+		if (xdma_xfer->bmc_addr == 0)
+			memcpy(aspeed_xdma->xfer_data, xdma_xfer->xfer_buff,  xdma_xfer->xfer_len);
+	} else {
+		aspeed_xdma->xfer_cmd_desc[aspeed_xdma->desc_index].cmd2_high = G6_CMD_US_DIR | G6_CMD_HINT_EN;
+		XDMA_DBUG("DS cmd desc %x \n", aspeed_xdma->xfer_cmd_desc[aspeed_xdma->desc_index].cmd1_low);
+		memset(aspeed_xdma->xfer_data, 0,  4096);
+	}
+
+	aspeed_xdma->xfer_cmd_desc[aspeed_xdma->desc_index].cmd2_low = G6_FRAM_LINE_NUM(1) | G6_FRAM_LINE_BYTE(xfer_len);
+
+	//trigger tx
+	if (aspeed_xdma->desc_index == 0)
+		aspeed_xdma_write(aspeed_xdma, G6_UPDATE_WRITE_POINT, ASPEED_G6_XDMA_BMC_CMDQ_WRITEP);
+	else
+		aspeed_xdma_write(aspeed_xdma, 0, ASPEED_G6_XDMA_BMC_CMDQ_WRITEP);
+
+	aspeed_xdma->desc_index++;
+
+	wait_for_completion(&aspeed_xdma->cmd_complete);
+
+	if (!xdma_xfer->stream_dir) {
+		if (xdma_xfer->bmc_addr == 0)
+			memcpy(xdma_xfer->xfer_buff, aspeed_xdma->xfer_data, xdma_xfer->xfer_len);
+	}
 }
 
 static void aspeed_xdma_ctrl_init(struct aspeed_xdma_info *aspeed_xdma)
@@ -356,6 +484,21 @@ static void aspeed_g5_xdma_ctrl_init(struct aspeed_xdma_info *aspeed_xdma)
 			  XDMA_DS_DIRTY_FRAME | XDMA_DS_COMPLETE | XDMA_US_COMPLETE, ASPEED_XDMA_CTRL_IER);
 }
 
+static void aspeed_g6_xdma_ctrl_init(struct aspeed_xdma_info *aspeed_xdma)
+{
+	memset(aspeed_xdma->xfer_cmd_desc, 0,  sizeof(struct aspeed_xdma_cmd_desc) * 2);
+
+	aspeed_xdma->xfer_cmd_desc[0].cmd1_high = 0x00080008;
+	aspeed_xdma->xfer_cmd_desc[1].cmd1_high = 0x00080008;
+	aspeed_xdma->desc_index = 0;
+
+	aspeed_xdma_write(aspeed_xdma, aspeed_xdma->xfer_cmd_desc_dma, ASPEED_G6_XDMA_BMC_CMDQ_BASE);
+	aspeed_xdma_write(aspeed_xdma, G6_DEFAULT_END_POINT, ASPEED_G6_XDMA_BMC_CMDQ_ENDP);
+	aspeed_xdma_write(aspeed_xdma, 0, ASPEED_G6_XDMA_BMC_CMDQ_WRITEP);
+
+	aspeed_xdma_write(aspeed_xdma, XDMA_BMC_CMDQ_IDLE | XDMA_DS_IDLE | XDMA_US_IDLE | XDMA_BMC_DS_DIRTY_STS, ASPEED_G6_XDMA_CTRL_IER);
+}
+
 static irqreturn_t aspeed_pcie_raise_isr(int this_irq, void *dev_id)
 {
 	struct aspeed_xdma_info *aspeed_xdma = dev_id;
@@ -372,34 +515,58 @@ static irqreturn_t aspeed_pcie_raise_isr(int this_irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static irqreturn_t aspeed_g6_xdma_isr(int this_irq, void *dev_id)
+{
+	struct aspeed_xdma_info *aspeed_xdma = dev_id;
+	u32 status = aspeed_xdma_read(aspeed_xdma, ASPEED_G6_XDMA_CTRL_ISR);
+
+	XDMA_DBUG("%x \n", status);
+
+	if (status & XDMA_BMC_DS_DIRTY_STS) {
+		XDMA_DBUG("XDMA_BMC_DS_DIRTY_STS \n");
+	}
+
+	if (status & XDMA_DS_IDLE) {
+		XDMA_DBUG("XDMA_DS_COMPLETE \n");
+	}
+
+	if (status & XDMA_US_IDLE) {
+		XDMA_DBUG("XDMA_US_COMPLETE \n");
+	}
+
+	if(status) {
+		aspeed_xdma_write(aspeed_xdma, status, ASPEED_G6_XDMA_CTRL_ISR);
+		complete(&aspeed_xdma->cmd_complete);
+		return IRQ_HANDLED;
+	} else {
+		printk("TODO Check xdma's interrupt %x\n", status);		
+		return IRQ_NONE;
+	}
+	
+}
+
 static irqreturn_t aspeed_xdma_isr(int this_irq, void *dev_id)
 {
 	struct aspeed_xdma_info *aspeed_xdma = dev_id;
 	u32 status = aspeed_xdma_read(aspeed_xdma, ASPEED_XDMA_CTRL_ISR);
 
-
 	XDMA_DBUG("%x \n", status);
 
-
 	if (status & XDMA_DS_DIRTY_FRAME) {
-		aspeed_xdma->flag = XDMA_DS_DIRTY_FRAME;
 		XDMA_DBUG("XDMA_DS_DIRTY_FRAME \n");
 	}
 
 	if (status & XDMA_DS_COMPLETE) {
-		aspeed_xdma->flag = XDMA_DS_COMPLETE;
 		XDMA_DBUG("XDMA_DS_COMPLETE \n");
 	}
 
 	if (status & XDMA_US_COMPLETE) {
-		aspeed_xdma->flag = XDMA_US_COMPLETE;
 		XDMA_DBUG("XDMA_US_COMPLETE \n");
 	}
 
-	aspeed_xdma_write(aspeed_xdma, status, ASPEED_XDMA_CTRL_ISR);
-
-	if (aspeed_xdma->flag) {
-		wake_up_interruptible(&aspeed_xdma->xdma_wq);
+	if(status) {
+		aspeed_xdma_write(aspeed_xdma, status, ASPEED_XDMA_CTRL_ISR);
+		complete(&aspeed_xdma->cmd_complete);
 		return IRQ_HANDLED;
 	} else {
 		printk("TODO Check xdma's interrupt %x\n", status);
@@ -424,10 +591,17 @@ static long xdma_ioctl(struct file *file, unsigned int cmd,
 			printk("copy_from_user  fail\n");
 			ret = -EFAULT;
 		} else {
-			if (aspeed_xdma->xdma_version == 5)
-				aspeed_g5_xdma_xfer(aspeed_xdma, &xfer);
-			else
-				aspeed_xdma_xfer(aspeed_xdma, &xfer);
+			switch(aspeed_xdma->xdma_version) {
+				case 5:
+					aspeed_g5_xdma_xfer(aspeed_xdma, &xfer);
+					break;
+				case 6:
+					aspeed_g6_xdma_xfer(aspeed_xdma, &xfer);
+					break;
+				default:
+					aspeed_xdma_xfer(aspeed_xdma, &xfer);
+					break;
+			}
 		}
 
 		if (!xfer.stream_dir) {
@@ -551,8 +725,15 @@ static int aspeed_xdma_probe(struct platform_device *pdev)
 	//scu init
 	reset_control_deassert(aspeed_xdma->reset);
 
-	ret = devm_request_irq(&pdev->dev, aspeed_xdma->irq, aspeed_xdma_isr,
-			       0, dev_name(&pdev->dev), aspeed_xdma);
+	aspeed_xdma->xdma_version = (unsigned long)xdma_dev_id->data;
+
+	if(aspeed_xdma->xdma_version == 6) {
+		ret = devm_request_irq(&pdev->dev, aspeed_xdma->irq, aspeed_g6_xdma_isr,
+				       0, dev_name(&pdev->dev), aspeed_xdma);
+	} else {
+		ret = devm_request_irq(&pdev->dev, aspeed_xdma->irq, aspeed_xdma_isr,
+				       0, dev_name(&pdev->dev), aspeed_xdma);		
+	}
 	if (ret) {
 		printk("XDMA Unable to get IRQ");
 		goto out_region;
@@ -565,9 +746,6 @@ static int aspeed_xdma_probe(struct platform_device *pdev)
 		goto out_region;
 	}
 
-	aspeed_xdma->flag = 0;
-	init_waitqueue_head(&aspeed_xdma->xdma_wq);
-
 	ret = misc_register(&aspeed_xdma_misc);
 	if (ret) {
 		printk(KERN_ERR "XDMA : failed to request interrupt\n");
@@ -577,46 +755,46 @@ static int aspeed_xdma_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, aspeed_xdma);
 	dev_set_drvdata(aspeed_xdma_misc.this_device, aspeed_xdma);
 
-	aspeed_xdma->xdma_version = (unsigned long)xdma_dev_id->data;
+
+	//xfer buff
+	aspeed_xdma->xfer_data = dma_alloc_coherent(NULL,
+				 4096,
+				 &aspeed_xdma->xfer_data_dma, GFP_KERNEL);
+	
+	XDMA_DBUG("xfer buff %x , dma %x \n", (u32)aspeed_xdma->xfer_data, (u32)aspeed_xdma->xfer_data_dma);
+
+	//tx cmd
 	switch (aspeed_xdma->xdma_version) {
-	case 0:
-		//xfer buff
-		aspeed_xdma->xfer_data = dma_alloc_coherent(NULL,
-					 4096,
-					 &aspeed_xdma->xfer_data_dma, GFP_KERNEL);
+		case 0:
+			aspeed_xdma->xfer_cmd_desc = dma_alloc_coherent(NULL,
+						     sizeof(struct aspeed_xdma_cmd_desc) * ASPEED_XDMA_CMD_DESC_NUM,
+						     &aspeed_xdma->xfer_cmd_desc_dma, GFP_KERNEL);
 
-		XDMA_DBUG("xfer buff %x , dma %x \n", (u32)aspeed_xdma->xfer_data, (u32)aspeed_xdma->xfer_data_dma);
+			if (((u32)aspeed_xdma->xfer_cmd_desc & 0xff) != 0x00)
+				printk("ERROR dma addr !!!!\n");
 
-		//tx cmd
-		aspeed_xdma->xfer_cmd_desc = dma_alloc_coherent(NULL,
-					     sizeof(struct aspeed_xdma_cmd_desc) * ASPEED_XDMA_CMD_DESC_NUM,
-					     &aspeed_xdma->xfer_cmd_desc_dma, GFP_KERNEL);
+			XDMA_DBUG("xfer cmd desc %x , cmd desc dma %x \n", (u32)aspeed_xdma->xfer_cmd_desc, (u32)aspeed_xdma->xfer_cmd_desc_dma);
+			aspeed_xdma_ctrl_init(aspeed_xdma);
+			break;
+		case 5:
+			aspeed_xdma->g5_xfer_cmd_desc = dma_alloc_coherent(NULL,
+							sizeof(struct aspeed_g5_xdma_cmd_desc) * ASPEED_XDMA_CMD_DESC_NUM,
+							&aspeed_xdma->xfer_cmd_desc_dma, GFP_KERNEL);
 
-		if (((u32)aspeed_xdma->xfer_cmd_desc & 0xff) != 0x00)
-			printk("ERROR dma addr !!!!\n");
+			if (((u32)aspeed_xdma->g5_xfer_cmd_desc & 0xff) != 0x00)
+				printk("ERROR dma addr !!!!\n");
 
-		XDMA_DBUG("xfer cmd desc %x , cmd desc dma %x \n", (u32)aspeed_xdma->xfer_cmd_desc, (u32)aspeed_xdma->xfer_cmd_desc_dma);
-		aspeed_xdma_ctrl_init(aspeed_xdma);
-		break;
-	case 5:
-		//xfer buff
-		aspeed_xdma->xfer_data = dma_alloc_coherent(NULL,
-					 4096,
-					 &aspeed_xdma->xfer_data_dma, GFP_KERNEL);
-
-		XDMA_DBUG("xfer buff %x , dma %x \n", (u32)aspeed_xdma->xfer_data, (u32)aspeed_xdma->xfer_data_dma);
-
-		//tx cmd
-		aspeed_xdma->g5_xfer_cmd_desc = dma_alloc_coherent(NULL,
-						sizeof(struct aspeed_g5_xdma_cmd_desc) * ASPEED_XDMA_CMD_DESC_NUM,
-						&aspeed_xdma->xfer_cmd_desc_dma, GFP_KERNEL);
-
-		if (((u32)aspeed_xdma->g5_xfer_cmd_desc & 0xff) != 0x00)
-			printk("ERROR dma addr !!!!\n");
-
-		XDMA_DBUG("xfer cmd desc %x , cmd desc dma %x \n", (u32)aspeed_xdma->g5_xfer_cmd_desc, (u32)aspeed_xdma->xfer_cmd_desc_dma);
-		aspeed_g5_xdma_ctrl_init(aspeed_xdma);
-		break;
+			XDMA_DBUG("xfer cmd desc %x , cmd desc dma %x \n", (u32)aspeed_xdma->g5_xfer_cmd_desc, (u32)aspeed_xdma->xfer_cmd_desc_dma);
+			aspeed_g5_xdma_ctrl_init(aspeed_xdma);
+			break;
+		case 6:
+			aspeed_xdma->xfer_cmd_desc = dma_alloc_coherent(NULL,
+								sizeof(struct aspeed_xdma_cmd_desc) * ASPEED_XDMA_CMD_DESC_NUM,
+								&aspeed_xdma->xfer_cmd_desc_dma, GFP_KERNEL);
+			
+			XDMA_DBUG("xfer cmd desc %x , cmd desc dma %x \n", (u32)aspeed_xdma->xfer_cmd_desc, (u32)aspeed_xdma->xfer_cmd_desc_dma);
+			aspeed_g6_xdma_ctrl_init(aspeed_xdma);
+			break;
 	}
 
 	printk(KERN_INFO "aspeed_xdma: driver successfully loaded.\n");
