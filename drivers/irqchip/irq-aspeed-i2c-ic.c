@@ -180,8 +180,9 @@ static int aspeed_i2c_ic_probe(struct platform_device *pdev)
 	/* ast2600 init */
 	if(of_device_is_compatible(node, "aspeed,ast2600-i2c-ic")) {
 		/* only support in ast-g6 platform */
-//		writel(ASPEED_I2CG_SLAVE_PKT_NAK | ASPEED_I2CG_CTRL_NEW_REG | ASPEED_I2CG_CTRL_NEW_CLK_DIV, i2c_ic->base + ASPEED_I2CG_CTRL);
-
+#ifdef CONFIG_I2C_ASPEED
+		writel(ASPEED_I2CG_SLAVE_PKT_NAK | ASPEED_I2CG_CTRL_NEW_REG, i2c_ic->base + ASPEED_I2CG_CTRL);
+#endif
 		/* assign 4 base clock 
 		 * base clk1 : 1M for 1KHz
 		 * base clk2 : 4M for 400KHz	 
