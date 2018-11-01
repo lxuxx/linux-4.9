@@ -33,6 +33,8 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/reset.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 #include <dt-bindings/gpio/aspeed-gpio.h>
 #include <linux/irqdomain.h>
 
@@ -244,6 +246,13 @@ struct aspeed_espi_xfer {
 
 //#define ASPEED_ESPI_DMA_MODE
 
+struct espi_g6_oob_cmd {
+	dma_addr_t dma_addr;
+	u32			cmd1;
+	u32 		cmd2;
+	u32			cmd3;
+};
+
 struct espi_ch_data {
 	int 		full;
 	u32		header;	//[23:12] len, [11:8] tag, [7:0] cycle type
@@ -258,10 +267,11 @@ struct aspeed_espi_data {
 	struct platform_device 	*pdev;
 	void __iomem			*reg_base;			/* virtual */
 	int 					irq;					//LPC IRQ number
+	int						espi_version;
 	struct reset_control 	*reset;
 	u32 					irq_sts;
 	u32 					vw_gpio;
-	u32					sys_event;
+	u32						sys_event;
 	bool 					is_open;
 	struct espi_ch_data		p_rx_channel;
 	struct espi_ch_data		p_tx_channel;
@@ -1135,10 +1145,20 @@ struct miscdevice aspeed_espi_misc = {
 };
 
 #define MAX_XFER_BUFF_SIZE	0x80		//128
+
 ///////////////////////////////////
+
+static const struct of_device_id aspeed_espi_of_matches[] = {
+	{ .compatible = "aspeed,ast2500-espi", .data = (void *) 5, },
+	{ .compatible = "aspeed,ast2600-espi", .data = (void *) 6, },
+	{},
+};
+MODULE_DEVICE_TABLE(of, aspeed_espi_of_matches);
+
 static int aspeed_espi_probe(struct platform_device *pdev)
 {
 	static struct aspeed_espi_data *aspeed_espi;
+	const struct of_device_id *dev_id;
 	struct resource *res;
 	int ret = 0;
 	u32 gpio_irq;
@@ -1150,6 +1170,12 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to allocate memory\n");
 		return -ENOMEM;
 	}
+
+	dev_id = of_match_device(aspeed_espi_of_matches, &pdev->dev);
+	if (!dev_id)
+		return -EINVAL;
+
+	aspeed_espi->espi_version = (unsigned long)dev_id->data;
 
 	aspeed_espi->pdev = pdev;
 
@@ -1319,12 +1345,6 @@ static int aspeed_espi_remove(struct platform_device *pdev)
 	kfree(aspeed_espi);
 	return 0;
 }
-
-static const struct of_device_id aspeed_espi_of_matches[] = {
-	{ .compatible = "aspeed,ast2500-espi", },
-	{},
-};
-MODULE_DEVICE_TABLE(of, aspeed_espi_of_matches);
 
 static struct platform_driver aspeed_espi_driver = {
 	.probe		= aspeed_espi_probe,
