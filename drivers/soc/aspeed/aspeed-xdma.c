@@ -221,11 +221,11 @@ struct aspeed_xdma_cmd_desc {
 };
 
 /*************************************************************************************/
-#define MAX_XFER_BUFF_SIZE 4096
+#define XDMA_MAX_XFER_BUFF_SIZE 4096
 
 struct aspeed_xdma_xfer {
 	unsigned char stream_dir;
-	unsigned char xfer_buff[MAX_XFER_BUFF_SIZE];
+	unsigned char xfer_buff[XDMA_MAX_XFER_BUFF_SIZE];
 	unsigned int xfer_len;
 	unsigned int bmc_addr;
 	unsigned int host_addr_low;
