@@ -284,6 +284,37 @@ aspeed_mctp_write(struct aspeed_mctp_info *aspeed_mctp, u32 val, u32 reg)
 }
 
 /*************************************************************************************/
+static void aspeed_g6_mctp_tx_xfer(struct aspeed_mctp_info *aspeed_mctp, struct aspeed_mctp_xfer *mctp_xfer)
+{
+	void *cur_tx_buff = aspeed_mctp->tx_pool + (MCTP_TX_BUFF_SIZE * aspeed_mctp->tx_idx);
+	dma_addr_t cur_tx_buff_dma = aspeed_mctp->tx_pool_dma + (MCTP_TX_BUFF_SIZE * aspeed_mctp->tx_idx);
+	struct pcie_vdm_header *vdm_header = &mctp_xfer->header;
+	u8 routing_type = vdm_header->type_routing;
+	unsigned long byte_length = vdm_header->length * 4 - vdm_header->pad_len;
+
+	copy_from_user(cur_tx_buff, mctp_xfer->header, sizeof(struct pcie_vdm_header));
+
+	copy_from_user(cur_tx_buff + sizeof(struct pcie_vdm_header), mctp_xfer->xfer_buff, byte_length);
+
+	MCTP_DBUG("xfer dma : %x, byte_length = %d, padding len = %d\n", cur_tx_buff_dma, byte_length, vdm_header->pad_len);
+
+	//bit 15 : interrupt enable
+	aspeed_mctp->tx_cmd_desc[aspeed_mctp->tx_idx].desc0 = 0x00018000 | PKG_SIZE(vdm_header->length);
+	//aspeed_mctp->tx_cmd_desc[aspeed_mctp->tx_idx].desc0 = 0x00000000 | PKG_SIZE(packet_size);
+	aspeed_mctp->tx_cmd_desc[aspeed_mctp->tx_idx].desc1 = 0x00000001 | G6_TX_DATA_ADDR(cur_tx_buff_dma);
+	if(aspeed_mctp->tx_idx == aspeed_mctp->tx_fifo_num - 1) 
+		aspeed_mctp->tx_cmd_desc[aspeed_mctp->tx_idx].desc1 |= LAST_CMD;
+
+	//trigger write pt;
+	aspeed_mctp->tx_idx++;
+	aspeed_mctp->tx_idx %= MCTP_G6_TX_FIFO_NUM;
+	aspeed_mctp_write(aspeed_mctp, aspeed_mctp->tx_idx, ASPEED_MCTP_TX_READ_PT);
+
+	//trigger tx
+	aspeed_mctp_write(aspeed_mctp, aspeed_mctp_read(aspeed_mctp, ASPEED_MCTP_CTRL) | MCTP_TX_TRIGGER, ASPEED_MCTP_CTRL);
+
+}
+
 static void aspeed_mctp_tx_xfer(struct aspeed_mctp_info *aspeed_mctp, struct aspeed_mctp_xfer *mctp_xfer)
 {
 	void *cur_tx_buff = aspeed_mctp->tx_pool + (MCTP_TX_BUFF_SIZE * aspeed_mctp->tx_idx);
@@ -479,8 +510,10 @@ static long mctp_ioctl(struct file *file, unsigned int cmd,
 			// g5 is not supporting Tx length = 1024
 			if (aspeed_mctp->mctp_version == 5 && mctp_xfer.header.length == 0)
 				return -EINVAL;
-
-			aspeed_mctp_tx_xfer(aspeed_mctp, &mctp_xfer);
+			if (aspeed_mctp->mctp_version == 6)
+				aspeed_g6_mctp_tx_xfer(aspeed_mctp, &mctp_xfer);
+			else
+				aspeed_mctp_tx_xfer(aspeed_mctp, &mctp_xfer);
 			return 0;
 		}
 		break;
