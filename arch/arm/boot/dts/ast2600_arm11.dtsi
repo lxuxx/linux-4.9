@@ -10,9 +10,6 @@
 	#size-cells = <1>;
 	interrupt-parent = <&vic>;
 
-	memory@80000000 {
-		reg = <0x80000000 0x20000000>;
-	};
 
 	cpus {
 		#address-cells = <1>;
@@ -23,6 +20,11 @@
 			device_type = "cpu";
 			reg = <0>;
 		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x80000000 0>;
 	};
 
 	apb {
@@ -91,6 +93,13 @@
 
 		};
 
+		espi: espi@1e6ee000 {
+			compatible = "aspeed,ast2600-espi";
+			reg = <0x1e6ee000 0x200>;
+			interrupts = <23>;
+			resets = <&syscon ASPEED_RESET_ESPI>;
+		};
+
 		timer: timer@1e782000 {
 			/* This timer is a Faraday FTTMR010 derivative */
 			compatible = "aspeed,ast2600-timer";
@@ -111,6 +120,25 @@
 			clocks = <&syscon ASPEED_CLK_GATE_UART5CLK>;
 #endif
 			no-loopback-test;
+		};
+
+		wdt1: watchdog@1e785000 {
+			compatible = "aspeed,ast2600-wdt";
+			reg = <0x1e785000 0x20>;
+			clocks = <&syscon ASPEED_CLK_APB>;
+		};
+
+		wdt2: watchdog@1e785020 {
+			compatible = "aspeed,ast2600-wdt";
+			reg = <0x1e785020 0x20>;
+			clocks = <&syscon ASPEED_CLK_APB>;
+		};
+
+		wdt3: watchdog@1e785040 {
+			compatible = "aspeed,ast2600-wdt";
+			reg = <0x1e785040 0x20>;
+			clocks = <&syscon ASPEED_CLK_APB>;
+			status = "disabled";
 		};
 
 		i2c: i2c@1e78a000 {
@@ -138,7 +166,7 @@
 &i2c {
 	i2c_ic: interrupt-controller@0 {
 		#interrupt-cells = <1>;
-		compatible = "aspeed,ast2600-i2c-ic";
+		compatible = "aspeed,ast2600-i2c-ic", "syscon", "simple-mfd";
 		resets = <&syscon ASPEED_RESET_I2C>;
 		reg = <0x0 0x40>;
 		interrupts = <37>;
@@ -151,12 +179,22 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x80 0x80 0xC00 0x20>;
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
+#else
+		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
+#endif
 		clocks = <&syscon ASPEED_CLK_APB>;
 		bus-frequency = <100000>;
 		interrupts = <0>;
 		interrupt-parent = <&i2c_ic>;
 		/* Does not need pinctrl properties */
+#if 0
+		eeprom@64 {
+			compatible = "linux,slave-24c02";
+			reg = <0x40000064>;
+		};
+#endif
 	};
 	i2c1: i2c@100 {
 		#address-cells = <1>;
@@ -164,7 +202,11 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x100 0x80 0xC20 0x20>;
+#if 0
 		compatible = "aspeed,ast-g6-i2c";
+#else
+		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
+#endif
 		clocks = <&syscon ASPEED_CLK_APB>;
 		bus-frequency = <100000>;
 		interrupts = <1>;
