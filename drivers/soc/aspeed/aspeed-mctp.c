@@ -82,10 +82,10 @@
 #define  MCTP_TX_PAYLOAD_128BYTE	(1)
 #define  MCTP_TX_PAYLOAD_256BYTE	(2)
 #define  MCTP_TX_PAYLOAD_512BYTE	(3)
-#define ASPEED_MCTP_RXBUFF_ADDR		0x20
-#define ASPEED_MCTP_RXBUFF_SIZE		0x24
-#define ASPEED_MCTP_WRITE_POINT		0x28
-#define ASPEED_MCTP_READ_POINT		0x2C
+#define ASPEED_MCTP_RX_DESC_ADDR	0x20
+#define ASPEED_MCTP_RX_DESC_NUM		0x24
+#define ASPEED_MCTP_RX_WRITE_PT		0x28
+#define ASPEED_MCTP_RX_READ_PT		0x2C
 /* ast2600 mctp use tx cmd descript */
 #define ASPEED_MCTP_TX_DESC_ADDR	0x30
 #define ASPEED_MCTP_TX_DESC_NUM		0x34
@@ -393,8 +393,9 @@ static void aspeed_mctp_ctrl_init(struct aspeed_mctp_info *aspeed_mctp)
 		aspeed_mctp_write(aspeed_mctp, aspeed_mctp->tx_fifo_num, ASPEED_MCTP_TX_DESC_NUM);
 		aspeed_mctp_write(aspeed_mctp, 0, ASPEED_MCTP_TX_READ_PT);
 		
-	} else 
+	} else {
 		aspeed_mctp_write(aspeed_mctp, aspeed_mctp->tx_cmd_desc_dma, ASPEED_MCTP_TX_CMD);
+	}
 	
 	aspeed_mctp->rx_idx = 0;
 	aspeed_mctp->rx_hw_idx = 0;
@@ -407,6 +408,10 @@ static void aspeed_mctp_ctrl_init(struct aspeed_mctp_info *aspeed_mctp)
 			rx_cmd_desc[i] = (u32)aspeed_mctp->rx_pool_dma + (aspeed_mctp->rx_fifo_size * i);
 			MCTP_DBUG("Rx [%d]: desc: %x , \n", i, rx_cmd_desc[i]);
 		}
+		aspeed_mctp_write(aspeed_mctp, aspeed_mctp->rx_cmd_desc_dma, ASPEED_MCTP_RX_DESC_ADDR);
+		aspeed_mctp_write(aspeed_mctp, aspeed_mctp->rx_fifo_num, ASPEED_MCTP_RX_DESC_NUM);
+		aspeed_mctp_write(aspeed_mctp, 0, ASPEED_MCTP_RX_READ_PT);
+		aspeed_mctp_write(aspeed_mctp, MCTP_TX_CMD_WRONG | MCTP_RX_NO_CMD, ASPEED_MCTP_IER);
 	} else {
 		//ast2400/ast2500 : each 128 bytes align, and only 64 bytes can recevice
 		struct aspeed_mctp_cmd_desc *rx_cmd_desc = aspeed_mctp->rx_cmd_desc;
@@ -417,20 +422,10 @@ static void aspeed_mctp_ctrl_init(struct aspeed_mctp_info *aspeed_mctp)
 				rx_cmd_desc[i].desc1 |= LAST_CMD;
 			MCTP_DBUG("Rx [%d]: desc0: %x , desc1: %x \n", i, rx_cmd_desc[i].desc0, rx_cmd_desc[i].desc1);
 		}
-	}
-
-	aspeed_mctp_write(aspeed_mctp, aspeed_mctp->rx_cmd_desc_dma, ASPEED_MCTP_RX_CMD);
-
-	if (aspeed_mctp->mctp_version == 6) {
-		aspeed_mctp_write(aspeed_mctp, aspeed_mctp->rx_fifo_num, ASPEED_MCTP_RXBUFF_SIZE);
-		aspeed_mctp_write(aspeed_mctp, 0, ASPEED_MCTP_READ_POINT);
-	}
-
-	if (aspeed_mctp->mctp_version == 6)
-		aspeed_mctp_write(aspeed_mctp, MCTP_RX_COMPLETE | MCTP_TX_CMD_WRONG | MCTP_RX_NO_CMD, ASPEED_MCTP_IER);
-	else
+		aspeed_mctp_write(aspeed_mctp, aspeed_mctp->rx_cmd_desc_dma, ASPEED_MCTP_RX_CMD);
 		aspeed_mctp_write(aspeed_mctp, MCTP_RX_COMPLETE | MCTP_TX_LAST | MCTP_RX_NO_CMD, ASPEED_MCTP_IER);
-	
+	}
+
 	aspeed_mctp_write(aspeed_mctp, aspeed_mctp_read(aspeed_mctp, ASPEED_MCTP_CTRL) | MCTP_RX_CMD_RDY, ASPEED_MCTP_CTRL);
 }
 
@@ -496,6 +491,7 @@ static long mctp_ioctl(struct file *file, unsigned int cmd,
 	struct miscdevice *c = file->private_data;
 	struct aspeed_mctp_info *aspeed_mctp = dev_get_drvdata(c->this_device);
 	void __user *argp = (void __user *)arg;
+	int recv_length;
 	struct aspeed_mctp_xfer mctp_xfer;
 
 	switch (cmd) {
@@ -508,36 +504,40 @@ static long mctp_ioctl(struct file *file, unsigned int cmd,
 			}
 		}
 
-		if (copy_from_user(&mctp_xfer, argp, sizeof(struct aspeed_mctp_xfer))) {
-			MCTP_DBUG("copy_from_user fail\n");
+		if(aspeed_mctp_tx_xfer(aspeed_mctp, argp))
 			return -EFAULT;
-		} else {
-			if(aspeed_mctp_tx_xfer(aspeed_mctp, argp))
-				return -EFAULT;
-			else
-				return 0;
-		}			
+		else
+			return 0;
+
 		break;
 	case ASPEED_MCTP_IOCRX:
 		// MCTP_DBUG("ASPEED_MCTP_IOCRX \n");
 		if (aspeed_mctp->mctp_version == 6) {
-			struct pcie_vdm_header *vdm = aspeed_mctp->rx_pool + (aspeed_mctp->rx_fifo_size * aspeed_mctp->rx_idx);
-			if (copy_to_user(argp, &vdm, (vdm->length * 4) + vdm->pad_len))
+			if(aspeed_mctp->rx_idx == aspeed_mctp_read(aspeed_mctp, ASPEED_MCTP_RX_WRITE_PT)) {
+				MCTP_DBUG("No rx data\n");
 				return -EFAULT;
-			else {
+			} else {
+				struct pcie_vdm_header *vdm = aspeed_mctp->rx_pool + (aspeed_mctp->rx_fifo_size * aspeed_mctp->rx_idx);
+				u32 *rx_buffer = aspeed_mctp->rx_pool + (aspeed_mctp->rx_fifo_size * aspeed_mctp->rx_idx) + sizeof(struct pcie_vdm_header);
+				struct aspeed_mctp_xfer *mctp_rx_xfer = (struct aspeed_mctp_xfer *)arg;
+				recv_length = (vdm->length * 4) + vdm->pad_len;
+				
+				if (copy_to_user(&mctp_rx_xfer->header, vdm, sizeof(struct pcie_vdm_header)))
+					return -EFAULT;
+				else {
+					if (copy_to_user(mctp_rx_xfer->xfer_buff, rx_buffer, recv_length))
+						return -EFAULT;
+				}
+				
 				aspeed_mctp->rx_idx++;
 				aspeed_mctp->rx_idx %= aspeed_mctp->rx_fifo_num;
-				aspeed_mctp_write(aspeed_mctp, aspeed_mctp->rx_idx, ASPEED_MCTP_RXBUFF_SIZE);
-			}
-			if (aspeed_mctp->rx_full) {
-				printk("TODO check \n");
-				aspeed_mctp->rx_hw_idx++;
+				aspeed_mctp_write(aspeed_mctp, aspeed_mctp->rx_idx, ASPEED_MCTP_RX_READ_PT);
 			}
 		} else {
 			struct aspeed_mctp_cmd_desc *rx_cmd_desc = aspeed_mctp->rx_cmd_desc;
 			u32 desc0 = rx_cmd_desc[aspeed_mctp->rx_idx].desc0;
 			unsigned int pci_bdf;
-			int recv_length;
+			
 
 			if (copy_from_user(&mctp_xfer, argp, sizeof(struct aspeed_mctp_xfer))) {
 				MCTP_DBUG("copy_from_user fail\n");
