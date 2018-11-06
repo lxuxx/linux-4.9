@@ -244,7 +244,6 @@ struct aspeed_espi_xfer {
 #define ASPEED_ESPI_PERIP_IOCRX			_IOWR(ESPIIOC_BASE, 0x10, struct aspeed_espi_xfer)			//post rx
 #define ASPEED_ESPI_PERIP_IOCTX			_IOW(ESPIIOC_BASE, 0x11, struct aspeed_espi_xfer)				//post tx
 #define ASPEED_ESPI_PERINP_IOCTX		_IOW(ESPIIOC_BASE, 0x12, struct aspeed_espi_xfer)				//non-post tx
-#define ASPEED_ESPI_OOB_IOCRX			_IOWR(ESPIIOC_BASE, 0x13, struct aspeed_espi_xfer)
 
 #define ASPEED_ESPI_FLASH_IOCRX			_IOWR(ESPIIOC_BASE, 0x15, struct aspeed_espi_xfer)
 #define ASPEED_ESPI_FLASH_IOCTX			_IOW(ESPIIOC_BASE, 0x16, struct aspeed_espi_xfer)
@@ -769,21 +768,6 @@ espi_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		} else
 			aspeed_espi_pcnp_tx(aspeed_espi);
 		break;
-	case ASPEED_ESPI_OOB_IOCRX:
-		ESPI_DBUG(" \n");
-#if 0		
-//		xfer->header = aspeed_espi->oob_rx_channel.header;
-		xfer->buf_len = aspeed_espi->oob_rx_channel.buf_len;
-		if (copy_to_user(xfer->xfer_buf, aspeed_espi->oob_rx_channel.buff, aspeed_espi->oob_rx_channel.buf_len))
-			ret = -EFAULT;
-		
-		if(aspeed_espi->espi_version == 6) || (aspeed_espi->dma_mode == 1) {
-			
-		} else {
-			aspeed_espi_write(aspeed_espi, ESPI_TRIGGER_PACKAGE, ASPEED_ESPI_OOB_RX_CTRL);
-		}
-#endif		
-		break;
 #ifdef CONFIG_COLDFIRE_ESPI
 #else
 	case ASPEED_ESPI_FLASH_IOCRX:
@@ -1174,7 +1158,7 @@ static ssize_t aspeed_oob_channel_rx(struct file *filp, struct kobject *kobj,
 		u32 write_pt = (aspeed_espi_read(aspeed_espi, ASPEED_ESPI_OOB_RX_WRITE_PT) & 0x3ff);
 		
 		if(aspeed_espi->oob_rx_cmd[write_pt].cmd & BIT(31)) {
-			u8	*rx_buff = aspeed_espi->oob_rx_buff[write_pt * OOB_BUFF_SIZE];
+			u8	*rx_buff = &aspeed_espi->oob_rx_buff[write_pt * OOB_BUFF_SIZE];
 			u32 rx_len = (aspeed_espi->oob_rx_cmd[write_pt].cmd >> 12) & 0xfff;
 			memcpy(buf, rx_buff, rx_len);
 			count = rx_len;
