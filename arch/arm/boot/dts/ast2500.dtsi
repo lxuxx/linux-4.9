@@ -115,7 +115,6 @@
 			clocks = <&syscon ASPEED_CLK_GATE_USBPORT1CLK>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_usb2ah_default>;
-			status = "disabled";
 		};
 
 		ehci1: usb@1e6a3000 {
@@ -134,7 +133,7 @@
 			#ports = <2>;
 			clocks = <&syscon ASPEED_CLK_GATE_USBUHCICLK>;
 		};
-
+#if 0
 		udc: udc@0x1e6a0000 {
 			compatible = "aspeed,ast-udc";
 			reg = <0x1e6a0000 0x300>;
@@ -144,6 +143,7 @@
 			pinctrl-0 = <&pinctrl_usb2ad_default>;
 			list_mode = <0>;
 		};
+#endif
 
 #if 0
 		ast_mbx@0x1e6c2000 {
@@ -198,7 +198,7 @@
 		};
 
 		jtag: jtag@1e6e4000 {
-			compatible = "aspeed,aspeed-jtag";
+			compatible = "aspeed,ast2500-jtag";
 			reg= <0x1e6e4000 0x20>;
 			interrupts = <43>;
 			clocks = <&syscon ASPEED_CLK_APB>;
@@ -231,6 +231,16 @@
 			resets = <&syscon ASPEED_RESET_MCTP>;
 		};
 
+#if 1
+		adc: adc@1e6e9000 {
+                                compatible = "aspeed,ast2500-adc";
+                                reg = <0x1e6e9000 0xb0>;
+                                clocks = <&syscon ASPEED_CLK_APB>;
+                                resets = <&syscon ASPEED_RESET_ADC>;
+                                #io-channel-cells = <1>;
+                };
+
+#else
 		adc: adc@1e6e9000 {
 			compatible = "aspeed,ast2500-adc";
 			reg = <0x1e6e9000 0xb0>;
@@ -247,7 +257,7 @@
 				&pinctrl_adc12_default &pinctrl_adc13_default
 				&pinctrl_adc14_default &pinctrl_adc15_default>;	
 		};
-
+#endif
 		pcie_host: pcie_host@1e6ed000 {
 			#compatible = "aspeed,ast-pcie";
 			#reg = <0x1e6ed000 0xd0>;

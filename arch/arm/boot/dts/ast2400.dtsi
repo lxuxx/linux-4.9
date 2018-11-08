@@ -152,7 +152,7 @@
 		};
 
 		jtag: jtag@1e6e4000 {
-			compatible = "aspeed,aspeed-jtag";
+			compatible = "aspeed,ast2400-jtag";
 			reg= <0x1e6e4000 0x20>;
 			interrupts = <43>;
 			clocks = <&syscon ASPEED_CLK_APB>;

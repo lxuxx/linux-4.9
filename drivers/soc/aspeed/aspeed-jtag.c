@@ -32,6 +32,8 @@
 #include <linux/platform_device.h>
 #include <linux/reset.h>
 #include <asm/io.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 #include <asm/uaccess.h>
 /******************************************************************************/
 #define ASPEED_JTAG_DATA		0x00
@@ -157,6 +159,7 @@ struct trst_reset {
 
 struct aspeed_jtag_info {
 	void __iomem		*reg_base;
+	int			jtag_version;
 	u8			sts;	//0: idle, 1:irpause 2:drpause
 	int			irq;		//JTAG IRQ number
 	struct reset_control	*reset;
@@ -664,19 +667,18 @@ void JTAG_reset(struct aspeed_jtag_info *aspeed_jtag)
 }
 
 /*************************************************************************************/
-struct aspeed_jtag_info *aspeed_jtag;
-
 static long jtag_ioctl(struct file *file, unsigned int cmd,
 		       unsigned long arg)
 {
-	int ret = 0;
-	struct aspeed_jtag_info *aspeed_jtag = file->private_data;
+	struct miscdevice *c = file->private_data;
+	struct aspeed_jtag_info *aspeed_jtag = dev_get_drvdata(c->this_device);
 	void __user *argp = (void __user *)arg;
 	struct sir_xfer sir;
 	struct sdr_xfer sdr;
 	struct io_xfer io;
 	struct trst_reset trst_pin;
 	struct runtest_idle run_idle;
+	int ret = 0;
 
 	switch (cmd) {
 	case ASPEED_JTAG_GIOCFREQ:
@@ -828,11 +830,10 @@ static long jtag_ioctl(struct file *file, unsigned int cmd,
 
 static int jtag_open(struct inode *inode, struct file *file)
 {
-//	struct aspeed_jtag_info *drvdata;
+	struct miscdevice *c = file->private_data;
+	struct aspeed_jtag_info *aspeed_jtag = dev_get_drvdata(c->this_device);
 
 	spin_lock(&jtag_state_lock);
-
-//	drvdata = container_of(inode->i_cdev, struct aspeed_jtag_info, cdev);
 
 	if (aspeed_jtag->is_open) {
 		spin_unlock(&jtag_state_lock);
@@ -840,7 +841,6 @@ static int jtag_open(struct inode *inode, struct file *file)
 	}
 
 	aspeed_jtag->is_open = true;
-	file->private_data = aspeed_jtag;
 
 	spin_unlock(&jtag_state_lock);
 
@@ -849,11 +849,13 @@ static int jtag_open(struct inode *inode, struct file *file)
 
 static int jtag_release(struct inode *inode, struct file *file)
 {
-	struct aspeed_jtag_info *drvdata = file->private_data;
+	struct miscdevice *c = file->private_data;
+	struct aspeed_jtag_info *aspeed_jtag = dev_get_drvdata(c->this_device);
+
 
 	spin_lock(&jtag_state_lock);
 
-	drvdata->is_open = false;
+	aspeed_jtag->is_open = false;
 
 	spin_unlock(&jtag_state_lock);
 
@@ -975,9 +977,20 @@ struct miscdevice aspeed_jtag_misc = {
 	.fops	= &aspeed_jtag_fops,
 };
 
+static const struct of_device_id aspeed_jtag_of_matches[] = {
+	{ .compatible = "aspeed,ast2400-jtag", .data = (void *) 0, },
+	{ .compatible = "aspeed,ast2500-jtag", .data = (void *) 0, },
+	{ .compatible = "aspeed,ast2600-jtag", .data = (void *) 6, },	
+	{ .compatible = "aspeed,aspeed-jtag", .data = (void *) 1, },	//new controller 
+	{},
+};
+MODULE_DEVICE_TABLE(of, aspeed_jtag_of_matches);
+
 static int aspeed_jtag_probe(struct platform_device *pdev)
 {
-	struct resource *res;
+	struct aspeed_jtag_info *aspeed_jtag;
+	const struct of_device_id *jtag_dev_id;
+	struct resource *res;	
 	int ret = 0;
 
 	JTAG_DBUG("aspeed_jtag_probe\n");
@@ -985,6 +998,10 @@ static int aspeed_jtag_probe(struct platform_device *pdev)
 	aspeed_jtag = devm_kzalloc(&pdev->dev, sizeof(struct aspeed_jtag_info), GFP_KERNEL);
 	if (!aspeed_jtag)
 		return -ENOMEM;
+
+	jtag_dev_id = of_match_device(aspeed_jtag_of_matches, &pdev->dev);
+	if (!jtag_dev_id)
+		return -EINVAL;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (res == NULL) {
@@ -1018,16 +1035,21 @@ static int aspeed_jtag_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 	aspeed_jtag->apb_clk = clk_get_rate(aspeed_jtag->clk);
-
+	aspeed_jtag->jtag_version = (int)jtag_dev_id->data;
+	
 	//scu init
 	reset_control_assert(aspeed_jtag->reset);
 	udelay(3);
 	reset_control_deassert(aspeed_jtag->reset);
 
-	aspeed_jtag_write(aspeed_jtag, JTAG_ENG_EN | JTAG_ENG_OUT_EN, ASPEED_JTAG_CTRL);  //Eanble Clock
-	//Enable sw mode for disable clk
-	aspeed_jtag_write(aspeed_jtag, JTAG_SW_MODE_EN | JTAG_SW_MODE_TDIO, ASPEED_JTAG_SW);
-
+	if(aspeed_jtag->jtag_version == 1) {
+		//new version jtag 
+	} else {
+		aspeed_jtag_write(aspeed_jtag, JTAG_ENG_EN | JTAG_ENG_OUT_EN, ASPEED_JTAG_CTRL);  //Eanble Clock
+		//Enable sw mode for disable clk
+		aspeed_jtag_write(aspeed_jtag, JTAG_SW_MODE_EN | JTAG_SW_MODE_TDIO, ASPEED_JTAG_SW);
+	}
+	
 	ret = devm_request_irq(&pdev->dev, aspeed_jtag->irq, aspeed_jtag_interrupt,
 			       0, dev_name(&pdev->dev), aspeed_jtag);
 	if (ret) {
@@ -1109,12 +1131,6 @@ aspeed_jtag_resume(struct platform_device *pdev)
 	return 0;
 }
 #endif
-
-static const struct of_device_id aspeed_jtag_of_matches[] = {
-	{ .compatible = "aspeed,aspeed-jtag", },
-	{},
-};
-MODULE_DEVICE_TABLE(of, aspeed_jtag_of_matches);
 
 static struct platform_driver aspeed_jtag_driver = {
 	.probe		= aspeed_jtag_probe,
