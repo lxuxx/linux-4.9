@@ -45,37 +45,36 @@
 #define AST_JTAG_STS			0x3C
 
 /* 	AST_JTAG_PADDING_CTRL - 0x28 : Padding control */
-#define JTAG_PADDING_DATA			(0x1 << 24)
+#define JTAG_PADDING_DATA			BIT(24)
 #define JTAG_POST_PADDING_NUM(x)	((x) << 12)
 #define JTAG_PRE_PADDING_NUM(x)		(x)
 
 /* 	AST_JTAG_SHIFT_CTRL - 0x30 : Shift control */
-#define JTAG_TCK_FREE_RUN_EN		(0x1 << 31)
-#define JTAG_STATIC_SHIFT_EN		(0x1 << 30)
+#define JTAG_TCK_FREE_RUN_EN		BIT(31)
+#define JTAG_STATIC_SHIFT_EN		BIT(30)
 #define JTAG_SHIFT_TMS(x)			((x) << 16)
 #define JTAG_POST_TMS_SHIFT_NUM(x)	((x) << 13)
 #define JTAG_PRE_TMS_SHIFT_NUM(x)	((x) << 10)
-#define JTAG_PADDING_SELECT1		(0x1 << 9)
-#define JTAG_END_OF_SHIFT			(0x1 << 8)
-#define JTAG_START_OF_SHIFT			(0x1 << 7)
+#define JTAG_PADDING_SELECT1		BIT(9)
+#define JTAG_END_OF_SHIFT			BIT(8)
+#define JTAG_START_OF_SHIFT			BIT(7)
 #define JTAG_DATA_SHIFT_NUM(x)		(x)
 
 /*	AST_JTAG_GBL_CTRL - 0x34 : Global control */
-#define JTAG_ENG_MODE_EN		(0x1 << 31)
-#define JTAG_ENG_OUTPUT_EN		(0x1 << 30)
-#define JTAG_ENG_FORCE_RESET	(0x1 << 29)
+#define JTAG_ENG_MODE_EN			BIT(31)
+#define JTAG_ENG_OUTPUT_EN			BIT(30)
+#define JTAG_ENG_FORCE_RESET		BIT(29)
 
-#define JTAG_STATIC_SHIFT_VAL	(0x1 << 16)
-#define JTAG_CLK_DIV(x)			(x)			/*TCK period = Period of HCLK * (JTAG14[10:0] + 1)*/
-#define JTAG_CLK_DIVISOR_MASK	(0x7ff)
-#define JTAG_GET_CLK_DIVISOR(x)	(x & 0x7ff)
+#define JTAG_STATIC_SHIFT_VAL		BIT(16)
+#define JTAG_CLK_DIV(x)				(x)			/*TCK period = Period of HCLK * (JTAG14[10:0] + 1)*/
+#define JTAG_CLK_DIVISOR_MASK		(0xfff)
+#define JTAG_GET_CLK_DIVISOR(x)		(x & 0xfff)
 
 /* AST_JTAG_IER	- 0x38 : Interrupt Control */
-#define JTAG_SHIFT_COMP_ISR_EN	(0x1 << 16)
-#define JTAG_SHIFT_COMP_ISR		(0x1)
+#define JTAG_SHIFT_COMP_ISR_EN		BIT(16)
+#define JTAG_SHIFT_COMP_ISR			BIT(0)
 /* AST_JTAG_IER	- 0x3C : Status */
 #define JTAG_ENG_BUSY
-
 /*************************************************************************************/
 struct jtag_xfer {
 	int	dir;		//0: in 1:out
