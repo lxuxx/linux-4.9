@@ -49,8 +49,6 @@
 #define  HACE_CMD_CFB			BIT(5)
 #define  HACE_CMD_OFB			(0x3 << 4)
 #define  HACE_CMD_CTR			BIT(6)
-#define  HACE_CMD_IV_REQUIRE		(HACE_CMD_CBC | HACE_CMD_CFB | \
-					 HACE_CMD_OFB | HACE_CMD_CTR)
 #define  HACE_CMD_AES128		(0)
 #define  HACE_CMD_AES192		BIT(2)
 #define  HACE_CMD_AES256		BIT(3)
@@ -94,6 +92,9 @@
 #define ASPEED_CRYPTO_G6		BIT(0)
 #define ASPEED_CRYPTO_G6_RSA_BUFF_SIZE	508
 #define ASPEED_CRYPTO_RSA_BUFF_SIZE	508
+
+#define HACE_CMD_IV_REQUIRE		(HACE_CMD_CBC | HACE_CMD_CFB | \
+					 HACE_CMD_OFB | HACE_CMD_CTR)
 
 #define ASPEED_EUCLID_CTX_LEN		13312
 #define ASPEED_EUCLID_LEN		1024
@@ -144,36 +145,40 @@ struct aspeed_cipher_ctx {
 
 typedef int (*aspeed_crypto_fn_t)(struct aspeed_crypto_dev *);
 
+struct aspeed_engine_skcipher {
+	struct crypto_queue		queue;
+	struct tasklet_struct		done_task;
+	struct tasklet_struct		queue_task;
+	bool				is_async;
+	spinlock_t			lock;
+	aspeed_crypto_fn_t		resume;
+	unsigned long			flags;
+
+	struct ablkcipher_request	*ablk_req;
+	void				*cipher_addr;
+	dma_addr_t			cipher_dma_addr;
+};
+
+struct aspeed_engine_hash {
+
+	void __iomem			*rsa_buff;
+	struct ahash_request		*ahash_req;
+};
+
+struct aspeed_engine_akcipher {
+	unsigned long			rsa_max_buf_len;
+	struct akcipher_request		*akcipher_req;
+
+};
+
 struct aspeed_crypto_dev {
 	void __iomem			*regs;
-	void __iomem			*rsa_buff;
 	struct device			*dev;
 	int 				irq;
 	struct clk			*yclk;
 	struct clk			*rsaclk;
-	spinlock_t			lock;
-
-	bool				is_async;
-	aspeed_crypto_fn_t		resume;
-	//hash
-	struct crypto_queue		queue;
-
-	struct tasklet_struct		done_task;
-	struct tasklet_struct		queue_task;
-
-	unsigned long			flags;
 	unsigned long			version;
-	unsigned long			rsa_max_buf_len;
-
-	size_t	total;
-
-	struct ablkcipher_request	*ablk_req;
-	struct ahash_request		*ahash_req;
-	struct akcipher_request		*akcipher_req;
-
-	/* ablkcipher */
-	void				*cipher_addr;
-	dma_addr_t			cipher_dma_addr;
+	struct aspeed_engine_skcipher	sk_engine;
 };
 
 struct aspeed_crypto_alg {
