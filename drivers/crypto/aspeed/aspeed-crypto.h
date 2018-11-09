@@ -308,7 +308,7 @@ extern int aspeed_crypto_ablkcipher_trigger(struct aspeed_crypto_dev *aspeed_cry
 extern int aspeed_hash_trigger(struct aspeed_crypto_dev *aspeed_crypto);
 extern int aspeed_hash_handle_queue(struct aspeed_crypto_dev *aspeed_crypto, struct ahash_request *req);
 
-extern int aspeed_register_crypto_algs(struct aspeed_crypto_dev *crypto_dev);
+extern int aspeed_register_skcipher_algs(struct aspeed_crypto_dev *crypto_dev);
 extern int aspeed_register_ahash_algs(struct aspeed_crypto_dev *crypto_dev);
 extern int aspeed_register_akcipher_algs(struct aspeed_crypto_dev *crypto_dev);
 extern int aspeed_register_kpp_algs(struct aspeed_crypto_dev *crypto_dev);
