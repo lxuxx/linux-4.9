@@ -182,8 +182,6 @@ static irqreturn_t aspeed_intel_jtag_interrupt(int this_irq, void *dev_id)
 }
 
 /*************************************************************************************/
-static struct aspeed_intel_jtag_info *aspeed_intel_jtag;
-
 static long aspeed_intel_jtag_ioctl(struct file *file, unsigned int cmd,
 					   unsigned long arg)
 {
@@ -221,7 +219,8 @@ static long aspeed_intel_jtag_ioctl(struct file *file, unsigned int cmd,
 
 static int aspeed_intel_jtag_open(struct inode *inode, struct file *file)
 {
-//	struct aspeed_intel_jtag_info *drvdata;
+	struct miscdevice *c = file->private_data;
+	struct aspeed_intel_jtag_info *aspeed_intel_jtag = dev_get_drvdata(c->this_device);
 
 	spin_lock(&jtag_state_lock);
 
@@ -233,7 +232,6 @@ static int aspeed_intel_jtag_open(struct inode *inode, struct file *file)
 	}
 
 	aspeed_intel_jtag->is_open = true;
-	file->private_data = aspeed_intel_jtag;
 
 	spin_unlock(&jtag_state_lock);
 
@@ -242,11 +240,12 @@ static int aspeed_intel_jtag_open(struct inode *inode, struct file *file)
 
 static int aspeed_intel_jtag_release(struct inode *inode, struct file *file)
 {
-	struct aspeed_intel_jtag_info *drvdata = file->private_data;
+	struct miscdevice *c = file->private_data;
+	struct aspeed_intel_jtag_info *aspeed_intel_jtag = dev_get_drvdata(c->this_device);
 
 	spin_lock(&jtag_state_lock);
 
-	drvdata->is_open = false;
+	aspeed_intel_jtag->is_open = false;
 
 	spin_unlock(&jtag_state_lock);
 
@@ -299,36 +298,9 @@ static struct miscdevice aspeed_intel_jtag_misc = {
 };
 
 /************************************************************************************************************/
-int aspeed_jtag_jinit(struct aspeed_intel_jtag_state *astate)
-{
-	struct aspeed_intel_jtag *js = &astate->js;
-
-	/* initial JTAG state is unknown */
-	js->jtag_state = ILLEGAL_JTAG_STATE;
-
-	/* initialize to default state */
-	js->drstop_state = IDLE;
-	js->irstop_state = IDLE;
-	js->dr_pre  = 0;
-	js->dr_post = 0;
-	js->ir_pre  = 0;
-	js->ir_post = 0;
-	js->dr_length    = 0;
-	js->ir_length    = 0;
-
-	js->dr_pre_data  = NULL;
-	js->dr_post_data = NULL;
-	js->ir_pre_data  = NULL;
-	js->ir_post_data = NULL;
-	js->dr_buffer	 = NULL;
-	js->ir_buffer	 = NULL;
-
-	return 0;
-}
-/************************************************************************************************************/
-
 static int aspeed_intel_jtag_probe(struct platform_device *pdev)
 {
+	struct aspeed_intel_jtag_info *aspeed_intel_jtag;
 	struct resource *res;
 	int ret = 0;
 
