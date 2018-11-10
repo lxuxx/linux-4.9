@@ -45,7 +45,7 @@
 #define ASPEED_INTEL_JTAG_ISR				0x38
 
 /* 	ASPEED_INTEL_JTAG_PADDING_CTRL - 0x28 : Padding control */
-#define JTAG_PADDING_DATA			BIT(24)
+#define JTAG_PADDING_DATA(x)		((x) << 24)
 #define JTAG_POST_PADDING_NUM(x)	((x) << 12)
 #define JTAG_PRE_PADDING_NUM(x)		(x)
 
@@ -65,6 +65,10 @@
 #define JTAG_ENG_OUTPUT_EN			BIT(30)
 #define JTAG_ENG_FORCE_RESET		BIT(29)
 
+#define JTAG_FIFO_RESET				BIT(25)
+#define JTAG_ENGINE_FIFO_MODE		BIT(24)
+
+
 #define JTAG_STATIC_SHIFT_VAL		BIT(16)
 #define JTAG_CLK_DIV(x)				(x)			/*TCK period = Period of HCLK * (JTAG14[10:0] + 1)*/
 #define JTAG_CLK_DIVISOR_MASK		(0xfff)
@@ -82,9 +86,11 @@ struct intel_jtag_xfer {
 	u16 tms_value;
 	u8 post_tms_cycle;
 	u8 pre_tms_cycle;
+	int padding_enable;
 	u16 pre_padding;
 	u16 post_padding;
 	u8 padding_bit;
+	u16 shiftbits;	
 	u32 *shiftdata;
 };
 
@@ -159,9 +165,69 @@ static unsigned int aspeed_intel_jtag_get_freq(struct aspeed_intel_jtag_info *as
 /******************************************************************************/
 static int aspeed_intel_jtag_xfer(struct aspeed_intel_jtag_info *aspeed_intel_jtag, struct intel_jtag_xfer *xfer)
 {
-//	JTAG_DBUG("%s mode, ENDIR : %d, len : %d \n", sir->mode ? "SW" : "HW", sir->endir, sir->length);
+	int i, count = 0;
+	u32 jtag_shift_config = 0;
+	
+	if(xfer->shiftbits > 512)
+		return 1;
 
+	init_completion(&aspeed_intel_jtag->xfer_complete);
+	//reset fifo
+	aspeed_intel_jtag_write(aspeed_intel_jtag, aspeed_intel_jtag_read(aspeed_intel_jtag, ASPEED_INTEL_JTAG_GBL_CTRL) | 
+						JTAG_FIFO_RESET, ASPEED_INTEL_JTAG_GBL_CTRL);
+	//wait for rest 
+	while(aspeed_intel_jtag_read(aspeed_intel_jtag, ASPEED_INTEL_JTAG_GBL_CTRL) & JTAG_FIFO_RESET);
 
+	//switch fifo to cpu mode
+	aspeed_intel_jtag_write(aspeed_intel_jtag, aspeed_intel_jtag_read(aspeed_intel_jtag, ASPEED_INTEL_JTAG_GBL_CTRL) & 
+						~JTAG_ENGINE_FIFO_MODE, ASPEED_INTEL_JTAG_GBL_CTRL);
+
+	//shift data to fifo
+	count = xfer->shiftbits / 32;
+	if(xfer->shiftbits % 32)
+		count++;
+	
+	for(i = 0; i < count; i++) {
+		if(i % 2)
+			aspeed_intel_jtag_write(aspeed_intel_jtag, xfer->shiftdata[i], ASPEED_INTEL_JTAG_DATA0);
+		else
+			aspeed_intel_jtag_write(aspeed_intel_jtag, xfer->shiftdata[i], ASPEED_INTEL_JTAG_DATA1);
+	}
+
+	//switch fifo to engine mode
+	aspeed_intel_jtag_write(aspeed_intel_jtag, aspeed_intel_jtag_read(aspeed_intel_jtag, ASPEED_INTEL_JTAG_GBL_CTRL) |
+						JTAG_ENGINE_FIFO_MODE, ASPEED_INTEL_JTAG_GBL_CTRL);
+
+	//padding setting
+	if(xfer->padding_enable) {
+		aspeed_intel_jtag_write(aspeed_intel_jtag, 
+						JTAG_PADDING_DATA(xfer->padding_bit) |
+						JTAG_PRE_PADDING_NUM(xfer->pre_padding) |
+						JTAG_POST_PADDING_NUM(xfer->post_padding), 
+						ASPEED_INTEL_JTAG_PADDING_CTRL1);
+	}
+
+	//shift trigger
+	jtag_shift_config = JTAG_TCK_FREE_RUN_EN | 
+						JTAG_STATIC_SHIFT_EN |
+						JTAG_SHIFT_TMS(xfer->tms_value) |
+						JTAG_PRE_TMS_SHIFT_NUM(xfer->pre_tms_cycle) |
+						JTAG_POST_TMS_SHIFT_NUM(xfer->post_tms_cycle) |
+						JTAG_PADDING_SELECT1;
+
+	if(xfer->first_shift)
+		jtag_shift_config |=JTAG_START_OF_SHIFT;
+
+	if(xfer->last_shift)
+		jtag_shift_config |=JTAG_END_OF_SHIFT;
+
+	if(xfer->shiftbits)
+		jtag_shift_config |=JTAG_DATA_SHIFT_NUM(xfer->shiftbits);
+						
+	aspeed_intel_jtag_write(aspeed_intel_jtag, jtag_shift_config, ASPEED_INTEL_JTAG_SHIFT_CTRL);
+	
+	wait_for_completion(&aspeed_intel_jtag->xfer_complete);
+	
 	return 0;
 }
 /*************************************************************************************/
@@ -188,7 +254,6 @@ static long aspeed_intel_jtag_ioctl(struct file *file, unsigned int cmd,
 	int ret = 0;
 	struct aspeed_intel_jtag_info *aspeed_intel_jtag = file->private_data;
 	void __user *argp = (void __user *)arg;
-	struct intel_jtag_xfer xfer;
 
 	switch (cmd) {
 	case ASPEED_INTEL_JTAG_GIOCFREQ:
@@ -202,12 +267,7 @@ static long aspeed_intel_jtag_ioctl(struct file *file, unsigned int cmd,
 
 		break;
 	case ASPEED_INTEL_JTAG_IOCXFER:
-		if (copy_from_user(&xfer, argp, sizeof(struct intel_jtag_xfer)))
-			ret = -EFAULT;
-		else
-			aspeed_intel_jtag_xfer(aspeed_intel_jtag, &xfer);
-
-		if (copy_to_user(argp, &xfer, sizeof(struct intel_jtag_xfer)))
+		if (aspeed_intel_jtag_xfer(aspeed_intel_jtag, argp))
 			ret = -EFAULT;
 		break;
 	default:
@@ -252,7 +312,7 @@ static int aspeed_intel_jtag_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static ssize_t show_frequency(struct device *dev,
+static ssize_t freq_show(struct device *dev,
 							  struct device_attribute *attr, char *buf)
 {
 	struct aspeed_intel_jtag_info *aspeed_intel_jtag = dev_get_drvdata(dev);
@@ -261,7 +321,7 @@ static ssize_t show_frequency(struct device *dev,
 	return sprintf(buf, "Frequency : %d\n", aspeed_intel_jtag->hclk / (JTAG_GET_CLK_DIVISOR(aspeed_intel_jtag_read(aspeed_intel_jtag, ASPEED_INTEL_JTAG_GBL_CTRL)) + 1));
 }
 
-static ssize_t store_frequency(struct device *dev,
+static ssize_t freq_store(struct device *dev,
 							   struct device_attribute *attr, const char *buf, size_t count)
 {
 	u32 val;
@@ -273,7 +333,8 @@ static ssize_t store_frequency(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR(freq, S_IRUGO | S_IWUSR, show_frequency, store_frequency);
+static DEVICE_ATTR_RW(freq);
+
 
 static struct attribute *jtag_sysfs_entries[] = {
 	&dev_attr_freq.attr,
