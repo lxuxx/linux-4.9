@@ -96,9 +96,10 @@ struct intel_jtag_xfer {
 
 #define JTAGIOC_BASE       'J'
 
-#define ASPEED_INTEL_JTAG_IOCXFER		_IOWR(JTAGIOC_BASE, 0, struct intel_jtag_xfer)
-#define ASPEED_INTEL_JTAG_SIOCFREQ		_IOW(JTAGIOC_BASE, 1, unsigned int)
-#define ASPEED_INTEL_JTAG_GIOCFREQ		_IOR(JTAGIOC_BASE, 2, unsigned int)
+#define ASPEED_INTEL_JTAG_IOCRUNTEST	_IO(JTAGIOC_BASE, 0)
+#define ASPEED_INTEL_JTAG_IOCXFER		_IOWR(JTAGIOC_BASE, 1, struct intel_jtag_xfer)
+#define ASPEED_INTEL_JTAG_SIOCFREQ		_IOW(JTAGIOC_BASE, 2, unsigned int)
+#define ASPEED_INTEL_JTAG_GIOCFREQ		_IOR(JTAGIOC_BASE, 3, unsigned int)
 /******************************************************************************/
 //#define ASPEED_INTEL_JTAG_DEBUG
 
@@ -230,7 +231,7 @@ static int aspeed_intel_jtag_xfer(struct aspeed_intel_jtag_info *aspeed_intel_jt
 	
 	return 0;
 }
-/*************************************************************************************/
+
 static irqreturn_t aspeed_intel_jtag_interrupt(int this_irq, void *dev_id)
 {
 	u32 status;
@@ -247,7 +248,6 @@ static irqreturn_t aspeed_intel_jtag_interrupt(int this_irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-/*************************************************************************************/
 static long aspeed_intel_jtag_ioctl(struct file *file, unsigned int cmd,
 					   unsigned long arg)
 {
@@ -256,22 +256,29 @@ static long aspeed_intel_jtag_ioctl(struct file *file, unsigned int cmd,
 	void __user *argp = (void __user *)arg;
 
 	switch (cmd) {
-	case ASPEED_INTEL_JTAG_GIOCFREQ:
-		ret = __put_user(aspeed_intel_jtag_get_freq(aspeed_intel_jtag), (unsigned int __user *)arg);
-		break;
-	case ASPEED_INTEL_JTAG_SIOCFREQ:
-		if ((unsigned int)arg > aspeed_intel_jtag->hclk)
-			ret = -EFAULT;
-		else
-			aspeed_intel_jtag_set_freq(aspeed_intel_jtag, (unsigned int)arg);
+		case ASPEED_INTEL_JTAG_IOCRUNTEST:
+			aspeed_intel_jtag_write(aspeed_intel_jtag, 
+						aspeed_intel_jtag_read(aspeed_intel_jtag, ASPEED_INTEL_JTAG_GBL_CTRL) |
+						JTAG_ENG_FORCE_RESET, ASPEED_INTEL_JTAG_GBL_CTRL);
+			while(aspeed_intel_jtag_read(aspeed_intel_jtag, ASPEED_INTEL_JTAG_GBL_CTRL) & JTAG_ENG_FORCE_RESET);
+			break;
+		case ASPEED_INTEL_JTAG_GIOCFREQ:
+			ret = __put_user(aspeed_intel_jtag_get_freq(aspeed_intel_jtag), (unsigned int __user *)arg);
+			break;
+		case ASPEED_INTEL_JTAG_SIOCFREQ:
+			if ((unsigned int)arg > aspeed_intel_jtag->hclk)
+				ret = -EFAULT;
+			else
+				aspeed_intel_jtag_set_freq(aspeed_intel_jtag, (unsigned int)arg);
 
-		break;
-	case ASPEED_INTEL_JTAG_IOCXFER:
-		if (aspeed_intel_jtag_xfer(aspeed_intel_jtag, argp))
-			ret = -EFAULT;
-		break;
-	default:
-		return -ENOTTY;
+			break;
+		case ASPEED_INTEL_JTAG_IOCXFER:
+			if (aspeed_intel_jtag_xfer(aspeed_intel_jtag, argp))
+				ret = -EFAULT;
+			break;
+		default:
+			return -ENOTTY;
+			break;
 	}
 
 	return ret;
@@ -334,7 +341,6 @@ static ssize_t freq_store(struct device *dev,
 }
 
 static DEVICE_ATTR_RW(freq);
-
 
 static struct attribute *jtag_sysfs_entries[] = {
 	&dev_attr_freq.attr,
