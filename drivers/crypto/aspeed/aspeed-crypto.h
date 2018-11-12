@@ -10,12 +10,14 @@
 #include <crypto/internal/kpp.h>
 #include <crypto/internal/rsa.h>
 #include <crypto/internal/akcipher.h>
+#include <crypto/internal/skcipher.h>
 #include <crypto/kpp.h>
 #include <crypto/dh.h>
 #include <crypto/aes.h>
 #include <crypto/des.h>
 #include <crypto/algapi.h>
 #include <crypto/akcipher.h>
+#include <crypto/skcipher.h>
 #include <crypto/md5.h>
 #include <crypto/sha.h>
 #include <crypto/ecdh.h>
@@ -154,7 +156,8 @@ struct aspeed_engine_skcipher {
 	aspeed_crypto_fn_t		resume;
 	unsigned long			flags;
 
-	struct ablkcipher_request	*ablk_req;
+	struct skcipher_request		*sk_req;
+	// struct ablkcipher_request	*ablk_req;
 	void				*cipher_addr;
 	dma_addr_t			cipher_dma_addr;
 };
@@ -184,6 +187,7 @@ struct aspeed_crypto_dev {
 struct aspeed_crypto_alg {
 	struct aspeed_crypto_dev	*crypto_dev;
 	union {
+		struct skcipher_alg	skcipher;
 		struct crypto_alg	crypto;
 		struct ahash_alg	ahash;
 		struct kpp_alg 		kpp;
@@ -304,7 +308,7 @@ aspeed_crypto_read(struct aspeed_crypto_dev *crypto, u32 reg)
 extern int aspeed_crypto_ahash_trigger(struct aspeed_crypto_dev *aspeed_crypto);
 extern int aspeed_crypto_rsa_trigger(struct aspeed_crypto_dev *aspeed_crypto);
 
-extern int aspeed_crypto_ablkcipher_trigger(struct aspeed_crypto_dev *aspeed_crypto);
+extern int aspeed_crypto_skcipher_trigger(struct aspeed_crypto_dev *aspeed_crypto);
 extern int aspeed_hash_trigger(struct aspeed_crypto_dev *aspeed_crypto);
 extern int aspeed_hash_handle_queue(struct aspeed_crypto_dev *aspeed_crypto, struct ahash_request *req);
 
