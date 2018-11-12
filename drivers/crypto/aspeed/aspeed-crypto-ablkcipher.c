@@ -16,7 +16,7 @@
  */
 #include "aspeed-crypto.h"
 
-// #define ASPEED_CIPHER_DEBUG
+#define ASPEED_CIPHER_DEBUG
 
 #ifdef ASPEED_CIPHER_DEBUG
 //#define CIPHER_DBG(fmt, args...) printk(KERN_DEBUG "%s() " fmt, __FUNCTION__, ## args)
@@ -315,7 +315,7 @@ static int aspeed_tdes_ctr_decrypt(struct skcipher_request *req)
 
 static int aspeed_tdes_ctr_encrypt(struct skcipher_request *req)
 {
-	CIPHER_DBG("\n");
+	CIPHER_DBG("***************************************\n");
 	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_CTR | HACE_CMD_TRIPLE_DES | HACE_CMD_DES);
 }
 
@@ -696,6 +696,7 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 	},
 	{
 		.alg.skcipher = {
+			.ivsize		= DES_BLOCK_SIZE,
 			.min_keysize	= DES_KEY_SIZE,
 			.max_keysize	= DES_KEY_SIZE,
 			.setkey		= aspeed_des_setkey,
@@ -717,6 +718,7 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 	},
 	{
 		.alg.skcipher = {
+			.ivsize		= DES_BLOCK_SIZE,
 			.min_keysize	= DES_KEY_SIZE,
 			.max_keysize	= DES_KEY_SIZE,
 			.setkey		= aspeed_des_setkey,
@@ -738,8 +740,9 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 	},
 	{
 		.alg.skcipher = {
-			.min_keysize	= 2 * DES_KEY_SIZE,
-			.max_keysize	= 3 * DES_KEY_SIZE,
+			.ivsize		= DES_BLOCK_SIZE,
+			.min_keysize	= DES_KEY_SIZE,
+			.max_keysize	= DES_KEY_SIZE,
 			.setkey		= aspeed_des_setkey,
 			.encrypt	= aspeed_des_ofb_encrypt,
 			.decrypt	= aspeed_des_ofb_decrypt,
@@ -759,8 +762,9 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 	},
 	{
 		.alg.skcipher = {
-			.min_keysize	= 2 * DES_KEY_SIZE,
-			.max_keysize	= 3 * DES_KEY_SIZE,
+			.ivsize		= DES_BLOCK_SIZE,
+			.min_keysize	= DES_KEY_SIZE,
+			.max_keysize	= DES_KEY_SIZE,
 			.setkey		= aspeed_des_setkey,
 			.encrypt	= aspeed_des_ctr_encrypt,
 			.decrypt	= aspeed_des_ctr_decrypt,
@@ -780,8 +784,9 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 	},
 	{
 		.alg.skcipher = {
-			.min_keysize	= 2 * DES_KEY_SIZE,
-			.max_keysize	= 3 * DES_KEY_SIZE,
+			.ivsize		= DES_BLOCK_SIZE,
+			.min_keysize	= DES3_EDE_KEY_SIZE,
+			.max_keysize	= DES3_EDE_KEY_SIZE,
 			.setkey		= aspeed_des_setkey,
 			.encrypt	= aspeed_tdes_ecb_encrypt,
 			.decrypt	= aspeed_tdes_ecb_decrypt,
@@ -801,8 +806,9 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 	},
 	{
 		.alg.skcipher = {
-			.min_keysize	= 2 * DES_KEY_SIZE,
-			.max_keysize	= 3 * DES_KEY_SIZE,
+			.ivsize		= DES_BLOCK_SIZE,
+			.min_keysize	= DES3_EDE_KEY_SIZE,
+			.max_keysize	= DES3_EDE_KEY_SIZE,
 			.setkey		= aspeed_des_setkey,
 			.encrypt	= aspeed_tdes_ecb_encrypt,
 			.decrypt	= aspeed_tdes_ecb_decrypt,
@@ -822,8 +828,9 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 	},
 	{
 		.alg.skcipher = {
-			.min_keysize	= 2 * DES_KEY_SIZE,
-			.max_keysize	= 3 * DES_KEY_SIZE,
+			.ivsize		= DES_BLOCK_SIZE,
+			.min_keysize	= DES3_EDE_KEY_SIZE,
+			.max_keysize	= DES3_EDE_KEY_SIZE,
 			.setkey		= aspeed_des_setkey,
 			.encrypt	= aspeed_tdes_cbc_encrypt,
 			.decrypt	= aspeed_tdes_cbc_decrypt,
@@ -843,8 +850,9 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 	},
 	{
 		.alg.skcipher = {
-			.min_keysize	= 2 * DES_KEY_SIZE,
-			.max_keysize	= 3 * DES_KEY_SIZE,
+			.ivsize		= DES_BLOCK_SIZE,
+			.min_keysize	= DES3_EDE_KEY_SIZE,
+			.max_keysize	= DES3_EDE_KEY_SIZE,
 			.setkey		= aspeed_des_setkey,
 			.encrypt	= aspeed_tdes_cfb_encrypt,
 			.decrypt	= aspeed_tdes_cfb_decrypt,
@@ -864,8 +872,9 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 	},
 	{
 		.alg.skcipher = {
-			.min_keysize	= 2 * DES_KEY_SIZE,
-			.max_keysize	= 3 * DES_KEY_SIZE,
+			.ivsize		= DES_BLOCK_SIZE,
+			.min_keysize	= DES3_EDE_KEY_SIZE,
+			.max_keysize	= DES3_EDE_KEY_SIZE,
 			.setkey		= aspeed_des_setkey,
 			.encrypt	= aspeed_tdes_ofb_encrypt,
 			.decrypt	= aspeed_tdes_ofb_decrypt,
@@ -885,8 +894,9 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 	},
 	{
 		.alg.skcipher = {
-			.min_keysize	= 2 * DES_KEY_SIZE,
-			.max_keysize	= 3 * DES_KEY_SIZE,
+			.ivsize		= DES_BLOCK_SIZE,
+			.min_keysize	= DES3_EDE_KEY_SIZE,
+			.max_keysize	= DES3_EDE_KEY_SIZE,
 			.setkey		= aspeed_des_setkey,
 			.encrypt	= aspeed_tdes_ctr_encrypt,
 			.decrypt	= aspeed_tdes_ctr_decrypt,
