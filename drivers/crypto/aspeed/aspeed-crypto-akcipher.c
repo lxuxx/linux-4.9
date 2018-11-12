@@ -757,7 +757,7 @@ static int aspeed_rsa_max_size(struct crypto_akcipher *tfm)
 static int aspeed_rsa_init_tfm(struct crypto_akcipher *tfm)
 {
 	struct aspeed_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
-	struct akcipher_alg *alg = __crypto_akcipher_alg(tfm->base.__crt_alg);
+	struct akcipher_alg *alg = __crypto_skcipher_alg(tfm->base.__crt_alg);
 	struct aspeed_crypto_alg *algt;
 
 	RSA_DBG("\n");
