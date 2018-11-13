@@ -231,7 +231,7 @@
 			resets = <&syscon ASPEED_RESET_MCTP>;
 		};
 
-#if 1
+#if 0
 		adc: adc@1e6e9000 {
                                 compatible = "aspeed,ast2500-adc";
                                 reg = <0x1e6e9000 0xb0>;
