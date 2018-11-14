@@ -25,8 +25,8 @@
 #define CIPHER_DBG(fmt, args...)
 #endif
 
-int aspeed_crypto_handle_queue(struct aspeed_crypto_dev *crypto_dev,
-			       struct crypto_async_request *new_areq)
+static int aspeed_crypto_sk_handle_queue(struct aspeed_crypto_dev *crypto_dev,
+		struct crypto_async_request *new_areq)
 {
 	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
 	struct crypto_async_request *areq, *backlog;
@@ -94,7 +94,7 @@ static int aspeed_sk_complete(struct aspeed_crypto_dev *crypto_dev, int err)
 	if (sk_engine->is_async)
 		req->base.complete(&req->base, err);
 
-	aspeed_crypto_handle_queue(crypto_dev, NULL);
+	aspeed_crypto_sk_handle_queue(crypto_dev, NULL);
 
 	return err;
 }
@@ -214,7 +214,7 @@ static int aspeed_rc4_crypt(struct skcipher_request *req, u32 cmd)
 
 	ctx->enc_cmd = cmd;
 
-	return aspeed_crypto_handle_queue(crypto_dev, &req->base);
+	return aspeed_crypto_sk_handle_queue(crypto_dev, &req->base);
 }
 
 static int aspeed_rc4_setkey(struct crypto_skcipher *cipher, const u8 *in_key,
@@ -275,7 +275,7 @@ static int aspeed_des_crypt(struct skcipher_request *req, u32 cmd)
 
 	ctx->enc_cmd = cmd;
 
-	return aspeed_crypto_handle_queue(crypto_dev, &req->base);
+	return aspeed_crypto_sk_handle_queue(crypto_dev, &req->base);
 }
 
 static int aspeed_des_setkey(struct crypto_skcipher *cipher, const u8 *key,
@@ -315,7 +315,7 @@ static int aspeed_tdes_ctr_decrypt(struct skcipher_request *req)
 
 static int aspeed_tdes_ctr_encrypt(struct skcipher_request *req)
 {
-	CIPHER_DBG("***************************************\n");
+	CIPHER_DBG("\n");
 	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_CTR | HACE_CMD_TRIPLE_DES | HACE_CMD_DES);
 }
 
@@ -452,7 +452,7 @@ static int aspeed_aes_crypt(struct skcipher_request *req, u32 cmd)
 
 	ctx->enc_cmd = cmd;
 
-	return aspeed_crypto_handle_queue(crypto_dev, &req->base);
+	return aspeed_crypto_sk_handle_queue(crypto_dev, &req->base);
 }
 
 static int aspeed_aes_setkey(struct crypto_skcipher *cipher, const u8 *key,
