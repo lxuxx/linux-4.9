@@ -38,6 +38,7 @@ static irqreturn_t aspeed_crypto_irq(int irq, void *dev)
 {
 	struct aspeed_crypto_dev *crypto_dev = (struct aspeed_crypto_dev *)dev;
 	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
+	struct aspeed_engine_ahash *ahash_engine = &crypto_dev->ahash_engine;
 	u32 sts = aspeed_crypto_read(crypto_dev, ASPEED_HACE_STS);
 	int handle = IRQ_NONE;
 
@@ -51,15 +52,16 @@ static irqreturn_t aspeed_crypto_irq(int irq, void *dev)
 			dev_warn(crypto_dev->dev, "CRYPTO interrupt when no active requests.\n");
 		handle = IRQ_HANDLED;
 	}
+
+	if (sts & HACE_HASH_ISR) {
+		if (ahash_engine->flags & CRYPTO_FLAGS_BUSY)
+			tasklet_schedule(&ahash_engine->done_task);
+		else
+			dev_warn(crypto_dev->dev, "CRYPTO interrupt when no active requests.\n");
+		handle = IRQ_HANDLED;
+	}
 	// if (sts & HACE_RSA_ISR) {
 	// 	aspeed_crypto_write(crypto_dev, 0, ASPEED_HACE_RSA_CMD);
-	// 	if (crypto_dev->flags & CRYPTO_FLAGS_BUSY)
-	// 		tasklet_schedule(&crypto_dev->done_task);
-	// 	else
-	// 		dev_warn(crypto_dev->dev, "CRYPTO interrupt when no active requests.\n");
-	// 	handle = IRQ_HANDLED;
-	// }
-	// if (sts & HACE_HASH_ISR) {
 	// 	if (crypto_dev->flags & CRYPTO_FLAGS_BUSY)
 	// 		tasklet_schedule(&crypto_dev->done_task);
 	// 	else
@@ -78,6 +80,15 @@ static void aspeed_crypto_sk_done_task(unsigned long data)
 	(void)sk_engine->resume(crypto_dev);
 }
 
+static void aspeed_crypto_ahash_done_task(unsigned long data)
+{
+	struct aspeed_crypto_dev *crypto_dev = (struct aspeed_crypto_dev *)data;
+	struct aspeed_engine_ahash *ahash_engine = &crypto_dev->ahash_engine;
+
+	ahash_engine->is_async = true;
+	(void)ahash_engine->resume(crypto_dev);
+}
+
 // static void aspeed_crypto_queue_task(unsigned long data)
 // {
 // 	struct aspeed_crypto_dev *crypto_dev = (struct aspeed_crypto_dev *)data;
@@ -87,8 +98,8 @@ static void aspeed_crypto_sk_done_task(unsigned long data)
 
 static int aspeed_crypto_register(struct aspeed_crypto_dev *crypto_dev)
 {
-	aspeed_register_skcipher_algs(crypto_dev);
-	// aspeed_register_ahash_algs(crypto_dev);
+	// aspeed_register_skcipher_algs(crypto_dev);
+	aspeed_register_ahash_algs(crypto_dev);
 	// aspeed_register_akcipher_algs(crypto_dev);
 
 	return 0;
@@ -121,6 +132,7 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 	struct aspeed_crypto_dev *crypto_dev;
 	const struct of_device_id *crypto_dev_id;
 	struct aspeed_engine_skcipher *sk_engine;
+	struct aspeed_engine_ahash *ahash_engine;
 	int err;
 
 
@@ -137,19 +149,16 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 	crypto_dev->dev = dev;
 	crypto_dev->version = (unsigned long)crypto_dev_id->data;
 	sk_engine = &crypto_dev->sk_engine;
+	ahash_engine = &crypto_dev->ahash_engine;
 
 	platform_set_drvdata(pdev, crypto_dev);
 	spin_lock_init(&sk_engine->lock);
 	tasklet_init(&sk_engine->done_task, aspeed_crypto_sk_done_task, (unsigned long)crypto_dev);
 	crypto_init_queue(&sk_engine->queue, 50);
 
-
-	// spin_lock_init(&crypto_dev->lock);
-	// tasklet_init(&crypto_dev->done_task, aspeed_crypto_done_task,
-	// 	     (unsigned long)crypto_dev);
-	// tasklet_init(&crypto_dev->queue_task, aspeed_crypto_queue_task,
-	// 	     (unsigned long)crypto_dev);
-	// crypto_init_queue(&crypto_dev->queue, 50);
+	spin_lock_init(&ahash_engine->lock);
+	tasklet_init(&ahash_engine->done_task, aspeed_crypto_ahash_done_task, (unsigned long)crypto_dev);
+	crypto_init_queue(&ahash_engine->queue, 50);
 
 	crypto_dev->regs = of_iomap(pdev->dev.of_node, 0);
 	if (!(crypto_dev->regs)) {

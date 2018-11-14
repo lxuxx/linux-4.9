@@ -128,13 +128,27 @@
 #define SHA_FLAGS_N_SG			BIT(4)
 #define SHA_FLAGS_CPU			BIT(5)
 
-/*
- * Asynchronous crypto request structure.
- *
- * This structure defines a request that is either queued for processing or
- * being processed.
- */
+struct aspeed_crypto_dev;
 
+typedef int (*aspeed_crypto_fn_t)(struct aspeed_crypto_dev *);
+
+
+/******************************************************************************/
+/* skcipher */
+struct aspeed_engine_skcipher {
+	struct crypto_queue		queue;
+	struct tasklet_struct		done_task;
+	// struct tasklet_struct		queue_task;
+	bool				is_async;
+	spinlock_t			lock;
+	aspeed_crypto_fn_t		resume;
+	unsigned long			flags;
+
+	struct skcipher_request		*sk_req;
+	void				*cipher_addr;
+	dma_addr_t			cipher_dma_addr;
+};
+//tctx
 struct aspeed_cipher_ctx {
 	struct aspeed_crypto_dev	*crypto_dev;
 	u8				*iv;
@@ -144,65 +158,27 @@ struct aspeed_cipher_ctx {
 	void				*cipher_key;
 	dma_addr_t			cipher_key_dma;
 };
+/******************************************************************************/
+/* sha and md5 */
 
-typedef int (*aspeed_crypto_fn_t)(struct aspeed_crypto_dev *);
-
-struct aspeed_engine_skcipher {
+struct aspeed_engine_ahash {
 	struct crypto_queue		queue;
 	struct tasklet_struct		done_task;
-	struct tasklet_struct		queue_task;
+	// struct tasklet_struct		queue_task;
 	bool				is_async;
 	spinlock_t			lock;
 	aspeed_crypto_fn_t		resume;
 	unsigned long			flags;
 
-	struct skcipher_request		*sk_req;
-	// struct ablkcipher_request	*ablk_req;
-	void				*cipher_addr;
-	dma_addr_t			cipher_dma_addr;
-};
-
-struct aspeed_engine_hash {
-
-	void __iomem			*rsa_buff;
 	struct ahash_request		*ahash_req;
 };
-
-struct aspeed_engine_akcipher {
-	unsigned long			rsa_max_buf_len;
-	struct akcipher_request		*akcipher_req;
-
-};
-
-struct aspeed_crypto_dev {
-	void __iomem			*regs;
-	struct device			*dev;
-	int 				irq;
-	struct clk			*yclk;
-	struct clk			*rsaclk;
-	unsigned long			version;
-	struct aspeed_engine_skcipher	sk_engine;
-};
-
-struct aspeed_crypto_alg {
-	struct aspeed_crypto_dev	*crypto_dev;
-	union {
-		struct skcipher_alg	skcipher;
-		struct crypto_alg	crypto;
-		struct ahash_alg	ahash;
-		struct kpp_alg 		kpp;
-		struct akcipher_alg 	akcipher;
-	} alg;
-};
-
-/*************************************************************************************/
-/* the privete variable of hash for fallback */
+//hmac tctx
 struct aspeed_sha_hmac_ctx {
 	struct crypto_shash *shash;
 	u8 ipad[SHA512_BLOCK_SIZE] __attribute__((aligned(sizeof(u32))));
 	u8 opad[SHA512_BLOCK_SIZE] __attribute__((aligned(sizeof(u32))));
 };
-
+//sha and md5 tctx
 struct aspeed_sham_ctx {
 	struct aspeed_crypto_dev	*crypto_dev;
 	unsigned long			flags; //hmac flag
@@ -219,8 +195,7 @@ struct aspeed_sham_ctx {
 	struct crypto_shash		*fallback;
 	struct aspeed_sha_hmac_ctx	base[0];		//for hmac
 };
-
-
+//rctx, state
 struct aspeed_sham_reqctx {
 	unsigned long		flags;	//final update flag should no use
 	unsigned long		op;	//final update flag should no use
@@ -243,17 +218,16 @@ struct aspeed_sham_reqctx {
 
 	// u8 buffer[SHA_BUFFER_LEN + SHA512_BLOCK_SIZE] __aligned(sizeof(u32));
 };
-/*************************************************************************************/
 
-struct aspeed_ecdh_ctx {
-	struct aspeed_crypto_dev	*crypto_dev;
-	const u8 			*public_key;
-	unsigned int 			curve_id;
-	size_t				n_sz;
-	u8				private_key[256];
+/******************************************************************************/
+/* akcipher rsa */
+struct aspeed_engine_akcipher {
+	void __iomem			*rsa_buff;
+	unsigned long			rsa_max_buf_len;
+	struct akcipher_request		*akcipher_req;
+
 };
 
-/*************************************************************************************/
 /**
  * aspeed_rsa_key - ASPEED RSA key structure. Keys are allocated in DMA zone.
  * @n           : RSA modulus raw byte stream
@@ -286,6 +260,40 @@ struct aspeed_rsa_ctx {
 	int enc;
 };
 
+/*************************************************************************************/
+
+struct aspeed_ecdh_ctx {
+	struct aspeed_crypto_dev	*crypto_dev;
+	const u8 			*public_key;
+	unsigned int 			curve_id;
+	size_t				n_sz;
+	u8				private_key[256];
+};
+
+/*************************************************************************************/
+
+struct aspeed_crypto_dev {
+	void __iomem			*regs;
+	struct device			*dev;
+	int 				irq;
+	struct clk			*yclk;
+	struct clk			*rsaclk;
+	unsigned long			version;
+	struct aspeed_engine_skcipher	sk_engine;
+	struct aspeed_engine_ahash	ahash_engine;
+};
+
+
+struct aspeed_crypto_alg {
+	struct aspeed_crypto_dev	*crypto_dev;
+	union {
+		struct skcipher_alg	skcipher;
+		struct ahash_alg	ahash;
+		struct kpp_alg 		kpp;
+		struct akcipher_alg 	akcipher;
+	} alg;
+};
+
 static inline void
 aspeed_crypto_write(struct aspeed_crypto_dev *crypto, u32 val, u32 reg)
 {
@@ -316,7 +324,5 @@ extern int aspeed_register_skcipher_algs(struct aspeed_crypto_dev *crypto_dev);
 extern int aspeed_register_ahash_algs(struct aspeed_crypto_dev *crypto_dev);
 extern int aspeed_register_akcipher_algs(struct aspeed_crypto_dev *crypto_dev);
 extern int aspeed_register_kpp_algs(struct aspeed_crypto_dev *crypto_dev);
-extern int aspeed_crypto_enqueue(struct aspeed_crypto_dev *aspeed_crypto, struct ablkcipher_request *req);
-extern int aspeed_crypto_handle_queue(struct aspeed_crypto_dev *crypto_dev,
-				      struct crypto_async_request *new_areq);
+
 #endif
