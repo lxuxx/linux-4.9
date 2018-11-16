@@ -6,7 +6,7 @@
 	model = "AST2500 EVB";
 
 	aliases {
-		serial0 = &uart0;
+		serial0 = &uart5;
 		serial1 = &uart3;
 		serial2 = &uart4;
 		serial3 = &vuart;

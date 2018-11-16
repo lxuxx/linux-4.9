@@ -1,1 +1,0 @@
-obj-y += clk-uart.o clk-aspeed.o clk-cam.o

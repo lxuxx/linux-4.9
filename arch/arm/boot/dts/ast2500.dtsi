@@ -1,4 +1,4 @@
-#include "skeleton.dtsi"
+// SPDX-License-Identifier: GPL-2.0+
 #include <dt-bindings/clock/aspeed-clock.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/aspeed-scu-irq.h>
@@ -10,9 +10,6 @@
 	#size-cells = <1>;
 	interrupt-parent = <&vic>;
 
-	memory@80000000 {
-		reg = <0x80000000 0x20000000>;
-	};
 
 	cpus {
 		#address-cells = <1>;
@@ -23,6 +20,11 @@
 			device_type = "cpu";
 			reg = <0>;
 		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x80000000 0>;
 	};
 
 	apb {
@@ -83,32 +85,40 @@
 			pinctrl-1 = <&pinctrl_spi2cs1_default>;
 		};
 
-		mac0: ftgmac@1e660000 {
+		vic: interrupt-controller@1e6c0080 {
+			compatible = "aspeed,ast2500-vic";
+			interrupt-controller;
+			#interrupt-cells = <1>;
+			valid-sources = <0xfefff7ff 0x0807ffff>;
+			reg = <0x1e6c0080 0x80>;
+		};
+
+
+		mac0: ethernet@1e660000 {
 			compatible = "aspeed,ast2500-mac", "faraday,ftgmac100";
 			reg = <0x1e660000 0x180>;
 			interrupts = <2>;
 			clocks = <&syscon ASPEED_CLK_GATE_MAC1CLK>;
 		};
 
-		mac1: ftgmac@1e680000 {
+		mac1: ethernet@1e680000 {
 			compatible = "aspeed,ast2500-mac", "faraday,ftgmac100";
 			reg = <0x1e680000 0x180>;
 			interrupts = <3>;
 			clocks = <&syscon ASPEED_CLK_GATE_MAC2CLK>;
 		};
 
-		ehci0: ehci@0x1e6a1000 {
-			compatible = "aspeed,ast-ehci", "generic-ehci";
+		ehci0: usb@1e6a1000 {
+			compatible = "aspeed,ast2500-ehci", "generic-ehci";
 			reg = <0x1e6a1000 0x100>;
 			interrupts = <5>;
 			clocks = <&syscon ASPEED_CLK_GATE_USBPORT1CLK>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_usb2ah_default>;
-			status = "disabled";
 		};
 
-		ehci1: ehci@0x1e6a3000 {
-			compatible = "aspeed,ast-ehci", "generic-ehci";
+		ehci1: usb@1e6a3000 {
+			compatible = "aspeed,ast2500-ehci", "generic-ehci";
 			reg = <0x1e6a3000 0x100>;
 			interrupts = <13>;
 			clocks = <&syscon ASPEED_CLK_GATE_USBPORT2CLK>;
@@ -116,13 +126,14 @@
 			pinctrl-0 = <&pinctrl_usb2bh_default>;
 		};
 
-		uhci: uhci@0x1e6b0000 {
-			compatible = "aspeed,ast-uhci", "generic-uhci";
+		uhci: usb@1e6b0000 {
+			compatible = "aspeed,ast2500-uhci", "generic-uhci";
 			reg = <0x1e6b0000 0x100>;
 			interrupts = <14>;
+			#ports = <2>;
 			clocks = <&syscon ASPEED_CLK_GATE_USBUHCICLK>;
 		};
-
+#if 0
 		udc: udc@0x1e6a0000 {
 			compatible = "aspeed,ast-udc";
 			reg = <0x1e6a0000 0x300>;
@@ -132,14 +143,7 @@
 			pinctrl-0 = <&pinctrl_usb2ad_default>;
 			list_mode = <0>;
 		};
-
-		vic: interrupt-controller@1e6c0080 {
-			compatible = "aspeed,ast2500-vic";
-			interrupt-controller;
-			#interrupt-cells = <1>;
-			valid-sources = <0xfefff7ff 0x0807ffff>;
-			reg = <0x1e6c0080 0x80>;
-		};
+#endif
 
 #if 0
 		ast_mbx@0x1e6c2000 {
@@ -172,6 +176,17 @@
 				compatible = "aspeed,g5-pinctrl";
 				aspeed,external-nodes = <&gfx &lhc>;
 			};
+
+			vga_scratch: scratch {
+				compatible = "aspeed,bmc-misc";
+			};
+		};
+
+		rng: hwrng@1e6e2078 {
+			compatible = "timeriomem_rng", "aspeed-rng";
+			reg = <0x1e6e2074 0x8>;
+			period = <0>;
+			quality = <100>;
 		};
 
 		hace: hace@1e6e3000 {
@@ -183,7 +198,7 @@
 		};
 
 		jtag: jtag@1e6e4000 {
-			compatible = "aspeed,aspeed-jtag";
+			compatible = "aspeed,ast2500-jtag";
 			reg= <0x1e6e4000 0x20>;
 			interrupts = <43>;
 			clocks = <&syscon ASPEED_CLK_APB>;
@@ -201,9 +216,10 @@
 		};
 
 		xdma: xdma@1e6e7000 {
-			compatible = "aspeed,aspeed-xdma";
+			compatible = "aspeed,ast2500-xdma";
 			reg = <0x1e6e7000 0x80>;
 			interrupts = <6>;
+ 			interrupts-extended = <&vic 6>, <&scu_ic ASPEED_SCU_PCIE_REST_LOW_TO_HIGH>;
 			resets = <&syscon ASPEED_RESET_XDMA>;
 		};
 
@@ -215,6 +231,16 @@
 			resets = <&syscon ASPEED_RESET_MCTP>;
 		};
 
+#if 0
+		adc: adc@1e6e9000 {
+                                compatible = "aspeed,ast2500-adc";
+                                reg = <0x1e6e9000 0xb0>;
+                                clocks = <&syscon ASPEED_CLK_APB>;
+                                resets = <&syscon ASPEED_RESET_ADC>;
+                                #io-channel-cells = <1>;
+                };
+
+#else
 		adc: adc@1e6e9000 {
 			compatible = "aspeed,ast2500-adc";
 			reg = <0x1e6e9000 0xb0>;
@@ -231,7 +257,7 @@
 				&pinctrl_adc12_default &pinctrl_adc13_default
 				&pinctrl_adc14_default &pinctrl_adc15_default>;	
 		};
-
+#endif
 		pcie_host: pcie_host@1e6ed000 {
 			#compatible = "aspeed,ast-pcie";
 			#reg = <0x1e6ed000 0xd0>;
@@ -283,10 +309,6 @@
 			interrupts = <46>;
 		};
 
-		ast_rng: rng {
-			compatible = "aspeed,ast-rng";
-		};
-
 		timer: timer@1e782000 {
 			/* This timer is a Faraday FTTMR010 derivative */
 			compatible = "aspeed,ast2500-timer";
@@ -298,19 +320,20 @@
 
 		uart1: serial@1e783000 {
 			compatible = "ns16550a";
-			reg = <0x1e783000 0x1000>;
+			reg = <0x1e783000 0x20>;
 			reg-shift = <2>;
 			interrupts = <9>;
 			clocks = <&syscon ASPEED_CLK_GATE_UART1CLK>;
+			resets = <&lpc_reset 4>;
 			no-loopback-test;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_txd1_default &pinctrl_rxd1_default>;
 			status = "disabled";
 		};
 
-		uart0: serial@1e784000 {
+		uart5: serial@1e784000 {
 			compatible = "ns16550a";
-			reg = <0x1e784000 0x1000>;
+			reg = <0x1e784000 0x20>;
 			reg-shift = <2>;
 			interrupts = <10>;
 			clocks = <&syscon ASPEED_CLK_GATE_UART5CLK>;
@@ -399,10 +422,11 @@
 
 		uart2: serial@1e78d000 {
 			compatible = "ns16550a";
-			reg = <0x1e78d000 0x1000>;
+			reg = <0x1e78d000 0x20>;
 			reg-shift = <2>;
 			interrupts = <32>;
 			clocks = <&syscon ASPEED_CLK_GATE_UART2CLK>;
+			resets = <&lpc_reset 5>;
 			no-loopback-test;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_txd2_default &pinctrl_rxd2_default>;
@@ -411,10 +435,11 @@
 
 		uart3: serial@1e78e000 {
 			compatible = "ns16550a";
-			reg = <0x1e78e000 0x1000>;
+			reg = <0x1e78e000 0x20>;
 			reg-shift = <2>;
 			interrupts = <33>;
 			clocks = <&syscon ASPEED_CLK_GATE_UART3CLK>;
+			resets = <&lpc_reset 6>;
 			no-loopback-test;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_txd3_default &pinctrl_rxd3_default>;
@@ -422,10 +447,11 @@
 
 		uart4: serial@1e78f000 {
 			compatible = "ns16550a";
-			reg = <0x1e78f000 0x1000>;
+			reg = <0x1e78f000 0x20>;
 			reg-shift = <2>;
 			interrupts = <34>;
 			clocks = <&syscon ASPEED_CLK_GATE_UART4CLK>;
+			resets = <&lpc_reset 7>;
 			no-loopback-test;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_txd4_default &pinctrl_rxd4_default>;
@@ -585,7 +611,8 @@
 		reg = <0x0 0x100>;
 		interrupts = <26>;
 		interrupt-controller;
-		clocks = <&syscon ASPEED_CLK_GATE_SDCLKCLK>;
+		clocks = <&syscon ASPEED_CLK_GATE_SDCLK>, <&syscon ASPEED_CLK_GATE_SDEXTCLK>;
+		clock-names = "sdclk", "sdextclk";
 	};
 
 	sdhci_slot0: sdhci_slot0@100 {

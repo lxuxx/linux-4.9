@@ -352,6 +352,14 @@ config I2C_AST
           This driver can also be built as a module.  If so, the module
           will be called i2c-ast.
 
+config I2C_ASPEED
+	tristate "ASPEED NEW I2C adapter "
+	select ASPEED_I2C_IRQCHIP
+	help
+	  If you have devices in the AST I2C bus, say yes to this option.
+          This driver can also be built as a module.  If so, the module
+          will be called i2c-ast.
+
 config I2C_AST1070
         tristate "ASPEED AST1070 I2C adapter "
         depends on ARCH_AST1070
@@ -362,7 +370,7 @@ config I2C_AST1070
 
 config AST_I2C_SLAVE_MODE
         bool "AST I2C Slave mode"
-	depends on I2C_AST
+	depends on I2C_AST || I2C_ASPEED
 
 config I2C_AU1550
 	tristate "Au1550/Au1200/Au1300 SMBus interface"

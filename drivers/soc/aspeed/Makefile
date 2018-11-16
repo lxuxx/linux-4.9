@@ -2,6 +2,7 @@
 # Makefile for the ASPEED drivers.
 #
 
+obj-$(CONFIG_ASPEED_BMC_MISC) += aspeed-bmc-misc.o
 obj-$(CONFIG_AST_VGAVIDEO)	+= ast_vgavideo.o
 obj-$(CONFIG_AST_VIDEO)		+= ast_video.o
 obj-$(CONFIG_AST_LPC)		+= ast-lpc.o ast-lpc_plus.o 
@@ -14,10 +15,10 @@ obj-$(CONFIG_AST_GPIO) 		+= ast_gpio.o
 obj-$(CONFIG_ASPEED_PECI)	+= aspeed-peci.o
 obj-$(CONFIG_AST_MBX)		+= ast_mailbox.o
 obj-$(CONFIG_AST_JPEG)		+= ast-jpeg.o
-obj-$(CONFIG_ASPEED_JTAG)	+= aspeed-jtag.o #ast-g6-jtag.o
+obj-$(CONFIG_ASPEED_JTAG)	+= aspeed-jtag.o #aspeed-intel-jtag.o 
 obj-$(CONFIG_AST_HID)		+= ast_hid.o
-obj-$(CONFIG_ASPEED_MCTP)	+= aspeed-mctp.o #ast_g6_mctp.o
-obj-$(CONFIG_ASPEED_XDMA)	+= aspeed-xdma.o #ast_g6_xdma.o
+obj-$(CONFIG_ASPEED_MCTP)	+= aspeed-mctp.o
+obj-$(CONFIG_ASPEED_XDMA)	+= aspeed-xdma.o
 obj-$(CONFIG_ASPEED_ESPI)	+= aspeed-espi.o
 obj-$(CONFIG_AST_VHUB)          += ast_vhub.o
 obj-$(CONFIG_AST_H264)		+= ast_h264.o

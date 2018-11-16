@@ -71,6 +71,15 @@ config COLDFIRE_ESPI
 	bool "Coldfire ESPI"
 
 endif
+
+config ASPEED_BMC_MISC
+	bool "Miscellaneous ASPEED BMC interfaces"
+	depends on ARCH_ASPEED || COMPILE_TEST
+	default ARCH_ASPEED
+	help
+	  Say yes to expose VGA and LPC scratch registers, and other
+	  miscellaneous control interfaces specific to the ASPEED BMC SoCs
+
 	
 config ADC_CAT9883
 	tristate "CAT 9883 ADC driver"

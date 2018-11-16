@@ -1,15 +1,12 @@
 ifeq ($(CONFIG_OF),y)
 
 dtb-$(CONFIG_ARCH_ASPEED) += \
-	ast1220.dtb \
-	ast1220_evb.dtb \
-	ast1220_emmc.dtb \
-	ast1220_fpga.dtb \
-	ast1220_emmc_fpga.dtb \
 	ast2400.dtb \
 	ast2400_evb.dtb \
 	ast2500.dtb \
-	ast2500_evb.dtb
+	ast2500_evb.dtb \
+	ast2600_arm11.dtb \
+	ast2600.dtb
 dtb-$(CONFIG_ARCH_ALPINE) += \
 	alpine-db.dtb
 dtb-$(CONFIG_MACH_ARTPEC6) += \
