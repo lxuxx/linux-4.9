@@ -71,11 +71,13 @@
 #define ASPEED_HACE_HASH_CMD		0x30
 #define  HASH_CMD_INT_ENABLE		BIT(9)
 #define  HASH_CMD_INT_DISABLE		(0)
+#define  HASH_CMD_ACC_MODE		BIT(8)
 #define  HASH_CMD_HMAC			BIT(7)
 #define  HASH_CMD_MD5			(0)
 #define  HASH_CMD_SHA1			(0x2 << 4)
 #define  HASH_CMD_SHA224		(0x4 << 4)
 #define  HASH_CMD_SHA256		(0x5 << 4)
+#define  HASH_CMD_SHA512_SER		(0x6 << 4)
 #define  HASH_CMD_MD5_SWAP		(0x1 << 2)
 #define  HASH_CMD_SHA_SWAP		(0x1 << 3)
 #define  HASH_CMD_CASCADED_CRYPTO_FIRST	(2)
@@ -116,17 +118,19 @@
 
 #define CRYPTO_FLAGS_BUSY 		BIT(1)
 
-#define SHA_BUFFER_LEN		(PAGE_SIZE / 16)
+#define SHA_BUFFER_LEN			128//(PAGE_SIZE/16)
 
-#define OP_INIT				1
-#define OP_UPDATE			2
-#define OP_FINAL			3
+#define SHA_OP_UPDATE			1
+#define SHA_OP_FINAL			2
 
-#define SHA_FLAGS_SINGLE_UPDATE		BIT(1)
-#define SHA_FLAGS_N_UPDATES		BIT(2)
-#define SHA_FLAGS_SINGLE_SG		BIT(3)
-#define SHA_FLAGS_N_SG			BIT(4)
-#define SHA_FLAGS_CPU			BIT(5)
+#define SHA_FLAGS_MD5			BIT(17)
+#define SHA_FLAGS_SHA1			BIT(18)
+#define SHA_FLAGS_SHA224		BIT(19)
+#define SHA_FLAGS_SHA256		BIT(20)
+#define SHA_FLAGS_SHA384		BIT(21)
+#define SHA_FLAGS_SHA512		BIT(22)
+
+#define SHA_FLAGS_FINUP			BIT(23)
 
 struct aspeed_crypto_dev;
 
@@ -198,25 +202,26 @@ struct aspeed_sham_ctx {
 //rctx, state
 struct aspeed_sham_reqctx {
 	unsigned long		flags;	//final update flag should no use
-	unsigned long		op;	//final update flag should no use
+	unsigned long		op;	//final or update
 	u32			cmd;	//trigger cmd
 
-	u8	digest[SHA512_DIGEST_SIZE] __aligned(sizeof(u64));  //digest result
-	u64	digcnt;  //total length
+	u8	digest[SHA512_DIGEST_SIZE] __aligned(64);  //digest result
+	u64	digcnt[2];  //total length
 	size_t	digsize; //digest size
-	size_t	bufcnt;  //buffer counter
-	size_t	buflen;  //buffer length
-	dma_addr_t	buffer_dma_addr;  //input src dma address
-	dma_addr_t	digest_dma_addr;  //output digest result dma address
+	dma_addr_t	src_dma_addr;  //input src dma address
+	dma_addr_t	digest_dma_addr;  //output digesft result dma address
 
 	/* walk state */
 	struct scatterlist	*src_sg;
 	unsigned int		offset;	/* offset in current sg */
 	unsigned int		total;	/* per update length*/
 
-	size_t 			block_size;
+	size_t 		block_size;
 
-	// u8 buffer[SHA_BUFFER_LEN + SHA512_BLOCK_SIZE] __aligned(sizeof(u32));
+	dma_addr_t	buffer_dma_addr;
+	size_t		bufcnt;  //buffer counter
+	size_t		buflen;  //buffer length
+	u8		buffer[128 + SHA512_BLOCK_SIZE];
 };
 
 /******************************************************************************/
@@ -297,7 +302,7 @@ struct aspeed_crypto_alg {
 static inline void
 aspeed_crypto_write(struct aspeed_crypto_dev *crypto, u32 val, u32 reg)
 {
-//	printk("write : val: %x , reg : %x \n",val,reg);
+	printk("write : val: %x , reg : %x \n",val,reg);
 	writel(val, crypto->regs + reg);
 }
 
@@ -313,12 +318,13 @@ aspeed_crypto_read(struct aspeed_crypto_dev *crypto, u32 reg)
 #endif
 }
 
-extern int aspeed_crypto_ahash_trigger(struct aspeed_crypto_dev *aspeed_crypto);
-extern int aspeed_crypto_rsa_trigger(struct aspeed_crypto_dev *aspeed_crypto);
-
 extern int aspeed_crypto_skcipher_trigger(struct aspeed_crypto_dev *aspeed_crypto);
-extern int aspeed_hash_trigger(struct aspeed_crypto_dev *aspeed_crypto);
-extern int aspeed_hash_handle_queue(struct aspeed_crypto_dev *aspeed_crypto, struct ahash_request *req);
+
+extern int aspeed_crypto_ahash_trigger(struct aspeed_crypto_dev *aspeed_crypto,
+				       aspeed_crypto_fn_t resume);
+extern int aspeed_crypto_ahash_handle_queue(struct aspeed_crypto_dev *aspeed_crypto, struct crypto_async_request *areq);
+
+extern int aspeed_crypto_rsa_trigger(struct aspeed_crypto_dev *aspeed_crypto);
 
 extern int aspeed_register_skcipher_algs(struct aspeed_crypto_dev *crypto_dev);
 extern int aspeed_register_ahash_algs(struct aspeed_crypto_dev *crypto_dev);
