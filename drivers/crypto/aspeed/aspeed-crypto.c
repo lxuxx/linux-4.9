@@ -85,7 +85,6 @@ static void aspeed_crypto_ahash_done_task(unsigned long data)
 	struct aspeed_crypto_dev *crypto_dev = (struct aspeed_crypto_dev *)data;
 	struct aspeed_engine_ahash *ahash_engine = &crypto_dev->ahash_engine;
 
-	ahash_engine->is_async = true;
 	(void)ahash_engine->resume(crypto_dev);
 }
 
