@@ -4,12 +4,27 @@
 #include <dt-bindings/interrupt-controller/aspeed-scu-irq.h>
 
 / {
-	model = "AST2500 SOC";
-	compatible = "aspeed";
+	model = "Aspeed BMC";
+	compatible = "aspeed,ast2500";
 	#address-cells = <1>;
 	#size-cells = <1>;
 	interrupt-parent = <&vic>;
 
+        aliases {
+                serial0 = &uart5;
+                serial1 = &uart3;
+                serial2 = &uart4;
+                serial3 = &vuart;
+                i2c0 = &i2c0;
+                i2c1 = &i2c1;
+                i2c2 = &i2c2;
+                i2c3 = &i2c3;
+                i2c4 = &i2c4;
+                i2c5 = &i2c5;
+                i2c6 = &i2c6;
+                i2c7 = &i2c7;
+                i2c8 = &i2c8;
+        };
 
 	cpus {
 		#address-cells = <1>;

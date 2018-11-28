@@ -1286,7 +1286,7 @@ static int aspeed_espi_probe(struct platform_device *pdev)
 	}
 
 	sysfs_bin_attr_init(&aspeed_espi->oob_channel);
-	aspeed_espi->oob_channel.attr.name = "espi-oob";
+	aspeed_espi->oob_channel.attr.name = "oob";
 	aspeed_espi->oob_channel.attr.mode = S_IRUSR | S_IWUSR;
 	aspeed_espi->oob_channel.read = aspeed_oob_channel_rx;
 	aspeed_espi->oob_channel.write = aspeed_oob_channel_tx;

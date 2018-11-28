@@ -7,26 +7,7 @@
 	compatible = "aspeed,ast2500-evb", "aspeed,ast2500";
 
 	aliases {
-		serial0 = &uart0;
-		serial1 = &dma_uart0;
-		serial2 = &dma_uart1;
-		serial3 = &dma_uart2;
-    serial4 = &dma_uart3;
-    serial5 = &dma_uart4;
-    serial6 = &dma_uart5;
-    serial7 = &dma_uart6;
-    serial8 = &dma_uart7;
-    serial9 = &dma_uart8;
-    serial10 = &dma_uart9;
-		i2c0 = &i2c0;
-		i2c1 = &i2c1;
-		i2c2 = &i2c2;
-		i2c3 = &i2c3;
-		i2c4 = &i2c4;
-		i2c5 = &i2c5;
-		i2c6 = &i2c6;
-		i2c7 = &i2c7;
-		i2c8 = &i2c8;
+		serial0 = &uart5;
 	};
 
 	chosen {
