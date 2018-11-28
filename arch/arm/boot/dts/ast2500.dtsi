@@ -11,10 +11,6 @@
 	interrupt-parent = <&vic>;
 
         aliases {
-                serial0 = &uart5;
-                serial1 = &uart3;
-                serial2 = &uart4;
-                serial3 = &vuart;
                 i2c0 = &i2c0;
                 i2c1 = &i2c1;
                 i2c2 = &i2c2;
@@ -24,6 +20,15 @@
                 i2c6 = &i2c6;
                 i2c7 = &i2c7;
                 i2c8 = &i2c8;
+		i2c9 = &i2c9;
+		i2c10 = &i2c10;
+		i2c11 = &i2c11;
+		i2c12 = &i2c12;
+		i2c13 = &i2c13;
+                serial0 = &uart5;
+                serial1 = &uart3;
+                serial2 = &uart4;
+                serial3 = &vuart;
         };
 
 	cpus {
