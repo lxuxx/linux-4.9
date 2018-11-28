@@ -123,6 +123,8 @@
 #define SHA_OP_UPDATE			1
 #define SHA_OP_FINAL			2
 
+#define SHA_FLAGS_HMAC			BIT(1)
+
 #define SHA_FLAGS_MD5			BIT(17)
 #define SHA_FLAGS_SHA1			BIT(18)
 #define SHA_FLAGS_SHA224		BIT(19)
@@ -179,24 +181,16 @@ struct aspeed_engine_ahash {
 //hmac tctx
 struct aspeed_sha_hmac_ctx {
 	struct crypto_shash *shash;
-	u8 ipad[SHA512_BLOCK_SIZE] __attribute__((aligned(sizeof(u32))));
-	u8 opad[SHA512_BLOCK_SIZE] __attribute__((aligned(sizeof(u32))));
+	u8 ipad[SHA512_BLOCK_SIZE];
+	u8 opad[SHA512_BLOCK_SIZE];
+	const u32 *init_digest;
 };
 //sha and md5 tctx
 struct aspeed_sham_ctx {
 	struct aspeed_crypto_dev	*crypto_dev;
 	unsigned long			flags; //hmac flag
 
-	void				*hash_digst; //8byte align
-	dma_addr_t			hash_digst_dma;
-
-	void				*hmac_key; //64byte align
-	dma_addr_t			hmac_key_dma;
-
-	void				*hash_src;
-	dma_addr_t			hash_src_dma;
 	/* fallback stuff */
-	struct crypto_shash		*fallback;
 	struct aspeed_sha_hmac_ctx	base[0];		//for hmac
 };
 //rctx, state
@@ -221,7 +215,7 @@ struct aspeed_sham_reqctx {
 	dma_addr_t	buffer_dma_addr;
 	size_t		bufcnt;  //buffer counter
 	size_t		buflen;  //buffer length
-	u8		buffer[128 + SHA512_BLOCK_SIZE];
+	u8		buffer[SHA_BUFFER_LEN + SHA512_BLOCK_SIZE];
 };
 
 /******************************************************************************/
@@ -302,7 +296,7 @@ struct aspeed_crypto_alg {
 static inline void
 aspeed_crypto_write(struct aspeed_crypto_dev *crypto, u32 val, u32 reg)
 {
-	printk("write : val: %x , reg : %x \n",val,reg);
+	// printk("write : val: %x , reg : %x \n",val,reg);
 	writel(val, crypto->regs + reg);
 }
 
