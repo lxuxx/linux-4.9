@@ -84,20 +84,28 @@ static void aspeed_crypto_ahash_done_task(unsigned long data)
 {
 	struct aspeed_crypto_dev *crypto_dev = (struct aspeed_crypto_dev *)data;
 	struct aspeed_engine_ahash *ahash_engine = &crypto_dev->ahash_engine;
+	struct ahash_request *req = ahash_engine->ahash_req;
+	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
 
+	CRYPTO_DBUG("\n");
+	dma_unmap_single(crypto_dev->dev, rctx->buffer_dma_addr,
+			 rctx->buflen + rctx->block_size, DMA_FROM_DEVICE);
+	dma_unmap_single(crypto_dev->dev, rctx->digest_dma_addr,
+			 SHA512_DIGEST_SIZE, DMA_FROM_DEVICE);
 	(void)ahash_engine->resume(crypto_dev);
 }
 
-// static void aspeed_crypto_queue_task(unsigned long data)
-// {
-// 	struct aspeed_crypto_dev *crypto_dev = (struct aspeed_crypto_dev *)data;
+static void aspeed_crypto_ahash_queue_task(unsigned long data)
+{
+	struct aspeed_crypto_dev *crypto_dev = (struct aspeed_crypto_dev *)data;
 
-// 	aspeed_crypto_handle_queue(crypto_dev, NULL);
-// }
+	CRYPTO_DBUG("\n");
+	aspeed_crypto_ahash_handle_queue(crypto_dev, NULL);
+}
 
 static int aspeed_crypto_register(struct aspeed_crypto_dev *crypto_dev)
 {
-	// aspeed_register_skcipher_algs(crypto_dev);
+	aspeed_register_skcipher_algs(crypto_dev);
 	aspeed_register_ahash_algs(crypto_dev);
 	// aspeed_register_akcipher_algs(crypto_dev);
 
@@ -157,6 +165,7 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 
 	spin_lock_init(&ahash_engine->lock);
 	tasklet_init(&ahash_engine->done_task, aspeed_crypto_ahash_done_task, (unsigned long)crypto_dev);
+	// tasklet_init(&ahash_engine->queue_task, aspeed_crypto_ahash_queue_task, (unsigned long)crypto_dev);
 	crypto_init_queue(&ahash_engine->queue, 50);
 
 	crypto_dev->regs = of_iomap(pdev->dev.of_node, 0);
