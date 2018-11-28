@@ -1,15 +1,32 @@
-#include "skeleton.dtsi"
+// SPDX-License-Identifier: GPL-2.0+
 #include <dt-bindings/clock/aspeed-clock.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/aspeed-scu-irq.h>
 
 / {
-	model = "AST2600 SOC";
-	compatible = "aspeed";
+	model = "Aspeed BMC";
+	compatible = "aspeed,ast2600";
 	#address-cells = <1>;
 	#size-cells = <1>;
 	interrupt-parent = <&vic>;
 
+        aliases {
+                i2c0 = &i2c0;
+                i2c1 = &i2c1;
+                i2c2 = &i2c2;
+                i2c3 = &i2c3;
+                i2c4 = &i2c4;
+                i2c5 = &i2c5;
+                i2c6 = &i2c6;
+                i2c7 = &i2c7;
+                i2c8 = &i2c8;
+		i2c9 = &i2c9;
+		i2c10 = &i2c10;
+		i2c11 = &i2c11;
+		i2c12 = &i2c12;
+		i2c13 = &i2c13;
+                serial0 = &uart5;
+        };
 
 	cpus {
 		#address-cells = <1>;
@@ -109,7 +126,7 @@
 			clock-names = "PCLK";
 		};
 
-		uart0: serial@1e784000 {
+		uart5: serial@1e784000 {
 			compatible = "ns16550a";
 			reg = <0x1e784000 0x1000>;
 			reg-shift = <2>;
