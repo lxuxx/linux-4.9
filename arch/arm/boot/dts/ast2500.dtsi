@@ -135,6 +135,7 @@
 			clocks = <&syscon ASPEED_CLK_GATE_USBPORT1CLK>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_usb2ah_default>;
+			status = "disable";
 		};
 
 		ehci1: usb@1e6a3000 {
