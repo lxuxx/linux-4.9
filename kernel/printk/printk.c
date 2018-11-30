@@ -1913,7 +1913,7 @@ asmlinkage int printk_emit(int facility, int level,
 	va_list args;
 	int r;
 
-	va_start(args, fmt);
+		va_start(args, fmt);
 	r = vprintk_emit(facility, level, dict, dictlen, fmt, args);
 	va_end(args);
 
@@ -1958,12 +1958,31 @@ EXPORT_SYMBOL_GPL(vprintk_default);
  *
  * See the vsnprintf() documentation for format string extensions over C99.
  */
+//#ifdef CONFIG_DEBUG_UART_VIRT
+extern int fb_initialized;
+extern void fb_printf(const char *fmt, ...);
+//#endif
 asmlinkage __visible int printk(const char *fmt, ...)
 {
 	va_list args;
 	int r;
+	static /*const */char prefix[] = "[ASTPRINTK] ";
+	static char buf[1024] = "\n";
 
 	va_start(args, fmt);
+//#ifdef CONFIG_DEBUG_UART_VIRT
+//	if (1 || fb_initialized) {
+	if (0) {
+		/* (LSU) Prefix only if previous line was ended */
+		if(buf[strlen(buf)-1] == '\n')
+			fb_printf("%s", prefix);
+
+		r = vsnprintf(buf, sizeof(buf), fmt, args);
+
+		fb_printf("%s", buf);
+
+	} else
+//#endif
 	r = vprintk_func(fmt, args);
 	va_end(args);
 
