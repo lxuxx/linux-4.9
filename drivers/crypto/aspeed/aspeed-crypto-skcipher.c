@@ -16,7 +16,7 @@
  */
 #include "aspeed-crypto.h"
 
-#define ASPEED_CIPHER_DEBUG
+// #define ASPEED_CIPHER_DEBUG
 
 #ifdef ASPEED_CIPHER_DEBUG
 //#define CIPHER_DBG(fmt, args...) printk(KERN_DEBUG "%s() " fmt, __FUNCTION__, ## args)
@@ -270,8 +270,8 @@ static int aspeed_des_crypt(struct skcipher_request *req, u32 cmd)
 	if (req->iv && (cmd & HACE_CMD_IV_REQUIRE))
 		memcpy(ctx->cipher_key + 8, req->iv, 8);
 
-	cmd |= HACE_CMD_DES_SELECT | HACE_CMD_RI_WO_DATA_ENABLE |
-	       HACE_CMD_CONTEXT_LOAD_ENABLE | HACE_CMD_CONTEXT_SAVE_ENABLE;
+	cmd |= HACE_CMD_DES_SELECT | HACE_CMD_RI_WO_DATA_ENABLE | HACE_CMD_DES |
+	       HACE_CMD_CONTEXT_LOAD_ENABLE | HACE_CMD_CONTEXT_SAVE_ENABLE ;
 
 	ctx->enc_cmd = cmd;
 
@@ -310,121 +310,121 @@ static int aspeed_des_setkey(struct crypto_skcipher *cipher, const u8 *key,
 static int aspeed_tdes_ctr_decrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_CTR | HACE_CMD_TRIPLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_CTR | HACE_CMD_TRIPLE_DES);
 }
 
 static int aspeed_tdes_ctr_encrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_CTR | HACE_CMD_TRIPLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_CTR | HACE_CMD_TRIPLE_DES);
 }
 
 static int aspeed_tdes_ofb_decrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_OFB | HACE_CMD_TRIPLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_OFB | HACE_CMD_TRIPLE_DES );
 }
 
 static int aspeed_tdes_ofb_encrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_OFB | HACE_CMD_TRIPLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_OFB | HACE_CMD_TRIPLE_DES);
 }
 
 static int aspeed_tdes_cfb_decrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_CFB | HACE_CMD_TRIPLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_CFB | HACE_CMD_TRIPLE_DES);
 }
 
 static int aspeed_tdes_cfb_encrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_CFB | HACE_CMD_TRIPLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_CFB | HACE_CMD_TRIPLE_DES);
 }
 
 static int aspeed_tdes_cbc_decrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_CBC | HACE_CMD_TRIPLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_CBC | HACE_CMD_TRIPLE_DES);
 }
 
 static int aspeed_tdes_cbc_encrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_CBC | HACE_CMD_TRIPLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_CBC | HACE_CMD_TRIPLE_DES);
 }
 
 static int aspeed_tdes_ecb_decrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_ECB | HACE_CMD_TRIPLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_ECB | HACE_CMD_TRIPLE_DES);
 }
 
 static int aspeed_tdes_ecb_encrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_ECB | HACE_CMD_TRIPLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_ECB | HACE_CMD_TRIPLE_DES);
 }
 
 static int aspeed_des_ctr_decrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_CTR | HACE_CMD_SINGLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_CTR | HACE_CMD_SINGLE_DES);
 }
 
 static int aspeed_des_ctr_encrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_CTR | HACE_CMD_SINGLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_CTR | HACE_CMD_SINGLE_DES);
 }
 
 static int aspeed_des_ofb_decrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_OFB | HACE_CMD_SINGLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_OFB | HACE_CMD_SINGLE_DES);
 }
 
 static int aspeed_des_ofb_encrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_OFB | HACE_CMD_SINGLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_OFB | HACE_CMD_SINGLE_DES);
 }
 
 static int aspeed_des_cfb_decrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_CFB | HACE_CMD_SINGLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_CFB | HACE_CMD_SINGLE_DES);
 }
 
 static int aspeed_des_cfb_encrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_CFB | HACE_CMD_SINGLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_CFB | HACE_CMD_SINGLE_DES);
 }
 
 static int aspeed_des_cbc_decrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_CBC | HACE_CMD_SINGLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_CBC | HACE_CMD_SINGLE_DES);
 }
 
 static int aspeed_des_cbc_encrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_CBC | HACE_CMD_SINGLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_CBC | HACE_CMD_SINGLE_DES);
 }
 
 static int aspeed_des_ecb_decrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_ECB | HACE_CMD_SINGLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_DECRYPT | HACE_CMD_ECB | HACE_CMD_SINGLE_DES);
 }
 
 static int aspeed_des_ecb_encrypt(struct skcipher_request *req)
 {
 	CIPHER_DBG("\n");
-	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_ECB | HACE_CMD_SINGLE_DES | HACE_CMD_DES);
+	return aspeed_des_crypt(req, HACE_CMD_ENCRYPT | HACE_CMD_ECB | HACE_CMD_SINGLE_DES);
 }
 
 static int aspeed_aes_crypt(struct skcipher_request *req, u32 cmd)
@@ -653,28 +653,6 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 	},
 	{
 		.alg.skcipher = {
-			.ivsize		= AES_BLOCK_SIZE,
-			.min_keysize	= AES_MIN_KEY_SIZE,
-			.max_keysize	= AES_MAX_KEY_SIZE,
-			.setkey		= aspeed_aes_setkey,
-			.encrypt	= aspeed_aes_ctr_encrypt,
-			.decrypt	= aspeed_aes_ctr_decrypt,
-			.init		= aspeed_crypto_cra_init,
-			.exit		= aspeed_crypto_cra_exit,
-			.base = {
-				.cra_name		= "ctr(aes)",
-				.cra_driver_name	= "aspeed-ctr-aes",
-				.cra_priority		= 300,
-				.cra_flags		= CRYPTO_ALG_KERN_DRIVER_ONLY | CRYPTO_ALG_ASYNC,
-				.cra_blocksize		= AES_BLOCK_SIZE,
-				.cra_ctxsize		= sizeof(struct aspeed_cipher_ctx),
-				.cra_alignmask		= 0x0f,
-				.cra_module		= THIS_MODULE,
-			}
-		}
-	},
-	{
-		.alg.skcipher = {
 			.min_keysize	= DES_KEY_SIZE,
 			.max_keysize	= DES_KEY_SIZE,
 			.setkey		= aspeed_des_setkey,
@@ -751,28 +729,6 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 			.base = {
 				.cra_name		= "ofb(des)",
 				.cra_driver_name	= "aspeed-ofb-des",
-				.cra_priority		= 300,
-				.cra_flags		= CRYPTO_ALG_KERN_DRIVER_ONLY | CRYPTO_ALG_ASYNC,
-				.cra_blocksize		= DES_BLOCK_SIZE,
-				.cra_ctxsize		= sizeof(struct aspeed_cipher_ctx),
-				.cra_alignmask		= 0x0f,
-				.cra_module		= THIS_MODULE,
-			}
-		}
-	},
-	{
-		.alg.skcipher = {
-			.ivsize		= DES_BLOCK_SIZE,
-			.min_keysize	= DES_KEY_SIZE,
-			.max_keysize	= DES_KEY_SIZE,
-			.setkey		= aspeed_des_setkey,
-			.encrypt	= aspeed_des_ctr_encrypt,
-			.decrypt	= aspeed_des_ctr_decrypt,
-			.init		= aspeed_crypto_cra_init,
-			.exit		= aspeed_crypto_cra_exit,
-			.base = {
-				.cra_name		= "ctr(des)",
-				.cra_driver_name	= "aspeed-ctr-des",
 				.cra_priority		= 300,
 				.cra_flags		= CRYPTO_ALG_KERN_DRIVER_ONLY | CRYPTO_ALG_ASYNC,
 				.cra_blocksize		= DES_BLOCK_SIZE,
@@ -894,28 +850,6 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 	},
 	{
 		.alg.skcipher = {
-			.ivsize		= DES_BLOCK_SIZE,
-			.min_keysize	= DES3_EDE_KEY_SIZE,
-			.max_keysize	= DES3_EDE_KEY_SIZE,
-			.setkey		= aspeed_des_setkey,
-			.encrypt	= aspeed_tdes_ctr_encrypt,
-			.decrypt	= aspeed_tdes_ctr_decrypt,
-			.init		= aspeed_crypto_cra_init,
-			.exit		= aspeed_crypto_cra_exit,
-			.base = {
-				.cra_name		= "ctr(des3_ede)",
-				.cra_driver_name	= "aspeed-ctr-tdes",
-				.cra_priority		= 300,
-				.cra_flags		= CRYPTO_ALG_KERN_DRIVER_ONLY | CRYPTO_ALG_ASYNC,
-				.cra_blocksize		= DES_BLOCK_SIZE,
-				.cra_ctxsize		= sizeof(struct aspeed_cipher_ctx),
-				.cra_alignmask		= 0x0f,
-				.cra_module		= THIS_MODULE,
-			}
-		}
-	},
-	{
-		.alg.skcipher = {
 			.min_keysize	= 1,
 			.max_keysize	= 256,
 			.setkey		= aspeed_rc4_setkey,
@@ -937,6 +871,75 @@ struct aspeed_crypto_alg aspeed_crypto_algs[] = {
 	}
 };
 
+struct aspeed_crypto_alg aspeed_crypto_algs_g6[] = {
+	{
+		.alg.skcipher = {
+			.ivsize		= AES_BLOCK_SIZE,
+			.min_keysize	= AES_MIN_KEY_SIZE,
+			.max_keysize	= AES_MAX_KEY_SIZE,
+			.setkey		= aspeed_aes_setkey,
+			.encrypt	= aspeed_aes_ctr_encrypt,
+			.decrypt	= aspeed_aes_ctr_decrypt,
+			.init		= aspeed_crypto_cra_init,
+			.exit		= aspeed_crypto_cra_exit,
+			.base = {
+				.cra_name		= "ctr(aes)",
+				.cra_driver_name	= "aspeed-ctr-aes",
+				.cra_priority		= 300,
+				.cra_flags		= CRYPTO_ALG_KERN_DRIVER_ONLY | CRYPTO_ALG_ASYNC,
+				.cra_blocksize		= AES_BLOCK_SIZE,
+				.cra_ctxsize		= sizeof(struct aspeed_cipher_ctx),
+				.cra_alignmask		= 0x0f,
+				.cra_module		= THIS_MODULE,
+			}
+		}
+	},
+	{
+		.alg.skcipher = {
+			.ivsize		= DES_BLOCK_SIZE,
+			.min_keysize	= DES_KEY_SIZE,
+			.max_keysize	= DES_KEY_SIZE,
+			.setkey		= aspeed_des_setkey,
+			.encrypt	= aspeed_des_ctr_encrypt,
+			.decrypt	= aspeed_des_ctr_decrypt,
+			.init		= aspeed_crypto_cra_init,
+			.exit		= aspeed_crypto_cra_exit,
+			.base = {
+				.cra_name		= "ctr(des)",
+				.cra_driver_name	= "aspeed-ctr-des",
+				.cra_priority		= 300,
+				.cra_flags		= CRYPTO_ALG_KERN_DRIVER_ONLY | CRYPTO_ALG_ASYNC,
+				.cra_blocksize		= DES_BLOCK_SIZE,
+				.cra_ctxsize		= sizeof(struct aspeed_cipher_ctx),
+				.cra_alignmask		= 0x0f,
+				.cra_module		= THIS_MODULE,
+			}
+		}
+	},
+	{
+		.alg.skcipher = {
+			.ivsize		= DES_BLOCK_SIZE,
+			.min_keysize	= DES3_EDE_KEY_SIZE,
+			.max_keysize	= DES3_EDE_KEY_SIZE,
+			.setkey		= aspeed_des_setkey,
+			.encrypt	= aspeed_tdes_ctr_encrypt,
+			.decrypt	= aspeed_tdes_ctr_decrypt,
+			.init		= aspeed_crypto_cra_init,
+			.exit		= aspeed_crypto_cra_exit,
+			.base = {
+				.cra_name		= "ctr(des3_ede)",
+				.cra_driver_name	= "aspeed-ctr-tdes",
+				.cra_priority		= 300,
+				.cra_flags		= CRYPTO_ALG_KERN_DRIVER_ONLY | CRYPTO_ALG_ASYNC,
+				.cra_blocksize		= DES_BLOCK_SIZE,
+				.cra_ctxsize		= sizeof(struct aspeed_cipher_ctx),
+				.cra_alignmask		= 0x0f,
+				.cra_module		= THIS_MODULE,
+			}
+		}
+	},
+};
+
 int aspeed_register_skcipher_algs(struct aspeed_crypto_dev *crypto_dev)
 {
 	int i;
@@ -946,6 +949,14 @@ int aspeed_register_skcipher_algs(struct aspeed_crypto_dev *crypto_dev)
 		err = crypto_register_skcipher(&aspeed_crypto_algs[i].alg.skcipher);
 		if (err)
 			return err;
+	}
+	if (crypto_dev->version == 6) {
+		for (i = 0; i < ARRAY_SIZE(aspeed_crypto_algs_g6); i++) {
+			aspeed_crypto_algs_g6[i].crypto_dev = crypto_dev;
+			err = crypto_register_skcipher(&aspeed_crypto_algs_g6[i].alg.skcipher);
+			if (err)
+				return err;
+		}
 	}
 	return 0;
 }
