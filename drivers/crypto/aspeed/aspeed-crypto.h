@@ -30,10 +30,20 @@
 #define ASPEED_HACE_CONTEXT		0x08	/* 8 byte aligned*/
 #define ASPEED_HACE_DATA_LEN		0x0C
 #define ASPEED_HACE_CMD			0x10
+#define  HACE_CMD_MBUS_REQ_SYNC_EN	BIT(20) //G6
+#define  HACE_CMD_DES_SG_CTRL		BIT(19) //G6
+#define  HACE_CMD_SRC_SG_CTRL		BIT(18) //G6
 #define  HACE_CMD_SINGLE_DES		0
 #define  HACE_CMD_TRIPLE_DES		BIT(17)
 #define  HACE_CMD_AES_SELECT		0
 #define  HACE_CMD_DES_SELECT		BIT(16)
+#define  HACE_CMD_CTR_IV_AES_128	0 //G6
+#define  HACE_CMD_CTR_IV_DES_64		0 //G6
+#define  HACE_CMD_CTR_IV_AES_96		(0x1 << 14) //G6
+#define  HACE_CMD_CTR_IV_DES_32		(0x1 << 14) //G6
+#define  HACE_CMD_CTR_IV_AES_64		(0x2 << 14) //G6
+#define  HACE_CMD_CTR_IV_AES_32		(0x3 << 14) //G6
+#define  HACE_CMD_AES_KEY_HW_EXP	BIT(13) //G6
 #define  HACE_CMD_ISR_EN		BIT(12)
 #define  HACE_CMD_RI_WO_DATA_ENABLE	(0)
 #define  HACE_CMD_RI_WO_DATA_DISABLE	BIT(11)
@@ -47,16 +57,19 @@
 #define  HACE_CMD_DECRYPT		(0)
 #define  HACE_CMD_ENCRYPT		BIT(7)
 #define  HACE_CMD_ECB			(0)
-#define  HACE_CMD_CBC			BIT(4)
-#define  HACE_CMD_CFB			BIT(5)
+#define  HACE_CMD_CBC			(0x1 << 4)
+#define  HACE_CMD_CFB			(0x2 << 4)
 #define  HACE_CMD_OFB			(0x3 << 4)
-#define  HACE_CMD_CTR			BIT(6)
+#define  HACE_CMD_CTR			(0x4 << 4)
+#define  HACE_CMD_GCM			(0x5 << 4) //G6
 #define  HACE_CMD_AES128		(0)
-#define  HACE_CMD_AES192		BIT(2)
-#define  HACE_CMD_AES256		BIT(3)
+#define  HACE_CMD_AES192		(0x1 << 2)
+#define  HACE_CMD_AES256		(0x2 << 2)
 #define  HACE_CMD_OP_CASCADE		(0x3)
 #define  HACE_CMD_OP_INDEPENDENT	(0x1)
+#define ASPEED_HACE_GCM_TAG		0x14 //G6
 #define ASPEED_HACE_TAG			0x18
+#define ASPEED_HACE_GCM_ADD_LEN		0x18 //G6
 #define ASPEED_HACE_STS			0x1C
 #define  HACE_RSA_ISR			BIT(13)
 #define  HACE_CRYPTO_ISR		BIT(12)
