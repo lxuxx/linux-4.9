@@ -1703,7 +1703,7 @@ FORCE:
 .PHONY: $(PHONY)
 
 pub:
-	cp arch/arm/boot/uImage /tftpboot/
-	cp arch/arm/boot/Image /tftpboot/
-	cp arch/arm/boot/zImage /tftpboot/
-	cp arch/arm/boot/dts/*.dtb /tftpboot/
+	cp arch/arm/boot/uImage ~/tftpboot/
+	cp arch/arm/boot/Image ~/tftpboot/
+	cp arch/arm/boot/zImage ~/tftpboot/
+	cp arch/arm/boot/dts/*.dtb ~/tftpboot/
