@@ -154,6 +154,12 @@ typedef int (*aspeed_crypto_fn_t)(struct aspeed_crypto_dev *);
 
 /******************************************************************************/
 /* skcipher */
+//g6
+struct aspeed_sg_list {
+	u32 len;
+	u32 phy_addr;
+};
+
 struct aspeed_engine_skcipher {
 	struct crypto_queue		queue;
 	struct tasklet_struct		done_task;
@@ -166,6 +172,9 @@ struct aspeed_engine_skcipher {
 	struct skcipher_request		*sk_req;
 	void				*cipher_addr;
 	dma_addr_t			cipher_dma_addr;
+
+	void				*dst_sg_addr; //g6
+	dma_addr_t			dst_sg_dma_addr; //g6
 };
 //tctx
 struct aspeed_cipher_ctx {

@@ -95,13 +95,13 @@ static void aspeed_crypto_ahash_done_task(unsigned long data)
 	(void)ahash_engine->resume(crypto_dev);
 }
 
-static void aspeed_crypto_ahash_queue_task(unsigned long data)
-{
-	struct aspeed_crypto_dev *crypto_dev = (struct aspeed_crypto_dev *)data;
+// static void aspeed_crypto_ahash_queue_task(unsigned long data)
+// {
+// 	struct aspeed_crypto_dev *crypto_dev = (struct aspeed_crypto_dev *)data;
 
-	CRYPTO_DBUG("\n");
-	aspeed_crypto_ahash_handle_queue(crypto_dev, NULL);
-}
+// 	CRYPTO_DBUG("\n");
+// 	aspeed_crypto_ahash_handle_queue(crypto_dev, NULL);
+// }
 
 static int aspeed_crypto_register(struct aspeed_crypto_dev *crypto_dev)
 {
@@ -112,19 +112,19 @@ static int aspeed_crypto_register(struct aspeed_crypto_dev *crypto_dev)
 	return 0;
 }
 
-static void aspeed_crypto_unregister(void)
-{
-#if 0
-	unsigned int i;
+// static void aspeed_crypto_unregister(void)
+// {
+// #if 0
+// 	unsigned int i;
 
-	for (i = 0; i < ARRAY_SIZE(aspeed_cipher_algs); i++) {
-		if (aspeed_cipher_algs[i]->type == ALG_TYPE_CIPHER)
-			crypto_unregister_alg(&aspeed_cipher_algs[i]->alg.crypto);
-		else
-			crypto_unregister_ahash(&aspeed_cipher_algs[i]->alg.hash);
-	}
-#endif
-}
+// 	for (i = 0; i < ARRAY_SIZE(aspeed_cipher_algs); i++) {
+// 		if (aspeed_cipher_algs[i]->type == ALG_TYPE_CIPHER)
+// 			crypto_unregister_alg(&aspeed_cipher_algs[i]->alg.crypto);
+// 		else
+// 			crypto_unregister_ahash(&aspeed_cipher_algs[i]->alg.hash);
+// 	}
+// #endif
+// }
 
 static const struct of_device_id aspeed_crypto_of_matches[] = {
 	{ .compatible = "aspeed,ast2400-crypto", .data = (void *) 0,},
@@ -227,6 +227,11 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	if (crypto_dev->version == 6) {
+		sk_engine->dst_sg_addr = dma_alloc_coherent(&pdev->dev, 0xa000,
+					 &sk_engine->dst_sg_dma_addr, GFP_KERNEL);
+	}
+
 	err = aspeed_crypto_register(crypto_dev);
 	if (err) {
 		dev_err(dev, "err in register alg");
@@ -240,7 +245,7 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 
 static int aspeed_crypto_remove(struct platform_device *pdev)
 {
-	struct aspeed_crypto_dev *crypto_dev = platform_get_drvdata(pdev);
+	// struct aspeed_crypto_dev *crypto_dev = platform_get_drvdata(pdev);
 
 	//aspeed_crypto_unregister();
 	// tasklet_kill(&crypto_dev->done_task);
