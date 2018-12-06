@@ -218,7 +218,7 @@ struct aspeed_mctp_xfer {
 	struct pcie_vdm_header header;
 };
 /*************************************************************************************/
-// #define ASPEED_MCTP_DEBUG
+//#define ASPEED_MCTP_DEBUG
 
 #ifdef ASPEED_MCTP_DEBUG
 #define MCTP_DBUG(fmt, args...) printk("%s() " fmt,__FUNCTION__, ## args)
@@ -332,10 +332,11 @@ static int aspeed_mctp_tx_xfer(struct aspeed_mctp_info *aspeed_mctp, struct aspe
 		hw_read_pt = aspeed_mctp_read(aspeed_mctp, ASPEED_MCTP_TX_READ_PT) & MCTP_HW_READ_PT_NUM_MASK;
 		if(((aspeed_mctp->tx_idx + 1) % MCTP_G6_TX_FIFO_NUM) == aspeed_mctp_read(aspeed_mctp, ASPEED_MCTP_TX_READ_PT)) {
 			printk("TX FIFO full \n");
-			return 1;
+			return 0;
 		} else {
 			void *cur_tx_buff = aspeed_mctp->tx_pool + (MCTP_TX_BUFF_SIZE * aspeed_mctp->tx_idx);
 			//ast2600 support vdm header transfer
+			mctp_xfer->header.pcie_req_id = (readl(aspeed_mctp->pci_bdf_regs) & 0x1fff << 3);
 			copy_from_user(cur_tx_buff, &mctp_xfer->header, sizeof(struct pcie_vdm_header));
 			copy_from_user(cur_tx_buff + sizeof(struct pcie_vdm_header), mctp_xfer->xfer_buff, byte_length);
 		}
