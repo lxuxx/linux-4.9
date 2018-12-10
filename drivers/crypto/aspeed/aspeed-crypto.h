@@ -79,27 +79,40 @@
 #define  HACE_HASH_BUSY			BIT(0)
 #define ASPEED_HACE_HASH_SRC		0x20
 #define ASPEED_HACE_HASH_DIGEST_BUFF	0x24
-#define ASPEED_HACE_HASH_KEY_BUFF	0x28	/* 64 byte aligned*/
+#define ASPEED_HACE_HASH_KEY_BUFF	0x28	// 64 byte aligned,g6 16 byte aligned
 #define ASPEED_HACE_HASH_DATA_LEN	0x2C
 #define ASPEED_HACE_HASH_CMD		0x30
+#define  HASH_CMD_MBUS_REQ_SYNC_EN	BIT(20) //G6
+#define  HASH_CMD_HASH_SRC_SG_CTRL	BIT(18) //G6
+#define  HASH_CMD_ACC_LAST_BLOCK	BIT(14) //G6
+#define  HASH_CMD_ACC_FIRST_BLOCK	BIT(13) //G6
+#define  HASH_CMD_SHA512_224		(0x3 << 10) //G6
+#define  HASH_CMD_SHA512_256		(0x2 << 10) //G6
+#define  HASH_CMD_SHA384		(0x1 << 10) //G6
+#define  HASH_CMD_SHA512		(0) //G6
 #define  HASH_CMD_INT_ENABLE		BIT(9)
 #define  HASH_CMD_INT_DISABLE		(0)
-#define  HASH_CMD_ACC_MODE		BIT(8)
-#define  HASH_CMD_HMAC			BIT(7)
+#define  HASH_CMD_HMAC			(0x1 << 7)
+#define  HASH_CMD_ACC_MODE		(0x2 << 7)
+#define  HASH_CMD_HMAC_KEY		(0x3 << 7)
+#define  HASH_CMD_WITHOUT_HMAC		(0)
 #define  HASH_CMD_MD5			(0)
 #define  HASH_CMD_SHA1			(0x2 << 4)
 #define  HASH_CMD_SHA224		(0x4 << 4)
 #define  HASH_CMD_SHA256		(0x5 << 4)
-#define  HASH_CMD_SHA512_SER		(0x6 << 4)
+#define  HASH_CMD_SHA512_SER		(0x6 << 4) //G6
 #define  HASH_CMD_MD5_SWAP		(0x1 << 2)
-#define  HASH_CMD_SHA_SWAP		(0x1 << 3)
-#define  HASH_CMD_CASCADED_CRYPTO_FIRST	(2)
-#define  HASH_CMD_CASCADED_HASH_FIRST	(3)
+#define  HASH_CMD_SHA_SWAP		(0x2 << 2)
+#define  HASH_CMD_CASCADED_CRYPTO_FIRST	(0x2)
+#define  HASH_CMD_CASCADED_HASH_FIRST	(0x3)
+#define ASPEED_HACE_HASH_DATA_PAD_LEN	0x34
 #define ASPEED_HACE_RSA_MD_EXP_BIT	0x40
+/* G5 RSA*/
 #define ASPEED_HACE_RSA_CMD		0x4C
 #define  RSA_CMD_INT_ENABLE		BIT(13)
 #define  RSA_CMD_SRAM_ENGINE_ACCESSABLE BIT(12)
 #define  RSA_CMD_FIRE			BIT(11)
+
 #define ASPEED_HACE_CMD_QUEUE		0x50
 #define ASPEED_HACE_CMD_QUEUE_EP	0x54
 #define ASPEED_HACE_CMD_QUEUE_WP	0x58
@@ -206,6 +219,7 @@ struct aspeed_sha_hmac_ctx {
 	u8 ipad[SHA512_BLOCK_SIZE];
 	u8 opad[SHA512_BLOCK_SIZE];
 	const u32 *init_digest;
+	u32 init_digest_len;
 };
 //sha and md5 tctx
 struct aspeed_sham_ctx {
