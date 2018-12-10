@@ -46,6 +46,20 @@ static const u32 sha256_iv[8] = {
 	0x7f520e51UL, 0x8c68059bUL, 0xabd9831fUL, 0x19cde05bUL
 };
 
+static const u32 sha384_iv[16] = {
+	0x5d9dbbcbUL, 0xd89e05c1UL, 0x2a299a62UL, 0x07d57c36UL,
+	0x5a015991UL, 0x17dd7030UL, 0xd8ec2f15UL, 0x39590ef7UL,
+	0x67263367UL, 0x310bc0ffUL, 0x874ab48eUL, 0x11155868UL,
+	0x0d2e0cdbUL, 0xa78ff964UL, 0x1d48b547UL, 0xa44ffabeUL
+};
+
+static const u32 sha512_iv[16] = {
+	0x67e6096aUL, 0x08c9bcf3UL, 0x85ae67bbUL, 0x3ba7ca84UL,
+	0x72f36e3cUL, 0x2bf894feUL, 0x3af54fa5UL, 0xf1361d5fUL,
+	0x7f520e51UL, 0xd182e6adUL, 0x8c68059bUL, 0x1f6c3e2bUL,
+	0xabd9831fUL, 0x6bbd41fbUL, 0x19cde05bUL, 0x79217e13UL
+};
+
 int aspeed_crypto_ahash_trigger(struct aspeed_crypto_dev *crypto_dev,
 				aspeed_crypto_fn_t resume)
 {
@@ -199,7 +213,7 @@ static int aspeed_ahash_hmac_resume(struct aspeed_crypto_dev *crypto_dev)
 
 	aspeed_crypto_ahash_fill_padding(rctx);
 
-	memcpy(rctx->digest, bctx->init_digest, 32);
+	memcpy(rctx->digest, bctx->init_digest, bctx->init_digest_len);
 	return aspeed_crypto_ahash_trigger(crypto_dev, aspeed_ahash_transfer);
 }
 
@@ -366,6 +380,7 @@ static int aspeed_sham_init(struct ahash_request *req)
 		rctx->digsize = MD5_DIGEST_SIZE;
 		rctx->block_size = MD5_HMAC_BLOCK_SIZE;
 		bctx->init_digest = md5_iv;
+		bctx->init_digest_len = 32;
 		memcpy(rctx->digest, md5_iv, 32);
 		break;
 	case SHA1_DIGEST_SIZE:
@@ -374,6 +389,7 @@ static int aspeed_sham_init(struct ahash_request *req)
 		rctx->digsize = SHA1_DIGEST_SIZE;
 		rctx->block_size = SHA1_BLOCK_SIZE;
 		bctx->init_digest = sha1_iv;
+		bctx->init_digest_len = 32;
 		memcpy(rctx->digest, sha1_iv, 32);
 		break;
 	case SHA224_DIGEST_SIZE:
@@ -382,6 +398,7 @@ static int aspeed_sham_init(struct ahash_request *req)
 		rctx->digsize = SHA224_DIGEST_SIZE;
 		rctx->block_size = SHA224_BLOCK_SIZE;
 		bctx->init_digest = sha224_iv;
+		bctx->init_digest_len = 32;
 		memcpy(rctx->digest, sha224_iv, 32);
 		break;
 	case SHA256_DIGEST_SIZE:
@@ -390,7 +407,28 @@ static int aspeed_sham_init(struct ahash_request *req)
 		rctx->digsize = SHA256_DIGEST_SIZE;
 		rctx->block_size = SHA256_BLOCK_SIZE;
 		bctx->init_digest = sha256_iv;
+		bctx->init_digest_len = 32;
 		memcpy(rctx->digest, sha256_iv, 32);
+		break;
+	case SHA384_DIGEST_SIZE:
+		rctx->cmd |= HASH_CMD_SHA512_SER | HASH_CMD_SHA384 |
+			     HASH_CMD_SHA_SWAP;
+		rctx->flags |= SHA_FLAGS_SHA384;
+		rctx->digsize = SHA384_DIGEST_SIZE;
+		rctx->block_size = SHA384_BLOCK_SIZE;
+		bctx->init_digest = sha384_iv;
+		bctx->init_digest_len = 64;
+		memcpy(rctx->digest, sha384_iv, 64);
+		break;
+	case SHA512_DIGEST_SIZE:
+		rctx->cmd |= HASH_CMD_SHA512_SER | HASH_CMD_SHA512 |
+			     HASH_CMD_SHA_SWAP;
+		rctx->flags |= SHA_FLAGS_SHA512;
+		rctx->digsize = SHA512_DIGEST_SIZE;
+		rctx->block_size = SHA512_BLOCK_SIZE;
+		bctx->init_digest = sha512_iv;
+		bctx->init_digest_len = 64;
+		memcpy(rctx->digest, sha512_iv, 64);
 		break;
 	default:
 		printk("%d not support \n", crypto_ahash_digestsize(tfm));
@@ -505,15 +543,15 @@ static int aspeed_sham_cra_md5_init(struct crypto_tfm *tfm)
 	return aspeed_sham_cra_init_alg(tfm, "md5");
 }
 
-// static int aspeed_sha_cra_sha384_init(struct crypto_tfm *tfm)
-// {
-// 	return aspeed_sham_cra_init_alg(tfm, "sha384");
-// }
+static int aspeed_sham_cra_sha384_init(struct crypto_tfm *tfm)
+{
+	return aspeed_sham_cra_init_alg(tfm, "sha384");
+}
 
-// static int aspeed_sha_cra_sha512_init(struct crypto_tfm *tfm)
-// {
-// 	return aspeed_sham_cra_init_alg(tfm, "sha512");
-// }
+static int aspeed_sham_cra_sha512_init(struct crypto_tfm *tfm)
+{
+	return aspeed_sham_cra_init_alg(tfm, "sha512");
+}
 
 static void aspeed_sham_cra_exit(struct crypto_tfm *tfm)
 {
@@ -532,7 +570,7 @@ static void aspeed_sham_cra_exit(struct crypto_tfm *tfm)
 static int aspeed_sham_export(struct ahash_request *req, void *out)
 {
 	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
-	
+
 	AHASH_DBG("rctx->bufcnt %d \n", rctx->bufcnt);
 
 	memcpy(out, rctx, sizeof(*rctx));
@@ -788,6 +826,126 @@ struct aspeed_crypto_alg aspeed_ahash_algs[] = {
 		},
 	},
 };
+struct aspeed_crypto_alg aspeed_ahash_algs_g6[] = {
+	{
+		.alg.ahash = {
+			.init	= aspeed_sham_init,
+			.update	= aspeed_sham_update,
+			.final	= aspeed_sham_final,
+			.finup	= aspeed_sham_finup,
+			.digest	= aspeed_sham_digest,
+			.export	= aspeed_sham_export,
+			.import	= aspeed_sham_import,
+			.halg = {
+				.digestsize = SHA384_DIGEST_SIZE,
+				.statesize = sizeof(struct aspeed_sham_reqctx),
+				.base = {
+					.cra_name		= "sha384",
+					.cra_driver_name	= "aspeed-sha384",
+					.cra_priority		= 300,
+					.cra_flags		= CRYPTO_ALG_TYPE_AHASH |
+					CRYPTO_ALG_ASYNC |
+					CRYPTO_ALG_KERN_DRIVER_ONLY,
+					.cra_blocksize		= SHA384_BLOCK_SIZE,
+					.cra_ctxsize		= sizeof(struct aspeed_sham_ctx),
+					.cra_alignmask		= 0,
+					.cra_module		= THIS_MODULE,
+					.cra_init		= aspeed_sham_cra_init,
+					.cra_exit		= aspeed_sham_cra_exit,
+				}
+			}
+		},
+	},
+	{
+		.alg.ahash = {
+			.init	= aspeed_sham_init,
+			.update	= aspeed_sham_update,
+			.final	= aspeed_sham_final,
+			.finup	= aspeed_sham_finup,
+			.digest	= aspeed_sham_digest,
+			.export	= aspeed_sham_export,
+			.import	= aspeed_sham_import,
+			.halg = {
+				.digestsize = SHA512_DIGEST_SIZE,
+				.statesize = sizeof(struct aspeed_sham_reqctx),
+				.base = {
+					.cra_name		= "sha512",
+					.cra_driver_name	= "aspeed-sha512",
+					.cra_priority		= 300,
+					.cra_flags		= CRYPTO_ALG_TYPE_AHASH |
+					CRYPTO_ALG_ASYNC |
+					CRYPTO_ALG_KERN_DRIVER_ONLY,
+					.cra_blocksize		= SHA512_BLOCK_SIZE,
+					.cra_ctxsize		= sizeof(struct aspeed_sham_ctx),
+					.cra_alignmask		= 0,
+					.cra_module		= THIS_MODULE,
+					.cra_init		= aspeed_sham_cra_init,
+					.cra_exit		= aspeed_sham_cra_exit,
+				}
+			}
+		},
+	},
+	{
+		.alg.ahash = {
+			.init	= aspeed_sham_init,
+			.update	= aspeed_sham_update,
+			.final	= aspeed_sham_final,
+			.finup	= aspeed_sham_finup,
+			.digest	= aspeed_sham_digest,
+			.setkey	= aspeed_sham_setkey,
+			.export	= aspeed_sham_export,
+			.import	= aspeed_sham_import,
+			.halg = {
+				.digestsize = SHA384_DIGEST_SIZE,
+				.statesize = sizeof(struct aspeed_sham_reqctx),
+				.base = {
+					.cra_name		= "hmac(sha384)",
+					.cra_driver_name	= "aspeed-hmac-sha384",
+					.cra_priority		= 300,
+					.cra_flags		= CRYPTO_ALG_TYPE_AHASH |
+					CRYPTO_ALG_ASYNC |
+					CRYPTO_ALG_KERN_DRIVER_ONLY,
+					.cra_blocksize		= SHA384_BLOCK_SIZE,
+					.cra_ctxsize		= sizeof(struct aspeed_sham_ctx) + sizeof(struct aspeed_sha_hmac_ctx),
+					.cra_alignmask		= 0,
+					.cra_module		= THIS_MODULE,
+					.cra_init		= aspeed_sham_cra_sha384_init,
+					.cra_exit		= aspeed_sham_cra_exit,
+				}
+			}
+		},
+	},
+	{
+		.alg.ahash = {
+			.init	= aspeed_sham_init,
+			.update	= aspeed_sham_update,
+			.final	= aspeed_sham_final,
+			.finup	= aspeed_sham_finup,
+			.digest	= aspeed_sham_digest,
+			.setkey	= aspeed_sham_setkey,
+			.export	= aspeed_sham_export,
+			.import	= aspeed_sham_import,
+			.halg = {
+				.digestsize = SHA512_DIGEST_SIZE,
+				.statesize = sizeof(struct aspeed_sham_reqctx),
+				.base = {
+					.cra_name		= "hmac(sha512)",
+					.cra_driver_name	= "aspeed-hmac-sha512",
+					.cra_priority		= 300,
+					.cra_flags		= CRYPTO_ALG_TYPE_AHASH |
+					CRYPTO_ALG_ASYNC |
+					CRYPTO_ALG_KERN_DRIVER_ONLY,
+					.cra_blocksize		= SHA512_BLOCK_SIZE,
+					.cra_ctxsize		= sizeof(struct aspeed_sham_ctx) + sizeof(struct aspeed_sha_hmac_ctx),
+					.cra_alignmask		= 0,
+					.cra_module		= THIS_MODULE,
+					.cra_init		= aspeed_sham_cra_sha512_init,
+					.cra_exit		= aspeed_sham_cra_exit,
+				}
+			}
+		},
+	},
+};
 
 int aspeed_register_ahash_algs(struct aspeed_crypto_dev *crypto_dev)
 {
@@ -799,6 +957,14 @@ int aspeed_register_ahash_algs(struct aspeed_crypto_dev *crypto_dev)
 		err = crypto_register_ahash(&aspeed_ahash_algs[i].alg.ahash);
 		if (err)
 			return err;
+	}
+	if (crypto_dev->version == 6) {
+		for (i = 0; i < ARRAY_SIZE(aspeed_ahash_algs_g6); i++) {
+			aspeed_ahash_algs_g6[i].crypto_dev = crypto_dev;
+			err = crypto_register_ahash(&aspeed_ahash_algs_g6[i].alg.ahash);
+			if (err)
+				return err;
+		}
 	}
 	return 0;
 }

@@ -105,7 +105,7 @@ static void aspeed_crypto_ahash_done_task(unsigned long data)
 
 static int aspeed_crypto_register(struct aspeed_crypto_dev *crypto_dev)
 {
-	aspeed_register_skcipher_algs(crypto_dev);
+	// aspeed_register_skcipher_algs(crypto_dev);
 	aspeed_register_ahash_algs(crypto_dev);
 	// aspeed_register_akcipher_algs(crypto_dev);
 
