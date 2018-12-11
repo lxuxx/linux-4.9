@@ -196,8 +196,6 @@ struct aspeed_g6_xdma_reg {
 #define XDMA_HOST_US_DONE			(0x1 << 12)
 */
 
-//
-
 #define ASPEED_XDMA_HOST_CMDQ_LOW 		0x00
 #define ASPEED_XDMA_HOST_CMDQ_ENDP 		0x04
 #define ASPEED_XDMA_HOST_CMDQ_WRITEP 	0x08
@@ -320,7 +318,7 @@ struct aspeed_xdma_cmd_desc {
 
 struct aspeed_xdma_xfer {
 	unsigned char stream_dir;
-	unsigned char xfer_buff[XDMA_MAX_XFER_BUFF_SIZE];
+	unsigned char *xfer_buff;
 	unsigned int xfer_len;
 	unsigned int bmc_addr;
 	unsigned int host_addr_low;
@@ -329,7 +327,7 @@ struct aspeed_xdma_xfer {
 
 #define XDMAIOC_BASE		'D'
 
-#define ASPEED_XDMA_IOCXFER	_IOWR(XDMAIOC_BASE, 0x0, struct aspeed_xdma_xfer)
+#define ASPEED_XDMA_IOCXFER	_IOWR(XDMAIOC_BASE, 0x0, struct aspeed_xdma_xfer*)
 /*************************************************************************************/
 //#define ASPEED_XDMA_DEBUG
 
@@ -412,7 +410,7 @@ static void aspeed_xdma_xfer(struct aspeed_xdma_info *aspeed_xdma, struct aspeed
 		aspeed_xdma->xfer_cmd_desc[aspeed_xdma->desc_index].cmd1_low = UP_STREAM_XFER | BMC_ADDR(bmc_addr) | CMD1_XFER_ID;
 		XDMA_DBUG("US cmd desc %x \n", aspeed_xdma->xfer_cmd_desc[aspeed_xdma->desc_index].cmd1_low);
 		if (xdma_xfer->bmc_addr == 0)
-			memcpy(aspeed_xdma->xfer_data, xdma_xfer->xfer_buff,  xdma_xfer->xfer_len);
+			copy_from_user(aspeed_xdma->xfer_data, xdma_xfer->xfer_buff, xdma_xfer->xfer_len);
 	} else {
 		aspeed_xdma->xfer_cmd_desc[aspeed_xdma->desc_index].cmd1_low = BMC_ADDR(bmc_addr) | CMD1_XFER_ID;
 		XDMA_DBUG("DS cmd desc %x \n", aspeed_xdma->xfer_cmd_desc[aspeed_xdma->desc_index].cmd1_low);
@@ -433,7 +431,7 @@ static void aspeed_xdma_xfer(struct aspeed_xdma_info *aspeed_xdma, struct aspeed
 
 	if (!xdma_xfer->stream_dir) {
 		if (xdma_xfer->bmc_addr == 0)
-			memcpy(xdma_xfer->xfer_buff, aspeed_xdma->xfer_data, xdma_xfer->xfer_len);
+			copy_to_user(xdma_xfer->xfer_buff, aspeed_xdma->xfer_data, xdma_xfer->xfer_len);
 	}
 
 }
@@ -468,7 +466,7 @@ static void aspeed_g5_xdma_xfer(struct aspeed_xdma_info *aspeed_xdma, struct asp
 		aspeed_xdma->new_xfer_cmd_desc[aspeed_xdma->desc_index].cmd1_low = UP_STREAM_XFER | G5_BMC_ADDR(bmc_addr) | CMD1_XFER_ID;
 		XDMA_DBUG("US cmd desc %x \n", aspeed_xdma->new_xfer_cmd_desc[aspeed_xdma->desc_index].cmd1_low);
 		if (xdma_xfer->bmc_addr == 0)
-			memcpy(aspeed_xdma->xfer_data, xdma_xfer->xfer_buff,  xdma_xfer->xfer_len);
+			copy_from_user(aspeed_xdma->xfer_data, xdma_xfer->xfer_buff, xdma_xfer->xfer_len);
 	} else {
 		aspeed_xdma->new_xfer_cmd_desc[aspeed_xdma->desc_index].cmd1_low = G5_BMC_ADDR(bmc_addr) | CMD1_XFER_ID;
 		XDMA_DBUG("DS cmd desc %x \n", aspeed_xdma->new_xfer_cmd_desc[aspeed_xdma->desc_index].cmd1_low);
@@ -490,7 +488,7 @@ static void aspeed_g5_xdma_xfer(struct aspeed_xdma_info *aspeed_xdma, struct asp
 
 	if (!xdma_xfer->stream_dir) {
 		if (xdma_xfer->bmc_addr == 0)
-			memcpy(xdma_xfer->xfer_buff, aspeed_xdma->xfer_data, xdma_xfer->xfer_len);
+			copy_to_user(xdma_xfer->xfer_buff, aspeed_xdma->xfer_data, xdma_xfer->xfer_len);
 	}
 
 }
@@ -525,7 +523,7 @@ static void aspeed_g6_xdma_xfer(struct aspeed_xdma_info *aspeed_xdma, struct asp
 		aspeed_xdma->new_xfer_cmd_desc[aspeed_xdma->desc_index].cmd2_high |= G6_CMD_US_DIR | G6_CMD_BINT_EN;
 		XDMA_DBUG("US cmd desc %x \n", aspeed_xdma->new_xfer_cmd_desc[aspeed_xdma->desc_index].cmd1_low);
 		if (xdma_xfer->bmc_addr == 0)
-			memcpy(aspeed_xdma->xfer_data, xdma_xfer->xfer_buff,  xdma_xfer->xfer_len);
+			copy_from_user(aspeed_xdma->xfer_data, xdma_xfer->xfer_buff, xdma_xfer->xfer_len);
 	} else {
 		aspeed_xdma->new_xfer_cmd_desc[aspeed_xdma->desc_index].cmd1_low = G6_BMC_ADDR(bmc_addr);
 		aspeed_xdma->new_xfer_cmd_desc[aspeed_xdma->desc_index].cmd2_high |= G6_CMD_BINT_EN;
@@ -547,7 +545,7 @@ static void aspeed_g6_xdma_xfer(struct aspeed_xdma_info *aspeed_xdma, struct asp
 
 	if (!xdma_xfer->stream_dir) {
 		if (xdma_xfer->bmc_addr == 0)
-			memcpy(xdma_xfer->xfer_buff, aspeed_xdma->xfer_data, xdma_xfer->xfer_len);
+			copy_to_user(xdma_xfer->xfer_buff, aspeed_xdma->xfer_data, xdma_xfer->xfer_len);
 	}
 }
 
@@ -684,31 +682,20 @@ static long xdma_ioctl(struct file *file, unsigned int cmd,
 	struct miscdevice *c = file->private_data;
 	struct aspeed_xdma_info *aspeed_xdma = dev_get_drvdata(c->this_device);
 	void  *argp = (void *)arg;
-	struct aspeed_xdma_xfer xfer;
 
 	switch (cmd) {
 	case ASPEED_XDMA_IOCXFER:
 		XDMA_DBUG("ASPEED_XDMA_IOCXFER \n");
-		if (copy_from_user(&xfer, argp, sizeof(struct aspeed_xdma_xfer))) {
-			printk("copy_from_user  fail\n");
-			ret = -EFAULT;
-		} else {
-			switch(aspeed_xdma->xdma_version) {
-				case 5:
-					aspeed_g5_xdma_xfer(aspeed_xdma, &xfer);
-					break;
-				case 6:
-					aspeed_g6_xdma_xfer(aspeed_xdma, &xfer);
-					break;
-				default:
-					aspeed_xdma_xfer(aspeed_xdma, &xfer);
-					break;
-			}
-		}
-
-		if (!xfer.stream_dir) {
-			if (copy_to_user(argp, &xfer, sizeof(struct aspeed_xdma_xfer)))
-				ret = -EFAULT;
+		switch(aspeed_xdma->xdma_version) {
+			case 5:
+				aspeed_g5_xdma_xfer(aspeed_xdma, argp);
+				break;
+			case 6:
+				aspeed_g6_xdma_xfer(aspeed_xdma, argp);
+				break;
+			default:
+				aspeed_xdma_xfer(aspeed_xdma, argp);
+				break;
 		}
 		break;
 	default:
