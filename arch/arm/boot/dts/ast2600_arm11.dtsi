@@ -109,6 +109,14 @@
 
 		};
 
+		xdma: xdma@1e6e7000 {
+			compatible = "aspeed,ast2600-xdma";
+			reg = <0x1e6e7000 0x80>;
+			interrupts = <6>;
+ 			interrupts-extended = <&vic 6>, <&scu_ic ASPEED_SCU_PCIE_REST_LOW_TO_HIGH>;
+			resets = <&syscon ASPEED_RESET_XDMA>;
+		};
+
 		mctp: mctp@1e6e8000 {
 			compatible = "aspeed,ast2600-mctp";
 			reg = <0x1e6e8000 0x30 0x1e6ed0c4 0x04>;
