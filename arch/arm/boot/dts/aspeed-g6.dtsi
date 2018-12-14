@@ -16,11 +16,17 @@
 			reg = <0>;
 			clock-frequency = <48000000>;
 		};
+		cpu@1 {
+			compatible = "arm,cortex-a7";
+			device_type = "cpu";
+			reg = <1>;
+			clock-frequency = <48000000>;
+		};
 	};
 
 	smp-memram@0 {
 		compatible = "aspeed,ast2600-smpmem";
-		reg = <0xA1000000 0x10>;
+		reg = <0x1E6E2180 0x10>;
 	};
 
 	timer {

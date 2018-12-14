@@ -27,6 +27,7 @@
 #define AST2600_BOOT_ADDR_REG_OFFSET 0x0
 #define AST2600_BOOT_SIG_REG_OFFSET 0x4
 
+unsigned char *secboot_base;
 void __init ast2600_smp_prepare_cpus(unsigned int max_cpus)
 {
 	/*TODO- All activities required for SMP like enabling Snoop Control Unit
@@ -36,7 +37,6 @@ void __init ast2600_smp_prepare_cpus(unsigned int max_cpus)
 	//from the device tree and map the register to the virtual space
 	//so that when ast2600_boot_secondary is called we can write the ast2600_secondary_startup
 	//address and issue a SEV()
-	unsigned char *secboot_base;
 	struct device_node *secboot_node;
 	int retval = 0;
 	unsigned int timeout;
@@ -60,8 +60,6 @@ void __init ast2600_smp_prepare_cpus(unsigned int max_cpus)
 
 static int ast2600_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
-	unsigned char *secboot_base;
-	struct device_node *secboot_node;
 	int retval = 0;
 	unsigned int timeout;
 	printk("%s \n", __func__);
@@ -72,6 +70,7 @@ static int ast2600_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	//Write it in the boot_addr_register
 	//Write the signature to the boot signature register
 	//Wakeup the hovering processor
+#if 0
 	secboot_node = of_find_compatible_node(NULL, NULL, "aspeed,ast2600-smpmem");
 	if (!secboot_node) {
 		pr_err("secboot device node found!!\n");
@@ -84,13 +83,13 @@ static int ast2600_boot_secondary(unsigned int cpu, struct task_struct *idle)
 		retval = -ENOMEM;
 		goto out;
 	}
-
+#endif
 	__raw_writel(0, secboot_base + AST2600_BOOT_ADDR_REG_OFFSET);
+	__raw_writel(__pa_symbol(secondary_startup), secboot_base + AST2600_BOOT_ADDR_REG_OFFSET);
+	__raw_writel(0xABBAADDA, secboot_base + AST2600_BOOT_SIG_REG_OFFSET);
 	printk("secondary_startup address %x\n", __pa_symbol(secondary_startup));
 	printk("AST2600_BOOT_ADDR_REG_OFFSET %x\n", __raw_readl(secboot_base + AST2600_BOOT_ADDR_REG_OFFSET));
 	printk("AST2600_BOOT_SIG_REG_OFFSET %x\n", __raw_readl(secboot_base + AST2600_BOOT_SIG_REG_OFFSET));
-	__raw_writel(__pa_symbol(secondary_startup), secboot_base + AST2600_BOOT_ADDR_REG_OFFSET);
-	__raw_writel(0xABBAADDA, secboot_base + AST2600_BOOT_SIG_REG_OFFSET);
 	wmb();
 #if 0
 	/* give boot ROM kernel start address. */
