@@ -50,6 +50,14 @@
 #define JTAG_FORCE_TMS			BIT(29)
 
 #define JTAG_IR_UPDATE			BIT(26)	//AST2500 only
+
+#define JTAG_RESET_FIFO			BIT(21)	//AST2600 only
+#define JTAG_CTRL_MODE			BIT(20)	//AST2600 only
+#define JTAG_XFER_LEN_MASK		(0x3ff << 8)	//AST2600 only
+#define JTAG_G6_MSB_FIRST		BIT(6)	//AST2600 only
+#define JTAG_G6_TERMINATE_XFER	BIT(5)	//AST2600 only
+#define JTAG_G6_LAST_XFER		BIT(4)	//AST2600 only
+
 #define JTAG_INST_LEN_MASK		(0x3f << 20)
 #define JTAG_SET_INST_LEN(x)	(x << 20)
 #define JTAG_SET_INST_MSB		BIT(19)
@@ -60,7 +68,7 @@
 
 #define JTAG_DR_UPDATE			BIT(10)	//AST2500 only
 #define JTAG_DATA_LEN(x)		(x << 4)
-#define JTAG_SET_DATA_MSB		BIT(3)
+#define JTAG_MSB_FIRST			BIT(3)
 #define JTAG_TERMINATE_DATA		BIT(2)
 #define JTAG_LAST_DATA			BIT(1)
 #define JTAG_DATA_EN			BIT(0)
