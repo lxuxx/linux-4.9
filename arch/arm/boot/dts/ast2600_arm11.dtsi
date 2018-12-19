@@ -40,10 +40,11 @@
 	};
 
 	memory@80000000 {
+		device_type = "memory";
 		reg = <0x80000000 0>;
 	};
 
-	apb {
+	ahb {
 		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -92,6 +93,29 @@
 			reg = <0x1e6c0080 0x80>;
 		};
 
+		ehci0: usb@1e6a1000 {
+			compatible = "aspeed,ast2500-ehci", "generic-ehci";
+			reg = <0x1e6a1000 0x100>;
+			interrupts = <5>;
+			clocks = <&syscon ASPEED_CLK_GATE_USBPORT1CLK>;
+		};
+
+		uhci: usb@1e6b0000 {
+			compatible = "aspeed,ast2500-uhci", "generic-uhci";
+			reg = <0x1e6b0000 0x100>;
+			interrupts = <10>;
+			#ports = <2>;
+			clocks = <&syscon ASPEED_CLK_GATE_USBUHCICLK>;
+		};
+
+		vhub: usb-vhub@1e6a0000 {
+			compatible = "aspeed,ast2500-usb-vhub";
+			reg = <0x1e6a0000 0x300>;
+			interrupts = <5>;
+			clocks = <&syscon ASPEED_CLK_GATE_USBPORT1CLK>;
+			list_mode = <0>;
+		};
+
 		mmc: mmc@1e6e0000 {
 			compatible = "aspeed,ast2600-sdmc";
 			reg = <0x1e6e0000 0x200>;
@@ -107,6 +131,15 @@
 			#clock-cells = <1>;
 			#reset-cells = <1>;
 
+		};
+
+		jtag: jtag@1e6e4000 {
+			compatible = "aspeed,ast2600-jtag";
+			reg= <0x1e6e4000 0x20>;
+			interrupts = <43>;
+			clocks = <&syscon ASPEED_CLK_APB>;
+			resets = <&syscon ASPEED_RESET_JTAG_MASTER>;
+			reset-names = "jtag";
 		};
 
 		xdma: xdma@1e6e7000 {
@@ -211,8 +244,8 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x80 0x80 0xC00 0x20>;
-#if 0
-		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
+#if 1
+		compatible = "aspeed,ast-g6-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
 #endif
@@ -234,7 +267,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x100 0x80 0xC20 0x20>;
-#if 0
+#if 1
 		compatible = "aspeed,ast-g6-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
