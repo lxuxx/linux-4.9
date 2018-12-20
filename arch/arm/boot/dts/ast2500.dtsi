@@ -263,33 +263,23 @@
 			resets = <&syscon ASPEED_RESET_MCTP>;
 		};
 
-#if 0
 		adc: adc@1e6e9000 {
                                 compatible = "aspeed,ast2500-adc";
                                 reg = <0x1e6e9000 0xb0>;
                                 clocks = <&syscon ASPEED_CLK_APB>;
                                 resets = <&syscon ASPEED_RESET_ADC>;
                                 #io-channel-cells = <1>;
-                };
-
-#else
-		adc: adc@1e6e9000 {
-			compatible = "aspeed,ast2500-adc";
-			reg = <0x1e6e9000 0xb0>;
-			interrupts = <31>;
-			clocks = <&syscon ASPEED_CLK_APB>;
-			resets = <&syscon ASPEED_RESET_ADC>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_adc0_default &pinctrl_adc1_default
-				&pinctrl_adc2_default &pinctrl_adc3_default
-				&pinctrl_adc4_default &pinctrl_adc5_default
-				&pinctrl_adc6_default &pinctrl_adc7_default
-				&pinctrl_adc8_default &pinctrl_adc9_default
-				&pinctrl_adc10_default &pinctrl_adc11_default
-				&pinctrl_adc12_default &pinctrl_adc13_default
-				&pinctrl_adc14_default &pinctrl_adc15_default>;	
+				pinctrl-names = "default";
+                        	pinctrl-0 = <&pinctrl_adc0_default &pinctrl_adc1_default
+                                	&pinctrl_adc2_default &pinctrl_adc3_default
+					&pinctrl_adc4_default &pinctrl_adc5_default
+					&pinctrl_adc6_default &pinctrl_adc7_default
+					&pinctrl_adc8_default &pinctrl_adc9_default
+					&pinctrl_adc10_default &pinctrl_adc11_default
+					&pinctrl_adc12_default &pinctrl_adc13_default
+					&pinctrl_adc14_default &pinctrl_adc15_default>;	
 		};
-#endif
+
 		pcie_host: pcie_host@1e6ed000 {
 			#compatible = "aspeed,ast-pcie";
 			#reg = <0x1e6ed000 0xd0>;
