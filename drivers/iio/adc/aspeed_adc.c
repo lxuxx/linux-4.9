@@ -116,7 +116,7 @@ static int aspeed_adc_read_raw(struct iio_dev *indio_dev,
 
 	switch (mask) {
 	case IIO_CHAN_INFO_RAW:
-		*val = readw(data->base + chan->address);
+		*val = readw(data->base + chan->address) + data->compen_value;
 		return IIO_VAL_INT;
 
 	case IIO_CHAN_INFO_SCALE:
@@ -128,7 +128,6 @@ static int aspeed_adc_read_raw(struct iio_dev *indio_dev,
 		*val = clk_get_rate(data->clk_scaler->clk) /
 				ASPEED_CLOCKS_PER_SAMPLE;
 		return IIO_VAL_INT;
-
 	default:
 		return -EINVAL;
 	}
@@ -411,6 +410,8 @@ static int aspeed_adc_probe(struct platform_device *pdev)
 	if (ret)
 		goto iio_register_error;
 
+	printk(KERN_INFO "aspeed_adc: driver successfully loaded. [%d]\n", data->compen_value);
+
 	return 0;
 
 iio_register_error:
@@ -443,35 +444,6 @@ static int aspeed_adc_remove(struct platform_device *pdev)
 
 	return 0;
 }
-
-///*******************************************************************
-#if 0
-static const struct aspeed_adc_config ast2300_config = { 
-	.adc_version = 3, 
-	.adc_ch_num = 12,
-	.tmper_ch_num = 0, 
-};
-
-static const struct aspeed_adc_config ast2400_config = { 
-	.adc_version = 4, 
-	.adc_ch_num =16, 
-	.tmper_ch_num = 0, 
-};
-
-static const struct aspeed_adc_config ast2500_config = { 
-	.adc_version = 5,
-	.adc_ch_num =16, 
-	.tmper_ch_num = 2, 
-};
-
-static const struct of_device_id aspeed_adc_matches[] = {
-	{ .compatible = "aspeed,ast2300-adc",	.data = &ast2300_config, },
-	{ .compatible = "aspeed,ast2400-adc",	.data = &ast2400_config, },
-	{ .compatible = "aspeed,ast2500-adc",	.data = &ast2500_config, },	
-	{},
-};
-#endif
-//*****************************************************************
 
 static const struct aspeed_adc_model_data ast2400_model_data = {
 	.model_name = "ast2400-adc",
