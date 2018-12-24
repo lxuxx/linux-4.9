@@ -136,8 +136,8 @@
 		jtag: jtag@1e6e4000 {
 			compatible = "aspeed,ast2600-jtag";
 			reg= <0x1e6e4000 0x20>;
-			interrupts = <43>;
-			clocks = <&syscon ASPEED_CLK_APB>;
+			interrupts = <27>;
+			clocks = <&syscon ASPEED_CLK_HPLL>;
 			resets = <&syscon ASPEED_RESET_JTAG_MASTER>;
 			reset-names = "jtag";
 		};
