@@ -88,10 +88,7 @@ static void aspeed_crypto_ahash_done_task(unsigned long data)
 	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
 
 	CRYPTO_DBUG("\n");
-	dma_unmap_single(crypto_dev->dev, rctx->buffer_dma_addr,
-			 rctx->buflen + rctx->block_size, DMA_FROM_DEVICE);
-	dma_unmap_single(crypto_dev->dev, rctx->digest_dma_addr,
-			 SHA512_DIGEST_SIZE, DMA_FROM_DEVICE);
+
 	(void)ahash_engine->resume(crypto_dev);
 }
 
@@ -227,11 +224,20 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	ahash_engine->ahash_src_addr = dma_alloc_coherent(&pdev->dev, 0xa000,
+				       &ahash_engine->ahash_src_dma_addr, GFP_KERNEL);
+	if (!ahash_engine->ahash_src_addr) {
+		printk("error buff allocation\n");
+		return -ENOMEM;
+	}
 	if (crypto_dev->version == 6) {
 		sk_engine->dst_sg_addr = dma_alloc_coherent(&pdev->dev, 0xa000,
 					 &sk_engine->dst_sg_dma_addr, GFP_KERNEL);
+		if (!sk_engine->dst_sg_addr) {
+			printk("error buff allocation\n");
+			return -ENOMEM;
+		}
 	}
-
 	err = aspeed_crypto_register(crypto_dev);
 	if (err) {
 		dev_err(dev, "err in register alg");

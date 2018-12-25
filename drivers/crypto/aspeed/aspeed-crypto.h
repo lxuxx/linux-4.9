@@ -212,14 +212,18 @@ struct aspeed_engine_ahash {
 	unsigned long			flags;
 
 	struct ahash_request		*ahash_req;
+	void				*ahash_src_addr; //g6 sg mode
+	dma_addr_t			ahash_src_dma_addr; //g6 sg mode
+
+	dma_addr_t			src_dma; //for trigger input
+	size_t				src_length; //for trigger input
+	dma_addr_t			digeset_dma; //for trigger input
 };
 //hmac tctx
 struct aspeed_sha_hmac_ctx {
 	struct crypto_shash *shash;
 	u8 ipad[SHA512_BLOCK_SIZE];
 	u8 opad[SHA512_BLOCK_SIZE];
-	const u32 *init_digest;
-	u32 init_digest_len;
 };
 //sha and md5 tctx
 struct aspeed_sham_ctx {
@@ -238,11 +242,11 @@ struct aspeed_sham_reqctx {
 	u8	digest[SHA512_DIGEST_SIZE] __aligned(64);  //digest result
 	u64	digcnt[2];  //total length
 	size_t	digsize; //digest size
-	dma_addr_t	src_dma_addr;  //input src dma address
 	dma_addr_t	digest_dma_addr;  //output digesft result dma address
 
 	/* walk state */
 	struct scatterlist	*src_sg;
+	int 			src_nents;
 	unsigned int		offset;	/* offset in current sg */
 	unsigned int		total;	/* per update length*/
 
@@ -251,7 +255,7 @@ struct aspeed_sham_reqctx {
 	dma_addr_t	buffer_dma_addr;
 	size_t		bufcnt;  //buffer counter
 	size_t		buflen;  //buffer length
-	u8		buffer[SHA_BUFFER_LEN + SHA512_BLOCK_SIZE];
+	u8		buffer[SHA512_BLOCK_SIZE * 2];
 };
 
 /******************************************************************************/
