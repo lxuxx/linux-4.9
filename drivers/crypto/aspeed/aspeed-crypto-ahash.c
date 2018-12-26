@@ -118,8 +118,6 @@ static int aspeed_ahash_dma_prepare(struct aspeed_crypto_dev *crypto_dev)
 	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
 	int length;
 	int remain;
-	// int i;
-	// u8 *tmp;
 
 	AHASH_DBG("\n");
 	length = rctx->total + rctx->bufcnt;
@@ -160,9 +158,6 @@ static int aspeed_ahash_append_sg_map(struct aspeed_crypto_dev *crypto_dev)
 	int counter = 0;
 	int ret;
 	int i;
-	char *buf;
-	buf = sg_virt(rctx->src_sg);
-
 
 	AHASH_DBG("\n");
 	length = rctx->total + rctx->bufcnt;
@@ -173,13 +168,8 @@ static int aspeed_ahash_append_sg_map(struct aspeed_crypto_dev *crypto_dev)
 			__func__, __LINE__);
 		return -EINVAL;
 	}
-	printk("sg_map: %d,nents: %d\n", ret, rctx->src_nents);
+
 	src_list = (struct aspeed_sg_list *) ahash_engine->ahash_src_addr;
-	printk("sg_map digsize\n");
-	for (i = 0; i < 32; i++) {
-		printk(KERN_CONT "%x ", rctx->digest[i]);
-	}
-	printk("\n");
 	rctx->digest_dma_addr = dma_map_single(crypto_dev->dev, rctx->digest,
 					       SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
 	if (rctx->bufcnt != 0) {
@@ -205,19 +195,8 @@ static int aspeed_ahash_append_sg_map(struct aspeed_crypto_dev *crypto_dev)
 			counter += src_list[i].len;
 		}
 	}
-	// printk("sg_list\n");
-	// for (i = 0; i < rctx->src_nents + buf_sg; i++) {
-	// 	printk("addr: %x, len: %x\n", src_list[i].phy_addr, src_list[i].len);
-	// }
 
-	// printk("\n");
-	// printk("src_sg\n");
-	// for (i = 0; i < rctx->src_sg->length; i++) {
-	// 	printk(KERN_CONT "%x ", buf[i]);
-	// }
-	// printk("\n");
 	rctx->offset = rctx->total - remaining;
-	// printk("rctx->offset: %d, rctx->total: %d, rctx->bufcnt: %d\n", rctx->offset, rctx->total, rctx->bufcnt);
 	ahash_engine->src_length = length - remaining;
 	ahash_engine->src_dma = ahash_engine->ahash_src_dma_addr;
 	ahash_engine->digeset_dma = rctx->digest_dma_addr;
@@ -279,7 +258,6 @@ static int aspeed_ahash_hmac_resume(struct aspeed_crypto_dev *crypto_dev)
 	aspeed_crypto_ahash_fill_padding(rctx);
 	aspeed_crypto_ahash_iV(rctx);
 
-	// memcpy(rctx->digest, bctx->init_digest, bctx->init_digest_len);
 	rctx->digest_dma_addr = dma_map_single(crypto_dev->dev, rctx->digest,
 					       SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
 	rctx->buffer_dma_addr = dma_map_single(crypto_dev->dev, rctx->buffer,
@@ -303,15 +281,9 @@ static int aspeed_ahash_g6_update_resume(struct aspeed_crypto_dev *crypto_dev)
 		dma_unmap_single(crypto_dev->dev, rctx->buffer_dma_addr,
 				 rctx->buflen + rctx->block_size, DMA_TO_DEVICE);
 	}
+
 	dma_unmap_single(crypto_dev->dev, rctx->digest_dma_addr,
 			 SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
-	// printk("resume digsize\n");
-	// for (i = 0; i < rctx->digsize; i++) {
-	// 	printk(KERN_CONT "%x ", rctx->digest[i]);
-	// }
-	// printk("\n");
-	// sg_pcopy_to_buffer(rctx->src_sg, rctx->src_nents,
-	// 		   rctx->buffer, rctx->total - rctx->offset, rctx->offset);
 	scatterwalk_map_and_copy(rctx->buffer, rctx->src_sg,
 				 rctx->offset, rctx->total - rctx->offset, 0);
 	rctx->bufcnt = rctx->total - rctx->offset;
@@ -319,11 +291,6 @@ static int aspeed_ahash_g6_update_resume(struct aspeed_crypto_dev *crypto_dev)
 	rctx->cmd &= ~HASH_CMD_HASH_SRC_SG_CTRL;
 	if (rctx->flags & SHA_FLAGS_FINUP) {
 		aspeed_crypto_ahash_fill_padding(rctx);
-		// printk("after padding\n");
-		// for (i = 0; i < rctx->bufcnt; i++) {
-		// 	printk(KERN_CONT "%x ", rctx->buffer[i]);
-		// }
-		// printk("\n");
 		rctx->digest_dma_addr = dma_map_single(crypto_dev->dev, rctx->digest,
 						       SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
 		rctx->buffer_dma_addr = dma_map_single(crypto_dev->dev, rctx->buffer,
@@ -351,12 +318,7 @@ static int aspeed_ahash_update_resume(struct aspeed_crypto_dev *crypto_dev)
 			 SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
 	if (rctx->flags & SHA_FLAGS_FINUP) {
 		/* no final() after finup() */
-		// printk("rctx->bufcnt: %d\n",rctx->bufcnt);
 		aspeed_crypto_ahash_fill_padding(rctx);
-		// printk("rctx->buffer\n");
-		// for (i = 0; i < rctx->bufcnt; i++) {
-		// 	printk("%x ", rctx->buffer[i]);
-		// }
 		rctx->buffer_dma_addr = dma_map_single(crypto_dev->dev, rctx->buffer,
 						       rctx->buflen + rctx->block_size, DMA_TO_DEVICE);
 		rctx->digest_dma_addr = dma_map_single(crypto_dev->dev, rctx->digest,
