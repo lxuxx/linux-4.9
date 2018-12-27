@@ -429,13 +429,16 @@ static void aspeed_hw_jtag_sir_xfer(struct aspeed_jtag_info *aspeed_jtag, struct
 	unsigned int index = 0;
 	u32 shift_bits = 0;
 	u32 remain_xfer = sir->length;
-
+	int i, tmp_idx = 0;
 	aspeed_jtag_write(aspeed_jtag, 0, ASPEED_JTAG_SW);	//dis sw mode
 
 	while (remain_xfer) {
-		aspeed_jtag_write(aspeed_jtag, aspeed_jtag->tdi[index], ASPEED_JTAG_INST);
-		if (remain_xfer > 32) {
-			shift_bits = 32;
+		if (remain_xfer > aspeed_jtag->config->jtag_buff_len) {
+			shift_bits = aspeed_jtag->config->jtag_buff_len;
+			tmp_idx = shift_bits / 32;
+			for(i = 0; i < tmp_idx; i++)
+				aspeed_jtag_write(aspeed_jtag, aspeed_jtag->tdi[index + i], ASPEED_JTAG_INST);
+
 			if(aspeed_jtag->config->jtag_version == 6) {
 				aspeed_jtag_write(aspeed_jtag, JTAG_ENG_EN | JTAG_ENG_OUT_EN |
 						   JTAG_G6_SET_XFER_LEN(shift_bits),
@@ -454,6 +457,11 @@ static void aspeed_hw_jtag_sir_xfer(struct aspeed_jtag_info *aspeed_jtag, struct
 			aspeed_jtag_wait_instruction_pause_complete(aspeed_jtag);
 		} else {
 			shift_bits = remain_xfer;
+			tmp_idx = shift_bits / 32;
+			if(shift_bits % 32) tmp_idx += 1;
+			for(i = 0; i < tmp_idx; i++)
+				aspeed_jtag_write(aspeed_jtag, aspeed_jtag->tdi[index + i], ASPEED_JTAG_INST);
+
 			if(aspeed_jtag->config->jtag_version == 6) {
 				if (sir->endir) {
 					aspeed_jtag_write(aspeed_jtag, JTAG_ENG_EN | JTAG_ENG_OUT_EN |
@@ -492,12 +500,20 @@ static void aspeed_hw_jtag_sir_xfer(struct aspeed_jtag_info *aspeed_jtag, struct
 				}
 			}
 		}
-		if (shift_bits < 32)
-			aspeed_jtag->tdo[index] = aspeed_jtag_read(aspeed_jtag, ASPEED_JTAG_INST) >> (32 - shift_bits);
-		else
-			aspeed_jtag->tdo[index] = aspeed_jtag_read(aspeed_jtag, ASPEED_JTAG_INST);
+		
 		remain_xfer = remain_xfer - shift_bits;
-		index++;
+
+		//handle tdo data
+		tmp_idx = shift_bits / 32;
+		if(shift_bits % 32) tmp_idx += 1;
+		for(i = 0; i < tmp_idx; i++) {
+			if (shift_bits < 32)
+				aspeed_jtag->tdo[index + i] = aspeed_jtag_read(aspeed_jtag, ASPEED_JTAG_INST) >> (32 - shift_bits);
+			else
+				aspeed_jtag->tdo[index + i] = aspeed_jtag_read(aspeed_jtag, ASPEED_JTAG_INST);
+			shift_bits -= 32;
+		}
+		index += tmp_idx;
 	}
 
 	// aspeed_jtag->tdo = aspeed_jtag_read(aspeed_jtag, ASPEED_JTAG_INST);
@@ -517,8 +533,8 @@ static int aspeed_jtag_sir_xfer(struct aspeed_jtag_info *aspeed_jtag, struct sir
 	JTAG_DBUG("%s mode, ENDIR : %d, len : %d \n", sir->mode ? "SW" : "HW", sir->endir, sir->length);
 
 	memset(aspeed_jtag->tdi, 0, aspeed_jtag->config->jtag_buff_len * 2);
-	
-	if (copy_from_user(aspeed_jtag->tdi, sir->tdi, sir->length))
+
+	if (copy_from_user(aspeed_jtag->tdi, sir->tdi, sir->length/8))
 		return -EFAULT;
 
 	if (sir->mode) {
@@ -528,7 +544,7 @@ static int aspeed_jtag_sir_xfer(struct aspeed_jtag_info *aspeed_jtag, struct sir
 	}
 	aspeed_jtag->sts = sir->endir;
 
-	if (copy_to_user(sir->tdo, aspeed_jtag->tdo, sir->length))
+	if (copy_to_user(sir->tdo, aspeed_jtag->tdo, sir->length/8))
 		return -EFAULT;
 
 	return 0;
@@ -546,11 +562,11 @@ static void aspeed_sw_jtag_sdr_xfer(struct aspeed_jtag_info *aspeed_jtag, struct
 		TCK_Cycle(aspeed_jtag, 1, 0);		// go to Exit2 IR / DR
 		TCK_Cycle(aspeed_jtag, 1, 0);		// go to Update IR /DR
 	}
-	
+
 	TCK_Cycle(aspeed_jtag, 1, 0);		// go to DRScan
 	TCK_Cycle(aspeed_jtag, 0, 0);		// go to DRCap
 	TCK_Cycle(aspeed_jtag, 0, 0);		// go to DRShift
-	
+
 	if (!sdr->direct)
 		aspeed_jtag->tdo[index] = 0;
 	while (remain_xfer) {
@@ -558,7 +574,7 @@ static void aspeed_sw_jtag_sdr_xfer(struct aspeed_jtag_info *aspeed_jtag, struct
 			//write
 			if ((shift_bits % 32) == 0)
 				JTAG_DBUG("W dr->dr_data[%d]: %x\n", index, aspeed_jtag->tdo[index]);
-	
+
 			tdo = (aspeed_jtag->tdo[index] >> (shift_bits % 32)) & (0x1);
 			JTAG_DBUG("%d ", tdo);
 			if (remain_xfer == 1) {
@@ -575,7 +591,7 @@ static void aspeed_sw_jtag_sdr_xfer(struct aspeed_jtag_info *aspeed_jtag, struct
 			}
 			JTAG_DBUG("%d ", tdo);
 			aspeed_jtag->tdo[index] |= (tdo << (shift_bits % 32));
-	
+
 			if ((shift_bits % 32) == 0)
 				JTAG_DBUG("R dr->dr_data[%d]: %x\n", index, aspeed_jtag->tdo[index]);
 		}
@@ -585,11 +601,11 @@ static void aspeed_sw_jtag_sdr_xfer(struct aspeed_jtag_info *aspeed_jtag, struct
 			index++;
 			aspeed_jtag->tdo[index] = 0;
 		}
-	
+
 	}
-	
+
 	TCK_Cycle(aspeed_jtag, 0, 0);		// go to DRPause
-	
+
 	if (sdr->enddr == 0) {
 		TCK_Cycle(aspeed_jtag, 1, 0);		// go to DRExit2
 		TCK_Cycle(aspeed_jtag, 1, 0);		// go to DRUpdate
@@ -603,19 +619,20 @@ static void aspeed_hw_jtag_sdr_xfer(struct aspeed_jtag_info *aspeed_jtag, struct
 	unsigned int index = 0;
 	u32 shift_bits = 0;
 	u32 remain_xfer = sdr->length;
+	int i, tmp_idx = 0;
 
 	aspeed_jtag_write(aspeed_jtag, 0, ASPEED_JTAG_SW);
-	
-	while (remain_xfer) {
-		if (sdr->direct) {
-			JTAG_DBUG("W dr->dr_data[%d]: %x\n", index, aspeed_jtag->tdo[index]);
-			aspeed_jtag_write(aspeed_jtag, aspeed_jtag->tdo[index], ASPEED_JTAG_DATA);
-		} else {
-			aspeed_jtag_write(aspeed_jtag, 0, ASPEED_JTAG_DATA);
-		}
 
-		if (remain_xfer > 32) {
-			shift_bits = 32;
+	while (remain_xfer) {
+		if (remain_xfer > aspeed_jtag->config->jtag_buff_len) {
+			shift_bits = aspeed_jtag->config->jtag_buff_len;
+			tmp_idx = shift_bits / 32;
+			for(i = 0; i < tmp_idx; i++) {
+				if (sdr->direct)
+					aspeed_jtag_write(aspeed_jtag, aspeed_jtag->tdo[index + i], ASPEED_JTAG_INST);
+				else
+					aspeed_jtag_write(aspeed_jtag, 0, ASPEED_JTAG_DATA);
+			}
 			// read bytes were not equals to column length ==> Pause-DR
 			JTAG_DBUG("shit bits %d \n", shift_bits);
 			if(aspeed_jtag->config->jtag_version == 6) {
@@ -633,6 +650,14 @@ static void aspeed_hw_jtag_sdr_xfer(struct aspeed_jtag_info *aspeed_jtag, struct
 		} else {
 			// read bytes equals to column length => Update-DR
 			shift_bits = remain_xfer;
+			tmp_idx = shift_bits / 32;
+			if(shift_bits % 32) tmp_idx += 1;
+			for(i = 0; i < tmp_idx; i++) {
+				if (sdr->direct)
+					aspeed_jtag_write(aspeed_jtag, aspeed_jtag->tdo[index + i], ASPEED_JTAG_INST);
+				else
+					aspeed_jtag_write(aspeed_jtag, 0, ASPEED_JTAG_DATA);				
+			}
 			JTAG_DBUG("shit bits %d with last \n", shift_bits);
 			if(aspeed_jtag->config->jtag_version == 6) {
 				if (sdr->enddr) {
@@ -649,7 +674,7 @@ static void aspeed_hw_jtag_sdr_xfer(struct aspeed_jtag_info *aspeed_jtag, struct
 					aspeed_jtag_write(aspeed_jtag, JTAG_ENG_EN | JTAG_ENG_OUT_EN | JTAG_G6_LAST_XFER |
 							   JTAG_G6_SET_XFER_LEN(shift_bits) | JTAG_DATA_EN, ASPEED_JTAG_CTRL);
 					aspeed_jtag_wait_data_complete(aspeed_jtag);
-				}				
+				}
 			} else {
 				if (sdr->enddr) {
 					JTAG_DBUG("DR Keep Pause \n");
@@ -672,18 +697,22 @@ static void aspeed_hw_jtag_sdr_xfer(struct aspeed_jtag_info *aspeed_jtag, struct
 				}
 			}
 		}
-
+		remain_xfer = remain_xfer - shift_bits;
+		//handle tdo data
 		if (!sdr->direct) {
-			//TODO check ....
-			if (shift_bits < 32)
-				aspeed_jtag->tdo[index] = aspeed_jtag_read(aspeed_jtag, ASPEED_JTAG_DATA) >> (32 - shift_bits);
-			else
-				aspeed_jtag->tdo[index] = aspeed_jtag_read(aspeed_jtag, ASPEED_JTAG_DATA);
-			JTAG_DBUG("R dr->dr_data[%d]: %x\n", index, aspeed_jtag->tdo[index]);
+			tmp_idx = shift_bits / 32;
+			if(shift_bits % 32) tmp_idx += 1;
+			for(i = 0; i < tmp_idx; i++) {
+				if (shift_bits < 32)
+					aspeed_jtag->tdo[index + i] = aspeed_jtag_read(aspeed_jtag, ASPEED_JTAG_DATA) >> (32 - shift_bits);
+				else
+					aspeed_jtag->tdo[index + i] = aspeed_jtag_read(aspeed_jtag, ASPEED_JTAG_DATA);
+				JTAG_DBUG("R dr->dr_data[%d]: %x\n", index, aspeed_jtag->tdo[index]);
+				shift_bits -= 32;
+			}
 		}
 
-		remain_xfer = remain_xfer - shift_bits;
-		index++;
+		index += tmp_idx;
 		JTAG_DBUG("remain_xfer %d\n", remain_xfer);
 	}
 
@@ -706,7 +735,7 @@ static int aspeed_jtag_sdr_xfer(struct aspeed_jtag_info *aspeed_jtag, struct sdr
 
 	memset(aspeed_jtag->tdi, 0, aspeed_jtag->config->jtag_buff_len * 2);
 
-	if (copy_from_user(aspeed_jtag->tdo, sdr->tdio, sdr->length)) 
+	if (copy_from_user(aspeed_jtag->tdo, sdr->tdio, sdr->length/8)) 
 		return -EFAULT;
 
 	if (sdr->mode) {
@@ -717,7 +746,7 @@ static int aspeed_jtag_sdr_xfer(struct aspeed_jtag_info *aspeed_jtag, struct sdr
 
 	aspeed_jtag->sts = sdr->enddr;
 
-	if (copy_to_user(sdr->tdio, aspeed_jtag->tdo, sdr->length))	
+	if (copy_to_user(sdr->tdio, aspeed_jtag->tdo, sdr->length/8))	
 		return -EFAULT;
 	
 	return 0;
