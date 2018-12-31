@@ -7,19 +7,16 @@
 	compatible = "aspeed,ast2600";
 
 	aliases {
-		serial4 = &uart5;
+		serial0 = &uart0;
 	};
 
 	chosen {
-		stdout-path = &uart5;
-		bootargs = "console=ttyS4,115200 root=/dev/ram0 rw initrd=0x81A00000,32M earlyprintk mem=498M init=/linuxrc";
+		stdout-path = &uart0;
+		bootargs = "console=ttyS0,115200n8 root=/dev/ram rw init=/linuxrc";
 	};
 
-	memory {
-		reg = <0x80000000 0x20000000>;
-	};
 };
 
-&uart5 {
+&uart0 {
 	status = "okay";
 };
