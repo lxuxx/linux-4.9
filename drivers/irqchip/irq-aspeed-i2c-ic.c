@@ -66,6 +66,7 @@ static void aspeed_g6_i2c_ic_irq_handler(struct irq_desc *desc)
 	unsigned long bit, status;
 	unsigned int bus_irq;
 
+	chained_irq_enter(chip, desc);
 	if(readl(i2c_ic->base + ASPEED_I2CG_CTRL) & ASPEED_I2CG_M_S_SEPARATE_INTR) {
 		status = readl(i2c_ic->base);
 		status &= i2c_ic->i2c_irq_mask;
@@ -74,7 +75,6 @@ static void aspeed_g6_i2c_ic_irq_handler(struct irq_desc *desc)
 		status = readl(i2c_ic->base);
 		status &= i2c_ic->i2c_irq_mask;
 	}
-	chained_irq_enter(chip, desc);
 	for_each_set_bit(bit, &status, i2c_ic->bus_num) {
 		bus_irq = irq_find_mapping(i2c_ic->irq_domain, bit);
 		generic_handle_irq(bus_irq);
