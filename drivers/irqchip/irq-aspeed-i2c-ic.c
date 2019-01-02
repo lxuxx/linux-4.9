@@ -140,6 +140,7 @@ static int aspeed_i2c_ic_probe(struct platform_device *pdev)
 	struct device_node *node = pdev->dev.of_node;
 	const struct of_device_id *match;
 	u32 bus_owner;
+	u32 new_mode;
 	int ret = 0;
 
 	i2c_ic = kzalloc(sizeof(*i2c_ic), GFP_KERNEL);
@@ -180,9 +181,11 @@ static int aspeed_i2c_ic_probe(struct platform_device *pdev)
 	/* ast2600 init */
 	if(of_device_is_compatible(node, "aspeed,ast2600-i2c-ic")) {
 		/* only support in ast-g6 platform */
-#ifdef CONFIG_I2C_ASPEED
-		writel(ASPEED_I2CG_SLAVE_PKT_NAK | ASPEED_I2CG_CTRL_NEW_REG, i2c_ic->base + ASPEED_I2CG_CTRL);
-#endif
+
+		if(!of_property_read_u32(node, "new-mode", &new_mode)) {
+			if(new_mode)
+				writel(ASPEED_I2CG_SLAVE_PKT_NAK | ASPEED_I2CG_CTRL_NEW_REG, i2c_ic->base + ASPEED_I2CG_CTRL);
+		}
 		/* assign 4 base clock 
 		 * base clk1 : 1M for 1KHz
 		 * base clk2 : 4M for 400KHz	 
