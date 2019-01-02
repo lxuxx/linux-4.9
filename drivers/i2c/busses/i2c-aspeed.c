@@ -29,8 +29,9 @@
 /***************************************************************************/
 //AST2600 reg
 #define AST_I2CC_FUN_CTRL			0x00 	/* 0x00 : I2CC Master/Slave Function Control Register  */
-#define AST_I2CC_SLAVE_ADDR_RX_EN 		BIT(19)
-#define AST_I2CC_MASTER_RETRY 			BIT(18)
+#define AST_I2CC_SLAVE_ADDR_RX_EN 		BIT(20)
+#define AST_I2CC_MASTER_RETRY_MASK		(0x3 << 18)
+#define AST_I2CC_MASTER_RETRY(x) 		((x & 0x3) << 18)
 #define AST_I2CC_BUS_AUTO_RELEASE		BIT(17)	
 #define AST_I2CC_M_SDA_LOCK_EN			BIT(16)
 #define AST_I2CC_MULTI_MASTER_DIS		BIT(15)
@@ -1487,63 +1488,56 @@ int aspeed_i2c_master_handler(struct aspeed_i2c_bus *i2c_bus)
 
 	if (AST_I2CM_PKT_DONE & sts) {
 		sts &= ~(AST_I2CM_PKT_DONE | AST_I2CM_PKT_ERROR);
+		aspeed_i2c_write(i2c_bus,  AST_I2CM_PKT_DONE, AST_I2CM_ISR);
 		switch (sts) {
 			case 0:
 				printk("workaround for write 0 byte \n");
-				aspeed_i2c_write(i2c_bus,  AST_I2CM_PKT_DONE, AST_I2CM_ISR);
 				dev_dbg(i2c_bus->dev, "AST_I2CM_PKT_DONE \n");
 				i2c_bus->cmd_err = 0;
 				complete(&i2c_bus->cmd_complete);		
 				break;
 			case AST_I2CM_TX_ACK:
 				dev_dbg(i2c_bus->dev, "M clear isr: AST_I2CM_TX_ACK = %x\n", sts);
-				aspeed_i2c_write(i2c_bus, AST_I2CM_TX_ACK | AST_I2CM_PKT_DONE, AST_I2CM_ISR);
 				aspeed_i2c_master_xfer_done(i2c_bus);
 				break;
-				
+
 			case AST_I2CM_TX_NAK | AST_I2CM_NORMAL_STOP:
-				aspeed_i2c_write(i2c_bus, AST_I2CM_TX_NAK | AST_I2CM_NORMAL_STOP |
-							AST_I2CM_PKT_DONE | AST_I2CM_PKT_ERROR, AST_I2CM_ISR);
 				dev_dbg(i2c_bus->dev, "M TX NAK | NORMAL STOP \n");
 				i2c_bus->cmd_err = AST_I2CM_TX_NAK | AST_I2CM_NORMAL_STOP;
 				complete(&i2c_bus->cmd_complete);
 				break;
-				
+
 			case AST_I2CM_TX_ACK | AST_I2CM_NORMAL_STOP:
 				dev_dbg(i2c_bus->dev,
 					"M clear isr: AST_I2CM_TX_ACK | AST_I2CM_NORMAL_STOP= %x\n",
 					sts);
-				aspeed_i2c_write(i2c_bus, AST_I2CM_TX_ACK | AST_I2CM_NORMAL_STOP |
-							AST_I2CM_PKT_DONE, AST_I2CM_ISR);
 				complete(&i2c_bus->cmd_complete);
 				break;
 
 			case AST_I2CM_RX_DONE:
 				dev_dbg(i2c_bus->dev, "M clear isr: AST_I2CM_RX_DONE = %x\n", sts);
-				aspeed_i2c_write(i2c_bus, AST_I2CM_RX_DONE, AST_I2CM_ISR);
+//				aspeed_i2c_write(i2c_bus, AST_I2CM_RX_DONE, AST_I2CM_ISR);
 				complete(&i2c_bus->cmd_complete);
 				break;
 			case AST_I2CM_RX_DONE | AST_I2CM_NORMAL_STOP:
 				dev_dbg(i2c_bus->dev,
 					"M clear isr: AST_I2CM_RX_DONE | AST_I2CM_NORMAL_STOP = %x\n", sts);
-				aspeed_i2c_write(i2c_bus, AST_I2CM_PKT_DONE | AST_I2CM_RX_DONE | 
-							AST_I2CM_NORMAL_STOP, AST_I2CM_ISR);
 				aspeed_i2c_master_xfer_done(i2c_bus);
 				break;
-#if 0				
+#if 0
 			case AST_I2CM_NORMAL_STOP:
 				dev_dbg(i2c_bus->dev, "M clear isr: AST_I2CM_NORMAL_STOP = %x\n", sts);
 				aspeed_i2c_write(i2c_bus, AST_I2CM_NORMAL_STOP, AST_I2CM_ISR);
 				i2c_bus->cmd_err = 0;
 				break;
-#endif				
+#endif
 			default:
-				printk("TODO care -- > sts %x \n", aspeed_i2c_read(i2c_bus, AST_I2CM_ISR));
-				aspeed_i2c_write(i2c_bus, aspeed_i2c_read(i2c_bus, AST_I2CM_ISR), AST_I2CM_ISR);
+				printk("TODO care -- > sts %x \n", sts);
+//				aspeed_i2c_write(i2c_bus, aspeed_i2c_read(i2c_bus, AST_I2CM_ISR), AST_I2CM_ISR);
 				break;
-			
+
 		}
-		
+
 		return 1;
 	}
 
@@ -1696,31 +1690,13 @@ static void aspeed_i2c_bus_init(struct aspeed_i2c_bus *i2c_bus)
 
 
 	/* Set interrupt generation of I2C master controller */
-	aspeed_i2c_write(i2c_bus,
-		      AST_I2CM_SDA_DL_TO |
-		      AST_I2CM_BUS_RECOVER |
-		      AST_I2CM_SMBUS_ALT |
-		      AST_I2CM_SCL_LOW_TO |
-		      AST_I2CM_ABNORMAL_COND |
-		      AST_I2CM_NORMAL_STOP |
-		      AST_I2CM_ARBIT_LOSS |
-		      AST_I2CM_RX_DONE |
-		      AST_I2CM_TX_NAK |
-		      AST_I2CM_TX_ACK,
-		      AST_I2CM_IER);
+	aspeed_i2c_write(i2c_bus, AST_I2CM_PKT_DONE |
+				AST_I2CM_SMBUS_ALT, AST_I2CM_IER);
 
 	aspeed_i2c_write(i2c_bus, 0xfffffff, AST_I2CS_ISR);
 
 	/* Set interrupt generation of I2C master controller */
-	aspeed_i2c_write(i2c_bus,
-		      AST_I2CS_INACTIVE_TO |
-		      AST_I2CS_ABNOR_STOP |
-		      AST_I2CS_STOP |
-		      AST_I2CS_MATCH_NAK |
-		      AST_I2CS_RX_DONE |
-		      AST_I2CS_TX_NAK |
-		      AST_I2CS_TX_ACK,
-		      AST_I2CS_IER);	
+	aspeed_i2c_write(i2c_bus, AST_I2CS_PKT_DONE, AST_I2CS_IER);	
 
 	aspeed_i2c_write(i2c_bus,
 			AST_I2CS_PKT_MODE_EN,
