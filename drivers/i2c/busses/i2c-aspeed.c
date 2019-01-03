@@ -224,15 +224,10 @@
 #define ASPEED_I2C_DMA_SIZE 4096
 /***************************************************************************/
 typedef enum i2c_slave_event_e {
-	I2C_SLAVE_START_READ_STOP,
-	I2C_SLAVE_REPEAT_START_READ,
 	I2C_SLAVE_START_READ,
+	I2C_SLAVE_REPEAT_START_READ,
 	I2C_SLAVE_READ_STOP,
-	I2C_SLAVE_START_WRITE_STOP,
-	I2C_SLAVE_START_WRITE,
-	I2C_SLAVE_WRITE,
-	I2C_SLAVE_NACK,
-	I2C_SLAVE_STOP
+	I2C_SLAVE_START_WRITE_STOP
 } i2c_slave_event_t;
 
 struct ast_i2c_timing_table {
@@ -541,7 +536,7 @@ static void aspeed_slave_mode_enable(struct aspeed_i2c_bus *i2c_bus,
 				(aspeed_i2c_read(i2c_bus, AST_I2CS_ADDR_CTRL) & ~AST_I2CS_ADDR1_MASK), 
 				AST_I2CS_ADDR_CTRL);
 
-		//aspeed_i2c_write(i2c_bus, AST_I2CC_SLAVE_EN | AST_I2CC_SLAVE_ADDR_RX_EN | aspeed_i2c_read(i2c_bus, AST_I2CC_FUN_CTRL), AST_I2CC_FUN_CTRL);
+//		aspeed_i2c_write(i2c_bus, AST_I2CC_SLAVE_EN | AST_I2CC_SLAVE_ADDR_RX_EN | aspeed_i2c_read(i2c_bus, AST_I2CC_FUN_CTRL), AST_I2CC_FUN_CTRL);
 		aspeed_i2c_write(i2c_bus, AST_I2CC_SLAVE_EN | aspeed_i2c_read(i2c_bus, AST_I2CC_FUN_CTRL), AST_I2CC_FUN_CTRL);
 
 		if(i2c_bus->slave_dma == DMA_MODE) {
@@ -742,49 +737,6 @@ static void aspeed_i2c_slave_rdwr_xfer(struct aspeed_i2c_bus *i2c_bus)
 				aspeed_i2c_write(i2c_bus, aspeed_i2c_read(i2c_bus, AST_I2CS_CMD_STS) | AST_I2CS_RX_DMA_EN, AST_I2CS_CMD_STS);
 			}	
 			break;
-		case I2C_SLAVE_START_READ_STOP:
-			printk("todo ~~~~~ \n");
-			//slave tx complete
-			i2c_bus->slave_tx_msg.flags = 0;
-			break;
-#if 0			
-		case I2C_SLAVE_START_WRITE:
-			dev_dbg(i2c_bus->dev, "I2C_SLAVE_START_WRITE \n");
-			//assign rx 
-			i2c_bus->slave_msgs->addr = 0;
-			i2c_bus->slave_msgs->flags = BUFF_FULL;
-			i2c_bus->slave_msgs->len = AST_I2C_GET_RX_DMA_LEN(aspeed_i2c_read(i2c_bus, AST_I2CS_DMA_LEN_STS));
-			dev_dbg(i2c_bus->dev, "S: rx len %d \n", i2c_bus->slave_msgs->len);
-#if 1
-			dev_dbg(i2c_bus->dev, "S: rx data : ");
-			for (i = 0; i < i2c_bus->slave_msgs->len; i++) {
-				dev_dbg(i2c_bus->dev, "[%x]", i2c_bus->slave_msgs->buf[i]);
-			}			
-			dev_dbg(i2c_bus->dev, "\n");
-#endif			
-			if(i2c_bus->slave_msgs->len < I2C_SLAVE_MSG_BUF_SIZE) {
-				dev_dbg(i2c_bus->dev, "prepare for repeat start \n");
-				//assign the same rx buffer, assigne tx buffer
-				aspeed_i2c_write(i2c_bus, i2c_bus->dma_addr + (i2c_bus->slave_rx_idx + 1) * I2C_SLAVE_MSG_BUF_SIZE, AST_I2CS_RX_DMA);
-				//return fix tx buffer value 
-				aspeed_i2c_write(i2c_bus, i2c_bus->slave_fix_dma_addr, AST_I2CS_TX_DMA);
-				aspeed_i2c_write(i2c_bus, AST_I2CS_SET_TX_DMA_LEN(I2C_SLAVE_MSG_BUF_SIZE) | 
-							AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_MSG_BUF_SIZE), AST_I2CS_DMA_LEN);
-				aspeed_i2c_write(i2c_bus, aspeed_i2c_read(i2c_bus, AST_I2CS_CMD_STS) |
-						AST_I2CS_TX_DMA_EN | AST_I2CS_RX_DMA_EN, AST_I2CS_CMD_STS);
-				dev_dbg(i2c_bus->dev, "S: tx len %d \n", I2C_SLAVE_MSG_BUF_SIZE);
-			} else {
-				//assign next rx buffer
-				i2c_bus->slave_rx_idx++;
-				i2c_bus->slave_rx_idx %= I2C_SLAVE_RX_MSG_NUM;
-				i2c_bus->slave_msgs = &i2c_bus->slave_rx_msg[i2c_bus->slave_rx_idx];
-				aspeed_i2c_write(i2c_bus, i2c_bus->dma_addr + (i2c_bus->slave_rx_idx + 1) * I2C_SLAVE_MSG_BUF_SIZE, AST_I2CS_RX_DMA);
-				aspeed_i2c_write(i2c_bus, AST_I2CS_SET_RX_DMA_LEN(I2C_SLAVE_MSG_BUF_SIZE), AST_I2CS_DMA_LEN);
-				aspeed_i2c_write(i2c_bus, aspeed_i2c_read(i2c_bus, AST_I2CS_CMD_STS) | AST_I2CS_RX_DMA_EN, AST_I2CS_CMD_STS);
-				dev_dbg(i2c_bus->dev, "S: assinge next rx len %d \n", i2c_bus->slave_msgs->len);
-			}
-			break;
-#endif			
 		case I2C_SLAVE_REPEAT_START_READ:
 			dev_dbg(i2c_bus->dev, "I2C_SLAVE_REPEAT_START_READ \n");
 			i2c_bus->slave_msgs = &i2c_bus->slave_tx_msg;
@@ -819,15 +771,6 @@ static void aspeed_i2c_slave_rdwr_xfer(struct aspeed_i2c_bus *i2c_bus)
 			aspeed_i2c_write(i2c_bus, i2c_bus->dma_addr, AST_I2CS_TX_DMA);
 			aspeed_i2c_write(i2c_bus, AST_I2CS_SET_TX_DMA_LEN(10) , AST_I2CS_DMA_LEN);
 			aspeed_i2c_write(i2c_bus, aspeed_i2c_read(i2c_bus, AST_I2CS_CMD_STS) | AST_I2CS_TX_DMA_EN, AST_I2CS_CMD_STS);			
-			break;
-		case I2C_SLAVE_WRITE:
-			dev_dbg(i2c_bus->dev, "I2C_SLAVE_WRITE TODO\n");
-			break;
-		case I2C_SLAVE_NACK:
-			printk("I2C_SLAVE_NACK ERROR .. not imple \n");
-			break;
-		case I2C_SLAVE_STOP:
-			printk("I2C_SLAVE_STOP .. not imple \n");
 			break;
 	}
 
