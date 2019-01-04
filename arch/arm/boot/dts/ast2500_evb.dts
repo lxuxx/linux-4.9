@@ -7,11 +7,11 @@
 	compatible = "aspeed,ast2500-evb", "aspeed,ast2500";
 
 	aliases {
-		serial0 = &uart5;
+		serial4 = &uart5;
 	};
 
 	chosen {
-		bootargs = "console=ttyS0,115200n8 root=/dev/ram rw init=/linuxrc";
+		bootargs = "console=ttyS4,115200n8 root=/dev/ram rw init=/linuxrc";
 	};
 	
 	memory@80000000 {
