@@ -139,7 +139,6 @@
 			#size-cells = <1>;
 			#clock-cells = <1>;
 			#reset-cells = <1>;
-
 		};
 
 		jtag: jtag@1e6e4000 {
