@@ -20,12 +20,21 @@
                 i2c6 = &i2c6;
                 i2c7 = &i2c7;
                 i2c8 = &i2c8;
-		i2c9 = &i2c9;
-		i2c10 = &i2c10;
-		i2c11 = &i2c11;
-		i2c12 = &i2c12;
-		i2c13 = &i2c13;
-                serial0 = &uart5;
+				i2c9 = &i2c9;
+				i2c10 = &i2c10;
+				i2c11 = &i2c11;
+				i2c12 = &i2c12;
+				i2c13 = &i2c13;
+#if 0
+		        serial0 = &uart1;
+		        serial1 = &uart2;
+		        serial2 = &uart3;
+		        serial3 = &uart4;
+#endif
+                serial4 = &uart5;
+#if 0
+                serial5 = &vuart;
+#endif
         };
 
 	cpus {
