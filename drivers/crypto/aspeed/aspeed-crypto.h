@@ -3,6 +3,7 @@
 
 #include <linux/interrupt.h>
 #include <linux/delay.h>
+#include <linux/err.h>
 #include <linux/fips.h>
 #include <linux/dma-mapping.h>
 #include <crypto/scatterwalk.h>
@@ -11,6 +12,7 @@
 #include <crypto/internal/rsa.h>
 #include <crypto/internal/akcipher.h>
 #include <crypto/internal/skcipher.h>
+#include <crypto/internal/aead.h>
 #include <crypto/kpp.h>
 #include <crypto/dh.h>
 #include <crypto/aes.h>
@@ -30,6 +32,10 @@
 #define ASPEED_HACE_CONTEXT		0x08	/* 8 byte aligned*/
 #define ASPEED_HACE_DATA_LEN		0x0C
 #define ASPEED_HACE_CMD			0x10
+#define  HACE_CMD_AES_KEY_FROM_OTP	BIT(24) //G6
+#define  HACE_CMD_GHASH_TAG_XOR_EN	BIT(23) //G6
+#define  HACE_CMD_GHASH_PAD_LEN_INV	BIT(22) //G6
+#define  HACE_CMD_GCM_TAG_ADDR_SEL	BIT(21) //G6
 #define  HACE_CMD_MBUS_REQ_SYNC_EN	BIT(20) //G6
 #define  HACE_CMD_DES_SG_CTRL		BIT(19) //G6
 #define  HACE_CMD_SRC_SG_CTRL		BIT(18) //G6
@@ -45,10 +51,10 @@
 #define  HACE_CMD_CTR_IV_AES_32		(0x3 << 14) //G6
 #define  HACE_CMD_AES_KEY_HW_EXP	BIT(13) //G6
 #define  HACE_CMD_ISR_EN		BIT(12)
-#define  HACE_CMD_RI_WO_DATA_ENABLE	(0)
-#define  HACE_CMD_RI_WO_DATA_DISABLE	BIT(11)
-#define  HACE_CMD_CONTEXT_LOAD_ENABLE	(0)
-#define  HACE_CMD_CONTEXT_LOAD_DISABLE	BIT(10)
+#define  HACE_CMD_RI_WO_DATA_ENABLE	(0)     //G5
+#define  HACE_CMD_RI_WO_DATA_DISABLE	BIT(11) //G5
+#define  HACE_CMD_CONTEXT_LOAD_ENABLE	(0)     //G5
+#define  HACE_CMD_CONTEXT_LOAD_DISABLE	BIT(10) //G5
 #define  HACE_CMD_CONTEXT_SAVE_ENABLE	(0)
 #define  HACE_CMD_CONTEXT_SAVE_DISABLE	BIT(9)
 #define  HACE_CMD_AES			(0)
@@ -182,25 +188,66 @@ struct aspeed_engine_skcipher {
 	aspeed_crypto_fn_t		resume;
 	unsigned long			flags;
 
+	struct crypto_async_request	*areq;
 	struct skcipher_request		*sk_req;
-	void				*cipher_addr;
-	dma_addr_t			cipher_dma_addr;
+	void				*cipher_addr; //g6 src
+	dma_addr_t			cipher_dma_addr; //g6 src
 
 	void				*dst_sg_addr; //g6
 	dma_addr_t			dst_sg_dma_addr; //g6
 };
+
+// struct aspeed_cipher_base_ctx {
+// 	struct aspeed_crypto_dev	*crypto_dev;
+// 	int 				key_len;
+// 	int 				enc_cmd;
+// 	int 				src_nents;
+// 	int 				dst_nents;
+// 	void				*cipher_key;
+// 	dma_addr_t			cipher_key_dma;
+// };
+
 //tctx
 struct aspeed_cipher_ctx {
 	struct aspeed_crypto_dev	*crypto_dev;
-	u8				*iv;
-	bool				con;
+	aspeed_crypto_fn_t		start;
 	int 				key_len;
 	int 				enc_cmd;
 	int 				src_nents;
 	int 				dst_nents;
 	void				*cipher_key;
 	dma_addr_t			cipher_key_dma;
+
+	struct crypto_skcipher		*aes;
 };
+
+struct aspeed_gcm_subkey_result {
+	int err;
+	struct completion completion;
+};
+//gcm tctx
+struct aspeed_cipher_gcm_ctx {
+	struct aspeed_crypto_dev	*crypto_dev;
+	int 				key_len;
+	int 				enc_cmd;
+	int 				src_nents;
+	int 				dst_nents;
+	void				*cipher_key;
+	dma_addr_t			cipher_key_dma;
+
+	struct scatterlist	src[2];
+	struct scatterlist	dst[2];
+
+	u32			j0[AES_BLOCK_SIZE / sizeof(u32)];
+	u32			tag[AES_BLOCK_SIZE / sizeof(u32)];
+	u32			ghash[AES_BLOCK_SIZE / sizeof(u32)];
+	size_t			textlen;
+
+	const u32		*ghash_in;
+	u32			*ghash_out;
+	aspeed_crypto_fn_t		ghash_resume;
+};
+
 /******************************************************************************/
 /* sha and md5 */
 
@@ -329,6 +376,7 @@ struct aspeed_crypto_alg {
 	struct aspeed_crypto_dev	*crypto_dev;
 	union {
 		struct skcipher_alg	skcipher;
+		struct aead_alg		aead;
 		struct ahash_alg	ahash;
 		struct kpp_alg 		kpp;
 		struct akcipher_alg 	akcipher;
@@ -338,7 +386,7 @@ struct aspeed_crypto_alg {
 static inline void
 aspeed_crypto_write(struct aspeed_crypto_dev *crypto, u32 val, u32 reg)
 {
-	// printk("write : val: %x , reg : %x \n",val,reg);
+	printk("write : val: %x , reg : %x \n",val,reg);
 	writel(val, crypto->regs + reg);
 }
 
