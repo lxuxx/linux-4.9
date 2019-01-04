@@ -236,7 +236,7 @@
 		reg = <0x0 0x40>;
 		interrupts = <37>;
 		interrupt-controller;
-		new-mode = <0>;
+		new-mode = <1>;
 	};
 
 	i2c0: i2c@80 {
@@ -245,7 +245,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x80 0x80 0xC00 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -268,7 +268,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x100 0x80 0xC20 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -285,7 +285,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x180 0x80 0xC40 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -305,7 +305,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x200 0x40 0xC60 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -325,7 +325,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x280 0x80 0xC80 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -345,7 +345,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x300 0x40 0xCA0 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -365,7 +365,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x380 0x80 0xCC0 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -384,7 +384,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x400 0x80 0xCE0 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -404,7 +404,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x480 0x80 0xD00 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -424,7 +424,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x500 0x80 0xD20 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -445,7 +445,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x580 0x80 0xD40 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -466,7 +466,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x600 0x80 0xD60 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -487,7 +487,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x680 0x80 0xD80 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -508,7 +508,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x700 0x80 0xDA0 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -529,7 +529,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x780 0x80 0xDC0 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -550,7 +550,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x800 0x80 0xDE0 0x20>;
-#if 1
+#if 0
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
