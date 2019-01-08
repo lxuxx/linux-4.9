@@ -73,9 +73,9 @@
 #define  HACE_CMD_AES256		(0x2 << 2)
 #define  HACE_CMD_OP_CASCADE		(0x3)
 #define  HACE_CMD_OP_INDEPENDENT	(0x1)
-#define ASPEED_HACE_GCM_TAG		0x14 //G6
-#define ASPEED_HACE_TAG			0x18
-#define ASPEED_HACE_GCM_ADD_LEN		0x18 //G6
+#define ASPEED_HACE_GCM_ADD_LEN		0x14 //G6
+#define ASPEED_HACE_TAG			0x18 //G5
+#define ASPEED_HACE_GCM_TAG_BASE_ADDR	0x18 //G6
 #define ASPEED_HACE_STS			0x1C
 #define  HACE_RSA_ISR			BIT(13)
 #define  HACE_CRYPTO_ISR		BIT(12)
@@ -128,6 +128,9 @@
 #define ASPEED_CRYPTO_G6		BIT(0)
 #define ASPEED_CRYPTO_G6_RSA_BUFF_SIZE	508
 #define ASPEED_CRYPTO_RSA_BUFF_SIZE	508
+#define APSEED_CRYPTO_SRC_DMA_BUF_LEN	0xa000
+#define APSEED_CRYPTO_DST_DMA_BUF_LEN	0xa000
+#define APSEED_CRYPTO_GCM_TAG_OFFSET	0x9ff0
 
 #define HACE_CMD_IV_REQUIRE		(HACE_CMD_CBC | HACE_CMD_CFB | \
 					 HACE_CMD_OFB | HACE_CMD_CTR)
@@ -193,7 +196,8 @@ struct aspeed_engine_skcipher {
 	void				*cipher_addr; //g6 src
 	dma_addr_t			cipher_dma_addr; //g6 src
 
-	void				*dst_sg_addr; //g6
+	//dst dma addr in G6 gcm dec mode, the last 16 bytes indicate tag
+	void				*dst_sg_addr;
 	dma_addr_t			dst_sg_dma_addr; //g6
 };
 
@@ -386,7 +390,7 @@ struct aspeed_crypto_alg {
 static inline void
 aspeed_crypto_write(struct aspeed_crypto_dev *crypto, u32 val, u32 reg)
 {
-	printk("write : val: %x , reg : %x \n",val,reg);
+	// printk("write : val: %x , reg : %x \n", val, reg);
 	writel(val, crypto->regs + reg);
 }
 

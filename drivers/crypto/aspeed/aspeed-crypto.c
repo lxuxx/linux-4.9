@@ -102,7 +102,7 @@ static void aspeed_crypto_ahash_done_task(unsigned long data)
 
 static int aspeed_crypto_register(struct aspeed_crypto_dev *crypto_dev)
 {
-	// aspeed_register_skcipher_algs(crypto_dev);
+	aspeed_register_skcipher_algs(crypto_dev);
 	aspeed_register_ahash_algs(crypto_dev);
 	// aspeed_register_akcipher_algs(crypto_dev);
 
@@ -224,14 +224,16 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	ahash_engine->ahash_src_addr = dma_alloc_coherent(&pdev->dev, 0xa000,
+	ahash_engine->ahash_src_addr = dma_alloc_coherent(&pdev->dev,
+				       APSEED_CRYPTO_SRC_DMA_BUF_LEN,
 				       &ahash_engine->ahash_src_dma_addr, GFP_KERNEL);
 	if (!ahash_engine->ahash_src_addr) {
 		printk("error buff allocation\n");
 		return -ENOMEM;
 	}
 	if (crypto_dev->version == 6) {
-		sk_engine->dst_sg_addr = dma_alloc_coherent(&pdev->dev, 0xa000,
+		sk_engine->dst_sg_addr = dma_alloc_coherent(&pdev->dev,
+					 APSEED_CRYPTO_DST_DMA_BUF_LEN,
 					 &sk_engine->dst_sg_dma_addr, GFP_KERNEL);
 		if (!sk_engine->dst_sg_addr) {
 			printk("error buff allocation\n");
