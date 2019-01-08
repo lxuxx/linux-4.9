@@ -996,7 +996,7 @@ static void ast_i2c_do_inc_dma_xfer(struct ast_i2c_bus *i2c_bus)
 							I2C_INTR_CTRL_REG));
 				} else {
 					ast_i2c_write(i2c_bus, (ast_i2c_read(i2c_bus, I2C_INTR_CTRL_REG) |
-								AST_I2CD_TX_ACK_INTR_EN) & ~AST_I2CD_TX_NAK_INTR_EN, I2C_INTR_CTRL_REG);
+								AST_I2CD_TX_ACK_INTR_EN) | AST_I2CD_TX_NAK_INTR_EN, I2C_INTR_CTRL_REG);
 				}
 				ast_i2c_write(i2c_bus, i2c_bus->dma_addr, I2C_DMA_BASE_REG);
 				ast_i2c_write(i2c_bus, (i2c_bus->master_xfer_len), I2C_DMA_LEN_REG);
@@ -1187,7 +1187,7 @@ static void ast_i2c_do_pool_xfer(struct ast_i2c_bus *i2c_bus)
 							I2C_INTR_CTRL_REG));
 				} else {
 					ast_i2c_write(i2c_bus, (ast_i2c_read(i2c_bus, I2C_INTR_CTRL_REG) |
-								AST_I2CD_TX_ACK_INTR_EN) & ~AST_I2CD_TX_NAK_INTR_EN, I2C_INTR_CTRL_REG);
+								AST_I2CD_TX_ACK_INTR_EN) | AST_I2CD_TX_NAK_INTR_EN, I2C_INTR_CTRL_REG);
 				}
 				//ast2400 sw always fix from page_add_point 0
 				ast_i2c_write(i2c_bus, AST_I2CD_TX_DATA_BUF_END_SET((i2c_bus->master_xfer_len -
@@ -1345,7 +1345,7 @@ static void ast_i2c_do_byte_xfer(struct ast_i2c_bus *i2c_bus)
 						      ~AST_I2CD_TX_NAK_INTR_EN, I2C_INTR_CTRL_REG);
 				} else {
 					ast_i2c_write(i2c_bus, (ast_i2c_read(i2c_bus, I2C_INTR_CTRL_REG) |
-								AST_I2CD_TX_ACK_INTR_EN) & ~AST_I2CD_TX_NAK_INTR_EN, I2C_INTR_CTRL_REG);
+								AST_I2CD_TX_ACK_INTR_EN) | AST_I2CD_TX_NAK_INTR_EN, I2C_INTR_CTRL_REG);
 				}
 			}
 
@@ -1944,11 +1944,12 @@ static irqreturn_t ast_i2c_handler(int irq, void *dev_id)
 			if (i2c_bus->master_msgs->flags == I2C_M_IGNORE_NAK) {
 				dev_dbg(i2c_bus->dev, "I2C_M_IGNORE_NAK next send\n");
 				i2c_bus->cmd_err = 0;
+				complete(&i2c_bus->cmd_complete);
 			} else {
-				dev_dbg(i2c_bus->dev, "NAK error\n");
+				//send stop for svoid master scl low for long time
 				i2c_bus->cmd_err = AST_I2CD_INTR_STS_TX_NAK;
+				ast_i2c_write(i2c_bus, AST_I2CD_STOP_CMD, I2C_CMD_REG);
 			}
-			complete(&i2c_bus->cmd_complete);
 			break;
 
 		case AST_I2CD_INTR_STS_TX_NAK | AST_I2CD_INTR_STS_NORMAL_STOP:
@@ -1969,7 +1970,10 @@ static irqreturn_t ast_i2c_handler(int irq, void *dev_id)
 		case AST_I2CD_INTR_STS_NORMAL_STOP:
 			dev_dbg(i2c_bus->dev, "M clear isr: AST_I2CD_INTR_STS_NORMAL_STOP = %x\n", sts);
 			ast_i2c_write(i2c_bus, AST_I2CD_INTR_STS_NORMAL_STOP, I2C_INTR_STS_REG);
-			i2c_bus->cmd_err = 0;
+			if(i2c_bus->cmd_err)
+				i2c_bus->cmd_err |= AST_I2CD_INTR_STS_NORMAL_STOP;
+			else 
+				i2c_bus->cmd_err = 0;
 			complete(&i2c_bus->cmd_complete);
 			break;
 		case (AST_I2CD_INTR_STS_RX_DONE | AST_I2CD_INTR_STS_NORMAL_STOP):
@@ -2190,7 +2194,7 @@ static int ast_i2c_do_msgs_xfer(struct ast_i2c_bus *i2c_bus,
 			if (i2c_bus->cmd_err == (AST_I2CD_INTR_STS_TX_NAK |
 						 AST_I2CD_INTR_STS_NORMAL_STOP)) {
 				dev_dbg(i2c_bus->dev, "go out \n");
-				ret = -ETIMEDOUT;
+				ret = -EAGAIN;
 				goto out;
 			} else if (i2c_bus->cmd_err == AST_I2CD_INTR_STS_ABNORMAL) {
 				dev_dbg(i2c_bus->dev, "go out \n");
