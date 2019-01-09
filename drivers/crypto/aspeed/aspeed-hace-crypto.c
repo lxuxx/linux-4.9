@@ -25,7 +25,7 @@
 #define CIPHER_DBG(fmt, args...)
 #endif
 
-static int aspeed_crypto_sk_handle_queue(struct aspeed_hace_dev *hace_dev,
+static int aspeed_hace_crypto_handle_queue(struct aspeed_hace_dev *hace_dev,
 		struct crypto_async_request *new_areq)
 {
 	struct aspeed_engine_crypto *crypto_engine = &hace_dev->crypto_engine;
@@ -68,7 +68,7 @@ static int aspeed_crypto_sk_handle_queue(struct aspeed_hace_dev *hace_dev,
 }
 
 
-static inline int aspeed_sk_wait_for_data_ready(struct aspeed_hace_dev *hace_dev,
+static inline int aspeed_crypto_wait_for_data_ready(struct aspeed_hace_dev *hace_dev,
 		aspeed_hace_fn_t resume)
 {
 #ifdef CONFIG_CRYPTO_DEV_ASPEED_SK_INT
@@ -100,7 +100,7 @@ static int aspeed_sk_complete(struct aspeed_hace_dev *hace_dev, int err)
 	if (crypto_engine->is_async)
 		req->base.complete(&req->base, err);
 
-	aspeed_crypto_sk_handle_queue(hace_dev, NULL);
+	aspeed_hace_crypto_handle_queue(hace_dev, NULL);
 
 	return err;
 }
@@ -178,7 +178,7 @@ static int aspeed_sk_dma_start(struct aspeed_hace_dev *hace_dev)
 
 	aspeed_hace_write(hace_dev, req->cryptlen, ASPEED_HACE_DATA_LEN);
 	aspeed_hace_write(hace_dev, ctx->enc_cmd, ASPEED_HACE_CMD);
-	return aspeed_sk_wait_for_data_ready(hace_dev, aspeed_sk_sg_transfer);
+	return aspeed_crypto_wait_for_data_ready(hace_dev, aspeed_sk_sg_transfer);
 }
 #endif
 
@@ -207,7 +207,7 @@ static int aspeed_sk_cpu_start(struct aspeed_hace_dev *hace_dev)
 	aspeed_hace_write(hace_dev, req->cryptlen, ASPEED_HACE_DATA_LEN);
 	aspeed_hace_write(hace_dev, ctx->enc_cmd, ASPEED_HACE_CMD);
 
-	return aspeed_sk_wait_for_data_ready(hace_dev, aspeed_sk_cpu_transfer);
+	return aspeed_crypto_wait_for_data_ready(hace_dev, aspeed_sk_cpu_transfer);
 }
 
 static int aspeed_sk_g6_start(struct aspeed_hace_dev *hace_dev)
@@ -273,7 +273,7 @@ static int aspeed_sk_g6_start(struct aspeed_hace_dev *hace_dev)
 	aspeed_hace_write(hace_dev, req->cryptlen, ASPEED_HACE_DATA_LEN);
 	aspeed_hace_write(hace_dev, ctx->enc_cmd, ASPEED_HACE_CMD);
 
-	return aspeed_sk_wait_for_data_ready(hace_dev, aspeed_sk_sg_transfer);
+	return aspeed_crypto_wait_for_data_ready(hace_dev, aspeed_sk_sg_transfer);
 }
 
 int aspeed_hace_skcipher_trigger(struct aspeed_hace_dev *hace_dev)
@@ -311,7 +311,7 @@ static int aspeed_rc4_crypt(struct skcipher_request *req, u32 cmd)
 
 	ctx->enc_cmd = cmd;
 
-	return aspeed_crypto_sk_handle_queue(hace_dev, &req->base);
+	return aspeed_hace_crypto_handle_queue(hace_dev, &req->base);
 }
 
 static int aspeed_rc4_setkey(struct crypto_skcipher *cipher, const u8 *in_key,
@@ -372,7 +372,7 @@ static int aspeed_des_crypt(struct skcipher_request *req, u32 cmd)
 
 	ctx->enc_cmd = cmd;
 
-	return aspeed_crypto_sk_handle_queue(hace_dev, &req->base);
+	return aspeed_hace_crypto_handle_queue(hace_dev, &req->base);
 }
 
 static int aspeed_des_setkey(struct crypto_skcipher *cipher, const u8 *key,
@@ -549,7 +549,7 @@ static int aspeed_aes_crypt(struct skcipher_request *req, u32 cmd)
 
 	ctx->enc_cmd = cmd;
 
-	return aspeed_crypto_sk_handle_queue(hace_dev, &req->base);
+	return aspeed_hace_crypto_handle_queue(hace_dev, &req->base);
 }
 
 static int aspeed_aes_setkey(struct crypto_skcipher *cipher, const u8 *key,
@@ -669,7 +669,7 @@ static int aspeed_aead_complete(struct aspeed_hace_dev *hace_dev, int err)
 	if (crypto_engine->is_async)
 		req->base.complete(&req->base, err);
 
-	aspeed_crypto_sk_handle_queue(hace_dev, NULL);
+	aspeed_hace_crypto_handle_queue(hace_dev, NULL);
 
 	return err;
 }
@@ -835,10 +835,10 @@ static int  aspeed_aead_start(struct aspeed_hace_dev *hace_dev)
 	aspeed_hace_write(hace_dev, req->assoclen, ASPEED_HACE_GCM_ADD_LEN);
 	aspeed_hace_write(hace_dev, ctx->enc_cmd, ASPEED_HACE_CMD);
 
-	return aspeed_sk_wait_for_data_ready(hace_dev, aspeed_aead_transfer);
+	return aspeed_crypto_wait_for_data_ready(hace_dev, aspeed_aead_transfer);
 }
 
-int aspeed_crypto_aead_trigger(struct aspeed_hace_dev *hace_dev)
+int aspeed_hace_aead_trigger(struct aspeed_hace_dev *hace_dev)
 {
 	struct aspeed_engine_crypto *crypto_engine = &hace_dev->crypto_engine;
 	struct aead_request *req = aead_request_cast(crypto_engine->areq);
@@ -885,7 +885,7 @@ static int aspeed_gcm_crypt(struct aead_request *req, u32 cmd)
 
 	ctx->enc_cmd = cmd;
 
-	return aspeed_crypto_sk_handle_queue(hace_dev, &req->base);
+	return aspeed_hace_crypto_handle_queue(hace_dev, &req->base);
 }
 
 static void aspeed_gcm_subkey_done(struct crypto_async_request *req, int err)
@@ -1014,7 +1014,7 @@ static int aspeed_gcm_init(struct crypto_aead *tfm)
 
 	ctx->hace_dev = crypto_alg->hace_dev;
 	ctx->cipher_key = dma_alloc_coherent(ctx->hace_dev->dev, PAGE_SIZE, &ctx->cipher_key_dma, GFP_KERNEL);
-	ctx->start = aspeed_crypto_aead_trigger;
+	ctx->start = aspeed_hace_aead_trigger;
 	ctx->aes = crypto_alloc_skcipher("ecb(aes)", 0, CRYPTO_ALG_NEED_FALLBACK);
 	if (IS_ERR(ctx->aes)) {
 		pr_err("aspeed-gcm: base driver 'ecb(aes)' could not be loaded.\n");
