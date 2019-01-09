@@ -222,7 +222,7 @@ struct aspeed_gcm_subkey_result {
 /******************************************************************************/
 /* sha and md5 */
 
-struct aspeed_engine_ahash {
+struct aspeed_engine_hash {
 	struct crypto_queue		queue;
 	struct tasklet_struct		done_task;
 	// struct tasklet_struct		queue_task;
@@ -339,7 +339,7 @@ struct aspeed_crypto_dev {
 	struct clk			*rsaclk;
 	unsigned long			version;
 	struct aspeed_engine_crypto	crypto_engine;
-	struct aspeed_engine_ahash	ahash_engine;
+	struct aspeed_engine_hash	hash_engine;
 };
 
 
