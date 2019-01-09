@@ -907,6 +907,7 @@ static int aspeed_gcm_subkey(struct crypto_skcipher *tfm, const u8 *data,
 	struct skcipher_request *req;
 	struct scatterlist sg[1];
 	int ret;
+	
 	CIPHER_DBG("\n");
 
 	init_completion(&result.completion);
@@ -1025,7 +1026,10 @@ static int aspeed_gcm_init(struct crypto_aead *tfm)
 
 static void aspeed_gcm_exit(struct crypto_aead *tfm)
 {
+	struct aspeed_cipher_ctx *ctx = crypto_aead_ctx(tfm);
 
+	dma_free_coherent(ctx->hace_dev->dev, PAGE_SIZE, ctx->cipher_key, ctx->cipher_key_dma);
+	crypto_free_skcipher(ctx->aes);
 }
 
 struct aspeed_hace_alg aspeed_crypto_algs[] = {
