@@ -201,16 +201,6 @@ struct aspeed_engine_skcipher {
 	dma_addr_t			dst_sg_dma_addr; //g6
 };
 
-// struct aspeed_cipher_base_ctx {
-// 	struct aspeed_crypto_dev	*crypto_dev;
-// 	int 				key_len;
-// 	int 				enc_cmd;
-// 	int 				src_nents;
-// 	int 				dst_nents;
-// 	void				*cipher_key;
-// 	dma_addr_t			cipher_key_dma;
-// };
-
 //tctx
 struct aspeed_cipher_ctx {
 	struct aspeed_crypto_dev	*crypto_dev;
@@ -228,28 +218,6 @@ struct aspeed_cipher_ctx {
 struct aspeed_gcm_subkey_result {
 	int err;
 	struct completion completion;
-};
-//gcm tctx
-struct aspeed_cipher_gcm_ctx {
-	struct aspeed_crypto_dev	*crypto_dev;
-	int 				key_len;
-	int 				enc_cmd;
-	int 				src_nents;
-	int 				dst_nents;
-	void				*cipher_key;
-	dma_addr_t			cipher_key_dma;
-
-	struct scatterlist	src[2];
-	struct scatterlist	dst[2];
-
-	u32			j0[AES_BLOCK_SIZE / sizeof(u32)];
-	u32			tag[AES_BLOCK_SIZE / sizeof(u32)];
-	u32			ghash[AES_BLOCK_SIZE / sizeof(u32)];
-	size_t			textlen;
-
-	const u32		*ghash_in;
-	u32			*ghash_out;
-	aspeed_crypto_fn_t		ghash_resume;
 };
 
 /******************************************************************************/
