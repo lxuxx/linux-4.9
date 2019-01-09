@@ -182,7 +182,7 @@ struct aspeed_sg_list {
 	u32 phy_addr;
 };
 
-struct aspeed_engine_skcipher {
+struct aspeed_engine_crypto {
 	struct crypto_queue		queue;
 	struct tasklet_struct		done_task;
 	// struct tasklet_struct		queue_task;
@@ -192,7 +192,6 @@ struct aspeed_engine_skcipher {
 	unsigned long			flags;
 
 	struct crypto_async_request	*areq;
-	struct skcipher_request		*sk_req;
 	void				*cipher_addr; //g6 src
 	dma_addr_t			cipher_dma_addr; //g6 src
 
@@ -212,7 +211,7 @@ struct aspeed_cipher_ctx {
 	void				*cipher_key;
 	dma_addr_t			cipher_key_dma;
 
-	struct crypto_skcipher		*aes;
+	struct crypto_skcipher		*aes; // for caculating gcm(aes) subkey
 };
 
 struct aspeed_gcm_subkey_result {
@@ -339,7 +338,7 @@ struct aspeed_crypto_dev {
 	struct clk			*yclk;
 	struct clk			*rsaclk;
 	unsigned long			version;
-	struct aspeed_engine_skcipher	sk_engine;
+	struct aspeed_engine_crypto	crypto_engine;
 	struct aspeed_engine_ahash	ahash_engine;
 };
 

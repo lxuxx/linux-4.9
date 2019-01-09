@@ -37,7 +37,7 @@
 static irqreturn_t aspeed_crypto_irq(int irq, void *dev)
 {
 	struct aspeed_crypto_dev *crypto_dev = (struct aspeed_crypto_dev *)dev;
-	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
+	struct aspeed_engine_crypto *crypto_engine = &crypto_dev->crypto_engine;
 	struct aspeed_engine_ahash *ahash_engine = &crypto_dev->ahash_engine;
 	u32 sts = aspeed_crypto_read(crypto_dev, ASPEED_HACE_STS);
 	int handle = IRQ_NONE;
@@ -46,8 +46,8 @@ static irqreturn_t aspeed_crypto_irq(int irq, void *dev)
 	aspeed_crypto_write(crypto_dev, sts, ASPEED_HACE_STS);
 
 	if (sts & HACE_CRYPTO_ISR) {
-		if (sk_engine->flags & CRYPTO_FLAGS_BUSY)
-			tasklet_schedule(&sk_engine->done_task);
+		if (crypto_engine->flags & CRYPTO_FLAGS_BUSY)
+			tasklet_schedule(&crypto_engine->done_task);
 		else
 			dev_warn(crypto_dev->dev, "CRYPTO interrupt when no active requests.\n");
 		handle = IRQ_HANDLED;
@@ -74,10 +74,10 @@ static irqreturn_t aspeed_crypto_irq(int irq, void *dev)
 static void aspeed_crypto_sk_done_task(unsigned long data)
 {
 	struct aspeed_crypto_dev *crypto_dev = (struct aspeed_crypto_dev *)data;
-	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
+	struct aspeed_engine_crypto *crypto_engine = &crypto_dev->crypto_engine;
 
-	sk_engine->is_async = true;
-	(void)sk_engine->resume(crypto_dev);
+	crypto_engine->is_async = true;
+	(void)crypto_engine->resume(crypto_dev);
 }
 
 static void aspeed_crypto_ahash_done_task(unsigned long data)
@@ -135,7 +135,7 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct aspeed_crypto_dev *crypto_dev;
 	const struct of_device_id *crypto_dev_id;
-	struct aspeed_engine_skcipher *sk_engine;
+	struct aspeed_engine_crypto *crypto_engine;
 	struct aspeed_engine_ahash *ahash_engine;
 	int err;
 
@@ -152,13 +152,13 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 
 	crypto_dev->dev = dev;
 	crypto_dev->version = (unsigned long)crypto_dev_id->data;
-	sk_engine = &crypto_dev->sk_engine;
+	crypto_engine = &crypto_dev->crypto_engine;
 	ahash_engine = &crypto_dev->ahash_engine;
 
 	platform_set_drvdata(pdev, crypto_dev);
-	spin_lock_init(&sk_engine->lock);
-	tasklet_init(&sk_engine->done_task, aspeed_crypto_sk_done_task, (unsigned long)crypto_dev);
-	crypto_init_queue(&sk_engine->queue, 50);
+	spin_lock_init(&crypto_engine->lock);
+	tasklet_init(&crypto_engine->done_task, aspeed_crypto_sk_done_task, (unsigned long)crypto_dev);
+	crypto_init_queue(&crypto_engine->queue, 50);
 
 	spin_lock_init(&ahash_engine->lock);
 	tasklet_init(&ahash_engine->done_task, aspeed_crypto_ahash_done_task, (unsigned long)crypto_dev);
@@ -216,10 +216,10 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 	// }
 
 	// 8-byte aligned
-	sk_engine->cipher_addr = dma_alloc_coherent(&pdev->dev, 0xa000,
-				 &sk_engine->cipher_dma_addr, GFP_KERNEL);
+	crypto_engine->cipher_addr = dma_alloc_coherent(&pdev->dev, 0xa000,
+				 &crypto_engine->cipher_dma_addr, GFP_KERNEL);
 
-	if (!sk_engine->cipher_addr) {
+	if (!crypto_engine->cipher_addr) {
 		printk("error buff allocation\n");
 		return -ENOMEM;
 	}
@@ -232,10 +232,10 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	if (crypto_dev->version == 6) {
-		sk_engine->dst_sg_addr = dma_alloc_coherent(&pdev->dev,
+		crypto_engine->dst_sg_addr = dma_alloc_coherent(&pdev->dev,
 					 APSEED_CRYPTO_DST_DMA_BUF_LEN,
-					 &sk_engine->dst_sg_dma_addr, GFP_KERNEL);
-		if (!sk_engine->dst_sg_addr) {
+					 &crypto_engine->dst_sg_dma_addr, GFP_KERNEL);
+		if (!crypto_engine->dst_sg_addr) {
 			printk("error buff allocation\n");
 			return -ENOMEM;
 		}

@@ -28,25 +28,25 @@
 static int aspeed_crypto_sk_handle_queue(struct aspeed_crypto_dev *crypto_dev,
 		struct crypto_async_request *new_areq)
 {
-	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
+	struct aspeed_engine_crypto *crypto_engine = &crypto_dev->crypto_engine;
 	struct crypto_async_request *areq, *backlog;
 	struct aspeed_cipher_ctx *ctx;
 	unsigned long flags;
 	int err, ret = 0;
 
 	CIPHER_DBG("\n");
-	spin_lock_irqsave(&sk_engine->lock, flags);
+	spin_lock_irqsave(&crypto_engine->lock, flags);
 	if (new_areq)
-		ret = crypto_enqueue_request(&sk_engine->queue, new_areq);
-	if (sk_engine->flags & CRYPTO_FLAGS_BUSY) {
-		spin_unlock_irqrestore(&sk_engine->lock, flags);
+		ret = crypto_enqueue_request(&crypto_engine->queue, new_areq);
+	if (crypto_engine->flags & CRYPTO_FLAGS_BUSY) {
+		spin_unlock_irqrestore(&crypto_engine->lock, flags);
 		return ret;
 	}
-	backlog = crypto_get_backlog(&sk_engine->queue);
-	areq = crypto_dequeue_request(&sk_engine->queue);
+	backlog = crypto_get_backlog(&crypto_engine->queue);
+	areq = crypto_dequeue_request(&crypto_engine->queue);
 	if (areq)
-		sk_engine->flags |= CRYPTO_FLAGS_BUSY;
-	spin_unlock_irqrestore(&sk_engine->lock, flags);
+		crypto_engine->flags |= CRYPTO_FLAGS_BUSY;
+	spin_unlock_irqrestore(&crypto_engine->lock, flags);
 
 	if (!areq)
 		return ret;
@@ -55,16 +55,16 @@ static int aspeed_crypto_sk_handle_queue(struct aspeed_crypto_dev *crypto_dev,
 		backlog->complete(backlog, -EINPROGRESS);
 
 	ctx = crypto_tfm_ctx(areq->tfm);
-	sk_engine->is_async = (areq != new_areq);
-	sk_engine->areq = areq;
+	crypto_engine->is_async = (areq != new_areq);
+	crypto_engine->areq = areq;
 
 	err = ctx->start(crypto_dev);
 
 
-	// sk_engine->sk_req = skcipher_request_cast(areq);
+	// crypto_engine->sk_req = skcipher_request_cast(areq);
 	// err = aspeed_crypto_skcipher_trigger(crypto_dev);
 
-	return (sk_engine->is_async) ? ret : err;
+	return (crypto_engine->is_async) ? ret : err;
 }
 
 
@@ -85,8 +85,8 @@ static inline int aspeed_sk_wait_for_data_ready(struct aspeed_crypto_dev *crypto
 
 static int aspeed_sk_complete(struct aspeed_crypto_dev *crypto_dev, int err)
 {
-	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
-	struct skcipher_request *req = skcipher_request_cast(sk_engine->areq);
+	struct aspeed_engine_crypto *crypto_engine = &crypto_dev->crypto_engine;
+	struct skcipher_request *req = skcipher_request_cast(crypto_engine->areq);
 	struct aspeed_cipher_ctx *ctx = crypto_skcipher_ctx(crypto_skcipher_reqtfm(req));
 
 	CIPHER_DBG("\n");
@@ -96,8 +96,8 @@ static int aspeed_sk_complete(struct aspeed_crypto_dev *crypto_dev, int err)
 		else
 			memcpy(req->iv, ctx->cipher_key, 16);
 	}
-	sk_engine->flags &= ~CRYPTO_FLAGS_BUSY;
-	if (sk_engine->is_async)
+	crypto_engine->flags &= ~CRYPTO_FLAGS_BUSY;
+	if (crypto_engine->is_async)
 		req->base.complete(&req->base, err);
 
 	aspeed_crypto_sk_handle_queue(crypto_dev, NULL);
@@ -107,8 +107,8 @@ static int aspeed_sk_complete(struct aspeed_crypto_dev *crypto_dev, int err)
 
 static int aspeed_sk_sg_transfer(struct aspeed_crypto_dev *crypto_dev)
 {
-	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
-	struct skcipher_request *req = skcipher_request_cast(sk_engine->areq);
+	struct aspeed_engine_crypto *crypto_engine = &crypto_dev->crypto_engine;
+	struct skcipher_request *req = skcipher_request_cast(crypto_engine->areq);
 	struct crypto_skcipher *cipher = crypto_skcipher_reqtfm(req);
 	struct aspeed_cipher_ctx *ctx = crypto_skcipher_ctx(cipher);
 
@@ -125,8 +125,8 @@ static int aspeed_sk_sg_transfer(struct aspeed_crypto_dev *crypto_dev)
 
 static int aspeed_sk_cpu_transfer(struct aspeed_crypto_dev *crypto_dev)
 {
-	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
-	struct skcipher_request *req = skcipher_request_cast(sk_engine->areq);
+	struct aspeed_engine_crypto *crypto_engine = &crypto_dev->crypto_engine;
+	struct skcipher_request *req = skcipher_request_cast(crypto_engine->areq);
 	struct crypto_skcipher *cipher = crypto_skcipher_reqtfm(req);
 	struct aspeed_cipher_ctx *ctx = crypto_skcipher_ctx(cipher);
 	struct scatterlist *out_sg = req->dst;
@@ -134,18 +134,18 @@ static int aspeed_sk_cpu_transfer(struct aspeed_crypto_dev *crypto_dev)
 	int err = 0;
 
 	CIPHER_DBG("\n");
-	nbytes = sg_copy_from_buffer(out_sg, ctx->dst_nents, sk_engine->cipher_addr, req->cryptlen);
+	nbytes = sg_copy_from_buffer(out_sg, ctx->dst_nents, crypto_engine->cipher_addr, req->cryptlen);
 	if (!nbytes) {
 		printk("nbytes %d req->cryptlen %d\n", nbytes, req->cryptlen);
 		err = -EINVAL;
 	}
 	return aspeed_sk_complete(crypto_dev, err);
 }
-
+# if 0
 static int aspeed_sk_dma_start(struct aspeed_crypto_dev *crypto_dev)
 {
-	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
-	struct skcipher_request *req = skcipher_request_cast(sk_engine->areq);
+	struct aspeed_engine_crypto *crypto_engine = &crypto_dev->crypto_engine;
+	struct skcipher_request *req = skcipher_request_cast(crypto_engine->areq);
 	struct crypto_skcipher *cipher = crypto_skcipher_reqtfm(req);
 	struct aspeed_cipher_ctx *ctx = crypto_skcipher_ctx(cipher);
 
@@ -171,7 +171,7 @@ static int aspeed_sk_dma_start(struct aspeed_crypto_dev *crypto_dev)
 		}
 	}
 #ifdef CONFIG_CRYPTO_DEV_ASPEED_SK_INT
-	sk_engine->resume = aspeed_sk_sg_transfer;
+	crypto_engine->resume = aspeed_sk_sg_transfer;
 #endif
 	aspeed_crypto_write(crypto_dev, sg_dma_address(req->src), ASPEED_HACE_SRC);
 	aspeed_crypto_write(crypto_dev, sg_dma_address(req->dst), ASPEED_HACE_DEST);
@@ -180,11 +180,12 @@ static int aspeed_sk_dma_start(struct aspeed_crypto_dev *crypto_dev)
 	aspeed_crypto_write(crypto_dev, ctx->enc_cmd, ASPEED_HACE_CMD);
 	return aspeed_sk_wait_for_data_ready(crypto_dev, aspeed_sk_sg_transfer);
 }
+#endif
 
 static int aspeed_sk_cpu_start(struct aspeed_crypto_dev *crypto_dev)
 {
-	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
-	struct skcipher_request *req = skcipher_request_cast(sk_engine->areq);
+	struct aspeed_engine_crypto *crypto_engine = &crypto_dev->crypto_engine;
+	struct skcipher_request *req = skcipher_request_cast(crypto_engine->areq);
 	struct crypto_skcipher *cipher = crypto_skcipher_reqtfm(req);
 	struct aspeed_cipher_ctx *ctx = crypto_skcipher_ctx(cipher);
 	struct scatterlist *in_sg = req->src;
@@ -192,17 +193,17 @@ static int aspeed_sk_cpu_start(struct aspeed_crypto_dev *crypto_dev)
 
 
 	CIPHER_DBG("\n");
-	nbytes = sg_copy_to_buffer(in_sg, ctx->src_nents, sk_engine->cipher_addr, req->cryptlen);
+	nbytes = sg_copy_to_buffer(in_sg, ctx->src_nents, crypto_engine->cipher_addr, req->cryptlen);
 	CIPHER_DBG("copy nbytes %d, req->cryptlen %d , nb_in_sg %d, nb_out_sg %d \n", nbytes, req->cryptlen, ctx->src_nents, ctx->dst_nents);
 	if (!nbytes) {
 		printk("nbytes error \n");
 		return -EINVAL;
 	}
 #ifdef CONFIG_CRYPTO_DEV_ASPEED_SK_INT
-	sk_engine->resume = aspeed_sk_cpu_transfer;
+	crypto_engine->resume = aspeed_sk_cpu_transfer;
 #endif
-	aspeed_crypto_write(crypto_dev, sk_engine->cipher_dma_addr, ASPEED_HACE_SRC);
-	aspeed_crypto_write(crypto_dev, sk_engine->cipher_dma_addr, ASPEED_HACE_DEST);
+	aspeed_crypto_write(crypto_dev, crypto_engine->cipher_dma_addr, ASPEED_HACE_SRC);
+	aspeed_crypto_write(crypto_dev, crypto_engine->cipher_dma_addr, ASPEED_HACE_DEST);
 	aspeed_crypto_write(crypto_dev, req->cryptlen, ASPEED_HACE_DATA_LEN);
 	aspeed_crypto_write(crypto_dev, ctx->enc_cmd, ASPEED_HACE_CMD);
 
@@ -211,8 +212,8 @@ static int aspeed_sk_cpu_start(struct aspeed_crypto_dev *crypto_dev)
 
 static int aspeed_sk_g6_start(struct aspeed_crypto_dev *crypto_dev)
 {
-	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
-	struct skcipher_request *req = skcipher_request_cast(sk_engine->areq);
+	struct aspeed_engine_crypto *crypto_engine = &crypto_dev->crypto_engine;
+	struct skcipher_request *req = skcipher_request_cast(crypto_engine->areq);
 	struct crypto_skcipher *cipher = crypto_skcipher_reqtfm(req);
 	struct aspeed_cipher_ctx *ctx = crypto_skcipher_ctx(cipher);
 	struct aspeed_sg_list *src_list, *dst_list;
@@ -245,8 +246,8 @@ static int aspeed_sk_g6_start(struct aspeed_crypto_dev *crypto_dev)
 		}
 	}
 
-	src_list = (struct aspeed_sg_list *) sk_engine->cipher_addr;
-	src_dma_addr = sk_engine->cipher_dma_addr;
+	src_list = (struct aspeed_sg_list *) crypto_engine->cipher_addr;
+	src_dma_addr = crypto_engine->cipher_dma_addr;
 	for_each_sg(req->src, s, ctx->src_nents, i) {
 		src_list[i].phy_addr = sg_dma_address(s);
 		src_list[i].len = s->length;
@@ -255,8 +256,8 @@ static int aspeed_sk_g6_start(struct aspeed_crypto_dev *crypto_dev)
 	if (req->dst == req->src) {
 		dst_dma_addr = src_dma_addr;
 	} else {
-		dst_list = (struct aspeed_sg_list *) sk_engine->dst_sg_addr;
-		dst_dma_addr = sk_engine->dst_sg_dma_addr;
+		dst_list = (struct aspeed_sg_list *) crypto_engine->dst_sg_addr;
+		dst_dma_addr = crypto_engine->dst_sg_dma_addr;
 		for_each_sg(req->dst, s, ctx->dst_nents, i) {
 			dst_list[i].phy_addr = sg_dma_address(s);
 			dst_list[i].len = s->length;
@@ -265,7 +266,7 @@ static int aspeed_sk_g6_start(struct aspeed_crypto_dev *crypto_dev)
 	}
 
 #ifdef CONFIG_CRYPTO_DEV_ASPEED_SK_INT
-	sk_engine->resume = aspeed_sk_sg_transfer;
+	crypto_engine->resume = aspeed_sk_sg_transfer;
 #endif
 	aspeed_crypto_write(crypto_dev, src_dma_addr, ASPEED_HACE_SRC);
 	aspeed_crypto_write(crypto_dev, dst_dma_addr, ASPEED_HACE_DEST);
@@ -277,8 +278,8 @@ static int aspeed_sk_g6_start(struct aspeed_crypto_dev *crypto_dev)
 
 int aspeed_crypto_skcipher_trigger(struct aspeed_crypto_dev *crypto_dev)
 {
-	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
-	struct skcipher_request *req = skcipher_request_cast(sk_engine->areq);
+	struct aspeed_engine_crypto *crypto_engine = &crypto_dev->crypto_engine;
+	struct skcipher_request *req = skcipher_request_cast(crypto_engine->areq);
 	struct crypto_skcipher *cipher = crypto_skcipher_reqtfm(req);
 	struct aspeed_cipher_ctx *ctx = crypto_skcipher_ctx(cipher);
 
@@ -658,14 +659,14 @@ static void aspeed_crypto_cra_exit(struct crypto_skcipher *tfm)
 
 static int aspeed_aead_complete(struct aspeed_crypto_dev *crypto_dev, int err)
 {
-	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
-	struct aead_request *req = aead_request_cast(sk_engine->areq);
+	struct aspeed_engine_crypto *crypto_engine = &crypto_dev->crypto_engine;
+	struct aead_request *req = aead_request_cast(crypto_engine->areq);
 	struct aspeed_cipher_ctx *ctx = crypto_aead_ctx(crypto_aead_reqtfm(req));
 
 	CIPHER_DBG("\n");
 	memcpy(req->iv, ctx->cipher_key, 16);
-	sk_engine->flags &= ~CRYPTO_FLAGS_BUSY;
-	if (sk_engine->is_async)
+	crypto_engine->flags &= ~CRYPTO_FLAGS_BUSY;
+	if (crypto_engine->is_async)
 		req->base.complete(&req->base, err);
 
 	aspeed_crypto_sk_handle_queue(crypto_dev, NULL);
@@ -675,8 +676,8 @@ static int aspeed_aead_complete(struct aspeed_crypto_dev *crypto_dev, int err)
 
 static int aspeed_aead_transfer(struct aspeed_crypto_dev *crypto_dev)
 {
-	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
-	struct aead_request *req = aead_request_cast(sk_engine->areq);
+	struct aspeed_engine_crypto *crypto_engine = &crypto_dev->crypto_engine;
+	struct aead_request *req = aead_request_cast(crypto_engine->areq);
 	struct crypto_aead *cipher = crypto_aead_reqtfm(req);
 	struct aspeed_cipher_ctx *ctx = crypto_aead_ctx(cipher);
 	int err = 0;
@@ -688,7 +689,7 @@ static int aspeed_aead_transfer(struct aspeed_crypto_dev *crypto_dev)
 		authsize = crypto_aead_authsize(cipher);
 		offset = req->assoclen + req->cryptlen - authsize;
 		scatterwalk_map_and_copy(tag, req->src, offset, authsize, 0);
-		err = crypto_memneq(sk_engine->dst_sg_addr + APSEED_CRYPTO_GCM_TAG_OFFSET,
+		err = crypto_memneq(crypto_engine->dst_sg_addr + APSEED_CRYPTO_GCM_TAG_OFFSET,
 				    tag, authsize) ? -EBADMSG : 0;
 	}
 	if (req->src == req->dst) {
@@ -703,8 +704,8 @@ static int aspeed_aead_transfer(struct aspeed_crypto_dev *crypto_dev)
 
 static int  aspeed_aead_start(struct aspeed_crypto_dev *crypto_dev)
 {
-	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
-	struct aead_request *req = aead_request_cast(sk_engine->areq);
+	struct aspeed_engine_crypto *crypto_engine = &crypto_dev->crypto_engine;
+	struct aead_request *req = aead_request_cast(crypto_engine->areq);
 	struct crypto_aead *cipher = crypto_aead_reqtfm(req);
 	struct aspeed_cipher_ctx *ctx = crypto_aead_ctx(cipher);
 	struct aspeed_sg_list *src_list, *dst_list;
@@ -744,11 +745,11 @@ static int  aspeed_aead_start(struct aspeed_crypto_dev *crypto_dev)
 		}
 	}
 
-	src_list = (struct aspeed_sg_list *) sk_engine->cipher_addr;
-	dst_list = (struct aspeed_sg_list *) sk_engine->dst_sg_addr;
-	src_dma_addr = sk_engine->cipher_dma_addr;
-	dst_dma_addr = sk_engine->dst_sg_dma_addr;
-	tag_dma_addr = sk_engine->dst_sg_dma_addr + APSEED_CRYPTO_GCM_TAG_OFFSET;
+	src_list = (struct aspeed_sg_list *) crypto_engine->cipher_addr;
+	dst_list = (struct aspeed_sg_list *) crypto_engine->dst_sg_addr;
+	src_dma_addr = crypto_engine->cipher_dma_addr;
+	dst_dma_addr = crypto_engine->dst_sg_dma_addr;
+	tag_dma_addr = crypto_engine->dst_sg_dma_addr + APSEED_CRYPTO_GCM_TAG_OFFSET;
 	if (enc)
 		total = req->assoclen + req->cryptlen;
 	else
@@ -821,7 +822,7 @@ static int  aspeed_aead_start(struct aspeed_crypto_dev *crypto_dev)
 	// }
 
 #ifdef CONFIG_CRYPTO_DEV_ASPEED_SK_INT
-	sk_engine->resume = aspeed_aead_transfer;
+	crypto_engine->resume = aspeed_aead_transfer;
 #endif
 	aspeed_crypto_write(crypto_dev, src_dma_addr, ASPEED_HACE_SRC);
 	aspeed_crypto_write(crypto_dev, dst_dma_addr, ASPEED_HACE_DEST);
@@ -839,8 +840,8 @@ static int  aspeed_aead_start(struct aspeed_crypto_dev *crypto_dev)
 
 int aspeed_crypto_aead_trigger(struct aspeed_crypto_dev *crypto_dev)
 {
-	struct aspeed_engine_skcipher *sk_engine = &crypto_dev->sk_engine;
-	struct aead_request *req = aead_request_cast(sk_engine->areq);
+	struct aspeed_engine_crypto *crypto_engine = &crypto_dev->crypto_engine;
+	struct aead_request *req = aead_request_cast(crypto_engine->areq);
 	struct crypto_aead *cipher = crypto_aead_reqtfm(req);
 	struct aspeed_cipher_ctx *ctx = crypto_aead_ctx(cipher);
 
