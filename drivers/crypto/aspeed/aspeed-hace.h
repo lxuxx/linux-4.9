@@ -169,9 +169,9 @@
 
 #define SHA_FLAGS_FINUP			BIT(23)
 
-struct aspeed_crypto_dev;
+struct aspeed_hace_dev;
 
-typedef int (*aspeed_crypto_fn_t)(struct aspeed_crypto_dev *);
+typedef int (*aspeed_hace_fn_t)(struct aspeed_hace_dev *);
 
 
 /******************************************************************************/
@@ -188,7 +188,7 @@ struct aspeed_engine_crypto {
 	// struct tasklet_struct		queue_task;
 	bool				is_async;
 	spinlock_t			lock;
-	aspeed_crypto_fn_t		resume;
+	aspeed_hace_fn_t		resume;
 	unsigned long			flags;
 
 	struct crypto_async_request	*areq;
@@ -202,8 +202,8 @@ struct aspeed_engine_crypto {
 
 //tctx
 struct aspeed_cipher_ctx {
-	struct aspeed_crypto_dev	*crypto_dev;
-	aspeed_crypto_fn_t		start;
+	struct aspeed_hace_dev		*hace_dev;
+	aspeed_hace_fn_t		start;
 	int 				key_len;
 	int 				enc_cmd;
 	int 				src_nents;
@@ -228,7 +228,7 @@ struct aspeed_engine_hash {
 	// struct tasklet_struct		queue_task;
 	bool				is_async;
 	spinlock_t			lock;
-	aspeed_crypto_fn_t		resume;
+	aspeed_hace_fn_t		resume;
 	unsigned long			flags;
 
 	struct ahash_request		*ahash_req;
@@ -247,7 +247,7 @@ struct aspeed_sha_hmac_ctx {
 };
 //sha and md5 tctx
 struct aspeed_sham_ctx {
-	struct aspeed_crypto_dev	*crypto_dev;
+	struct aspeed_hace_dev		*hace_dev;
 	unsigned long			flags; //hmac flag
 
 	/* fallback stuff */
@@ -313,7 +313,7 @@ struct aspeed_rsa_key {
 };
 
 struct aspeed_rsa_ctx {
-	struct aspeed_crypto_dev *crypto_dev;
+	struct aspeed_hace_dev *hace_dev;
 	struct aspeed_rsa_key key;
 	u8 *euclid_ctx;
 	int enc;
@@ -322,7 +322,7 @@ struct aspeed_rsa_ctx {
 /*************************************************************************************/
 
 struct aspeed_ecdh_ctx {
-	struct aspeed_crypto_dev	*crypto_dev;
+	struct aspeed_hace_dev		*hace_dev;
 	const u8 			*public_key;
 	unsigned int 			curve_id;
 	size_t				n_sz;
@@ -331,7 +331,7 @@ struct aspeed_ecdh_ctx {
 
 /*************************************************************************************/
 
-struct aspeed_crypto_dev {
+struct aspeed_hace_dev {
 	void __iomem			*regs;
 	struct device			*dev;
 	int 				irq;
@@ -343,8 +343,8 @@ struct aspeed_crypto_dev {
 };
 
 
-struct aspeed_crypto_alg {
-	struct aspeed_crypto_dev	*crypto_dev;
+struct aspeed_hace_alg {
+	struct aspeed_hace_dev		*hace_dev;
 	union {
 		struct skcipher_alg	skcipher;
 		struct aead_alg		aead;
@@ -355,14 +355,14 @@ struct aspeed_crypto_alg {
 };
 
 static inline void
-aspeed_crypto_write(struct aspeed_crypto_dev *crypto, u32 val, u32 reg)
+aspeed_hace_write(struct aspeed_hace_dev *crypto, u32 val, u32 reg)
 {
 	// printk("write : val: %x , reg : %x \n", val, reg);
 	writel(val, crypto->regs + reg);
 }
 
 static inline u32
-aspeed_crypto_read(struct aspeed_crypto_dev *crypto, u32 reg)
+aspeed_hace_read(struct aspeed_hace_dev *crypto, u32 reg)
 {
 #if 0
 	u32 val = readl(crypto->regs + reg);
@@ -373,17 +373,17 @@ aspeed_crypto_read(struct aspeed_crypto_dev *crypto, u32 reg)
 #endif
 }
 
-extern int aspeed_crypto_skcipher_trigger(struct aspeed_crypto_dev *aspeed_crypto);
+extern int aspeed_hace_skcipher_trigger(struct aspeed_hace_dev *aspeed_hace);
 
-extern int aspeed_crypto_ahash_trigger(struct aspeed_crypto_dev *aspeed_crypto,
-				       aspeed_crypto_fn_t resume);
-extern int aspeed_crypto_ahash_handle_queue(struct aspeed_crypto_dev *aspeed_crypto, struct crypto_async_request *areq);
+extern int aspeed_hace_ahash_trigger(struct aspeed_hace_dev *aspeed_hace,
+				       aspeed_hace_fn_t resume);
+extern int aspeed_hace_ahash_handle_queue(struct aspeed_hace_dev *aspeed_hace, struct crypto_async_request *areq);
 
-extern int aspeed_crypto_rsa_trigger(struct aspeed_crypto_dev *aspeed_crypto);
+extern int aspeed_hace_rsa_trigger(struct aspeed_hace_dev *aspeed_hace);
 
-extern int aspeed_register_skcipher_algs(struct aspeed_crypto_dev *crypto_dev);
-extern int aspeed_register_ahash_algs(struct aspeed_crypto_dev *crypto_dev);
-extern int aspeed_register_akcipher_algs(struct aspeed_crypto_dev *crypto_dev);
-extern int aspeed_register_kpp_algs(struct aspeed_crypto_dev *crypto_dev);
+extern int aspeed_register_skcipher_algs(struct aspeed_hace_dev *hace_dev);
+extern int aspeed_register_ahash_algs(struct aspeed_hace_dev *hace_dev);
+extern int aspeed_register_akcipher_algs(struct aspeed_hace_dev *hace_dev);
+extern int aspeed_register_kpp_algs(struct aspeed_hace_dev *hace_dev);
 
 #endif

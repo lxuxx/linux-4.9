@@ -111,9 +111,9 @@ static void aspeed_crypto_ahash_fill_padding(struct aspeed_sham_reqctx *rctx)
 	}
 }
 
-static int aspeed_ahash_dma_prepare(struct aspeed_crypto_dev *crypto_dev)
+static int aspeed_ahash_dma_prepare(struct aspeed_hace_dev *hace_dev)
 {
-	struct aspeed_engine_hash *hash_engine = &crypto_dev->hash_engine;
+	struct aspeed_engine_hash *hash_engine = &hace_dev->hash_engine;
 	struct ahash_request *req = hash_engine->ahash_req;
 	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
 	int length;
@@ -137,7 +137,7 @@ static int aspeed_ahash_dma_prepare(struct aspeed_crypto_dev *crypto_dev)
 	scatterwalk_map_and_copy(rctx->buffer, rctx->src_sg,
 				 rctx->offset, remain, 0);
 	rctx->bufcnt = remain;
-	rctx->digest_dma_addr = dma_map_single(crypto_dev->dev, rctx->digest,
+	rctx->digest_dma_addr = dma_map_single(hace_dev->dev, rctx->digest,
 					       SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
 	hash_engine->src_length = length - remain;
 	hash_engine->src_dma = hash_engine->ahash_src_dma_addr;
@@ -145,9 +145,9 @@ static int aspeed_ahash_dma_prepare(struct aspeed_crypto_dev *crypto_dev)
 	return 0;
 }
 
-static int aspeed_ahash_append_sg_map(struct aspeed_crypto_dev *crypto_dev)
+static int aspeed_ahash_append_sg_map(struct aspeed_hace_dev *hace_dev)
 {
-	struct aspeed_engine_hash *hash_engine = &crypto_dev->hash_engine;
+	struct aspeed_engine_hash *hash_engine = &hace_dev->hash_engine;
 	struct ahash_request *req = hash_engine->ahash_req;
 	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
 	struct aspeed_sg_list *src_list;
@@ -162,18 +162,18 @@ static int aspeed_ahash_append_sg_map(struct aspeed_crypto_dev *crypto_dev)
 	AHASH_DBG("\n");
 	length = rctx->total + rctx->bufcnt;
 	remaining = length % rctx->block_size;
-	ret = dma_map_sg(crypto_dev->dev, rctx->src_sg, rctx->src_nents, DMA_TO_DEVICE);
+	ret = dma_map_sg(hace_dev->dev, rctx->src_sg, rctx->src_nents, DMA_TO_DEVICE);
 	if (!ret) {
-		dev_err(crypto_dev->dev, "[%s:%d] dma_map_sg(src) error\n",
+		dev_err(hace_dev->dev, "[%s:%d] dma_map_sg(src) error\n",
 			__func__, __LINE__);
 		return -EINVAL;
 	}
 
 	src_list = (struct aspeed_sg_list *) hash_engine->ahash_src_addr;
-	rctx->digest_dma_addr = dma_map_single(crypto_dev->dev, rctx->digest,
+	rctx->digest_dma_addr = dma_map_single(hace_dev->dev, rctx->digest,
 					       SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
 	if (rctx->bufcnt != 0) {
-		rctx->buffer_dma_addr = dma_map_single(crypto_dev->dev, rctx->buffer,
+		rctx->buffer_dma_addr = dma_map_single(hace_dev->dev, rctx->buffer,
 						       rctx->buflen + rctx->block_size, DMA_TO_DEVICE);
 		src_list[0].phy_addr = rctx->buffer_dma_addr;
 		src_list[0].len = rctx->bufcnt;
@@ -203,9 +203,9 @@ static int aspeed_ahash_append_sg_map(struct aspeed_crypto_dev *crypto_dev)
 	return 0;
 }
 
-static int aspeed_ahash_complete(struct aspeed_crypto_dev *crypto_dev, int err)
+static int aspeed_ahash_complete(struct aspeed_hace_dev *hace_dev, int err)
 {
-	struct aspeed_engine_hash *hash_engine = &crypto_dev->hash_engine;
+	struct aspeed_engine_hash *hash_engine = &hace_dev->hash_engine;
 	struct ahash_request *req = hash_engine->ahash_req;
 
 	AHASH_DBG("\n");
@@ -216,29 +216,29 @@ static int aspeed_ahash_complete(struct aspeed_crypto_dev *crypto_dev, int err)
 		req->base.complete(&req->base, err);
 
 	// tasklet_schedule(&hash_engine->queue_task);
-	aspeed_crypto_ahash_handle_queue(crypto_dev, NULL);
+	aspeed_hace_ahash_handle_queue(hace_dev, NULL);
 	return err;
 }
 
-static int aspeed_ahash_transfer(struct aspeed_crypto_dev *crypto_dev)
+static int aspeed_ahash_transfer(struct aspeed_hace_dev *hace_dev)
 {
-	struct aspeed_engine_hash *hash_engine = &crypto_dev->hash_engine;
+	struct aspeed_engine_hash *hash_engine = &hace_dev->hash_engine;
 	struct ahash_request *req = hash_engine->ahash_req;
 	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
 
 	AHASH_DBG("\n");
-	dma_unmap_single(crypto_dev->dev, rctx->digest_dma_addr,
+	dma_unmap_single(hace_dev->dev, rctx->digest_dma_addr,
 			 SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
-	dma_unmap_single(crypto_dev->dev, rctx->buffer_dma_addr,
+	dma_unmap_single(hace_dev->dev, rctx->buffer_dma_addr,
 			 rctx->buflen + rctx->block_size, DMA_TO_DEVICE);
 	memcpy(req->result, rctx->digest, rctx->digsize);
 
-	return aspeed_ahash_complete(crypto_dev, 0);
+	return aspeed_ahash_complete(hace_dev, 0);
 }
 
-static int aspeed_ahash_hmac_resume(struct aspeed_crypto_dev *crypto_dev)
+static int aspeed_ahash_hmac_resume(struct aspeed_hace_dev *hace_dev)
 {
-	struct aspeed_engine_hash *hash_engine = &crypto_dev->hash_engine;
+	struct aspeed_engine_hash *hash_engine = &hace_dev->hash_engine;
 	struct ahash_request *req = hash_engine->ahash_req;
 	struct crypto_ahash *tfm = crypto_ahash_reqtfm(req);
 	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
@@ -246,9 +246,9 @@ static int aspeed_ahash_hmac_resume(struct aspeed_crypto_dev *crypto_dev)
 	struct aspeed_sha_hmac_ctx *bctx = tctx->base;
 
 	AHASH_DBG("\n");
-	dma_unmap_single(crypto_dev->dev, rctx->digest_dma_addr,
+	dma_unmap_single(hace_dev->dev, rctx->digest_dma_addr,
 			 SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
-	dma_unmap_single(crypto_dev->dev, rctx->buffer_dma_addr,
+	dma_unmap_single(hace_dev->dev, rctx->buffer_dma_addr,
 			 rctx->buflen + rctx->block_size, DMA_TO_DEVICE);
 	memcpy(rctx->buffer, bctx->opad, rctx->block_size);
 	memcpy(rctx->buffer + rctx->block_size, rctx->digest, rctx->digsize);
@@ -258,31 +258,31 @@ static int aspeed_ahash_hmac_resume(struct aspeed_crypto_dev *crypto_dev)
 	aspeed_crypto_ahash_fill_padding(rctx);
 	aspeed_crypto_ahash_iV(rctx);
 
-	rctx->digest_dma_addr = dma_map_single(crypto_dev->dev, rctx->digest,
+	rctx->digest_dma_addr = dma_map_single(hace_dev->dev, rctx->digest,
 					       SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
-	rctx->buffer_dma_addr = dma_map_single(crypto_dev->dev, rctx->buffer,
+	rctx->buffer_dma_addr = dma_map_single(hace_dev->dev, rctx->buffer,
 					       rctx->buflen + rctx->block_size, DMA_TO_DEVICE);
 	hash_engine->src_dma = rctx->buffer_dma_addr;
 	hash_engine->src_length = rctx->bufcnt;
 	hash_engine->digeset_dma = rctx->digest_dma_addr;
-	return aspeed_crypto_ahash_trigger(crypto_dev, aspeed_ahash_transfer);
+	return aspeed_hace_ahash_trigger(hace_dev, aspeed_ahash_transfer);
 }
 
-static int aspeed_ahash_g6_update_resume(struct aspeed_crypto_dev *crypto_dev)
+static int aspeed_ahash_g6_update_resume(struct aspeed_hace_dev *hace_dev)
 {
-	struct aspeed_engine_hash *hash_engine = &crypto_dev->hash_engine;
+	struct aspeed_engine_hash *hash_engine = &hace_dev->hash_engine;
 	struct ahash_request *req = hash_engine->ahash_req;
 	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
 
 	AHASH_DBG("\n");
 
-	dma_unmap_sg(crypto_dev->dev, rctx->src_sg, rctx->src_nents, DMA_TO_DEVICE);
+	dma_unmap_sg(hace_dev->dev, rctx->src_sg, rctx->src_nents, DMA_TO_DEVICE);
 	if (rctx->bufcnt != 0) {
-		dma_unmap_single(crypto_dev->dev, rctx->buffer_dma_addr,
+		dma_unmap_single(hace_dev->dev, rctx->buffer_dma_addr,
 				 rctx->buflen + rctx->block_size, DMA_TO_DEVICE);
 	}
 
-	dma_unmap_single(crypto_dev->dev, rctx->digest_dma_addr,
+	dma_unmap_single(hace_dev->dev, rctx->digest_dma_addr,
 			 SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
 	scatterwalk_map_and_copy(rctx->buffer, rctx->src_sg,
 				 rctx->offset, rctx->total - rctx->offset, 0);
@@ -291,94 +291,94 @@ static int aspeed_ahash_g6_update_resume(struct aspeed_crypto_dev *crypto_dev)
 	rctx->cmd &= ~HASH_CMD_HASH_SRC_SG_CTRL;
 	if (rctx->flags & SHA_FLAGS_FINUP) {
 		aspeed_crypto_ahash_fill_padding(rctx);
-		rctx->digest_dma_addr = dma_map_single(crypto_dev->dev, rctx->digest,
+		rctx->digest_dma_addr = dma_map_single(hace_dev->dev, rctx->digest,
 						       SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
-		rctx->buffer_dma_addr = dma_map_single(crypto_dev->dev, rctx->buffer,
+		rctx->buffer_dma_addr = dma_map_single(hace_dev->dev, rctx->buffer,
 						       rctx->buflen + rctx->block_size, DMA_TO_DEVICE);
 		hash_engine->src_dma = rctx->buffer_dma_addr;
 		hash_engine->src_length = rctx->bufcnt;
 		hash_engine->digeset_dma = rctx->digest_dma_addr;
 		if (rctx->flags & SHA_FLAGS_HMAC)
-			return aspeed_crypto_ahash_trigger(crypto_dev, aspeed_ahash_hmac_resume); //TODO
+			return aspeed_hace_ahash_trigger(hace_dev, aspeed_ahash_hmac_resume); //TODO
 		else
-			return aspeed_crypto_ahash_trigger(crypto_dev, aspeed_ahash_transfer);
+			return aspeed_hace_ahash_trigger(hace_dev, aspeed_ahash_transfer);
 	}
-	aspeed_ahash_complete(crypto_dev, 0);
+	aspeed_ahash_complete(hace_dev, 0);
 	return 0;
 }
 
-static int aspeed_ahash_update_resume(struct aspeed_crypto_dev *crypto_dev)
+static int aspeed_ahash_update_resume(struct aspeed_hace_dev *hace_dev)
 {
-	struct aspeed_engine_hash *hash_engine = &crypto_dev->hash_engine;
+	struct aspeed_engine_hash *hash_engine = &hace_dev->hash_engine;
 	struct ahash_request *req = hash_engine->ahash_req;
 	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
 
 	AHASH_DBG("\n");
-	dma_unmap_single(crypto_dev->dev, rctx->digest_dma_addr,
+	dma_unmap_single(hace_dev->dev, rctx->digest_dma_addr,
 			 SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
 	if (rctx->flags & SHA_FLAGS_FINUP) {
 		/* no final() after finup() */
 		aspeed_crypto_ahash_fill_padding(rctx);
-		rctx->buffer_dma_addr = dma_map_single(crypto_dev->dev, rctx->buffer,
+		rctx->buffer_dma_addr = dma_map_single(hace_dev->dev, rctx->buffer,
 						       rctx->buflen + rctx->block_size, DMA_TO_DEVICE);
-		rctx->digest_dma_addr = dma_map_single(crypto_dev->dev, rctx->digest,
+		rctx->digest_dma_addr = dma_map_single(hace_dev->dev, rctx->digest,
 						       SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
 		hash_engine->src_dma = rctx->buffer_dma_addr;
 		hash_engine->src_length = rctx->bufcnt;
 		hash_engine->digeset_dma = rctx->digest_dma_addr;
 		if (rctx->flags & SHA_FLAGS_HMAC)
-			return aspeed_crypto_ahash_trigger(crypto_dev, aspeed_ahash_hmac_resume);
+			return aspeed_hace_ahash_trigger(hace_dev, aspeed_ahash_hmac_resume);
 		else
-			return aspeed_crypto_ahash_trigger(crypto_dev, aspeed_ahash_transfer);
+			return aspeed_hace_ahash_trigger(hace_dev, aspeed_ahash_transfer);
 	}
 
 
-	return aspeed_ahash_complete(crypto_dev, 0);
+	return aspeed_ahash_complete(hace_dev, 0);
 }
 
-static int aspeed_ahash_req_update(struct aspeed_crypto_dev *crypto_dev)
+static int aspeed_ahash_req_update(struct aspeed_hace_dev *hace_dev)
 {
-	struct aspeed_engine_hash *hash_engine = &crypto_dev->hash_engine;
+	struct aspeed_engine_hash *hash_engine = &hace_dev->hash_engine;
 	struct ahash_request *req = hash_engine->ahash_req;
 	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
 
 	AHASH_DBG("\n");
-	if (crypto_dev->version == 6) {
+	if (hace_dev->version == 6) {
 		rctx->cmd |= HASH_CMD_HASH_SRC_SG_CTRL;
-		aspeed_ahash_append_sg_map(crypto_dev);
-		return aspeed_crypto_ahash_trigger(crypto_dev, aspeed_ahash_g6_update_resume);
+		aspeed_ahash_append_sg_map(hace_dev);
+		return aspeed_hace_ahash_trigger(hace_dev, aspeed_ahash_g6_update_resume);
 	}
-	aspeed_ahash_dma_prepare(crypto_dev);
-	return aspeed_crypto_ahash_trigger(crypto_dev, aspeed_ahash_update_resume);
+	aspeed_ahash_dma_prepare(hace_dev);
+	return aspeed_hace_ahash_trigger(hace_dev, aspeed_ahash_update_resume);
 }
 
-static int aspeed_ahash_req_final(struct aspeed_crypto_dev *crypto_dev)
+static int aspeed_ahash_req_final(struct aspeed_hace_dev *hace_dev)
 {
-	struct aspeed_engine_hash *hash_engine = &crypto_dev->hash_engine;
+	struct aspeed_engine_hash *hash_engine = &hace_dev->hash_engine;
 	struct ahash_request *req = hash_engine->ahash_req;
 	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
 
 	AHASH_DBG("\n");
 	aspeed_crypto_ahash_fill_padding(rctx);
-	// aspeed_ahash_dma_prepare(crypto_dev);
-	rctx->digest_dma_addr = dma_map_single(crypto_dev->dev, rctx->digest,
+	// aspeed_ahash_dma_prepare(hace_dev);
+	rctx->digest_dma_addr = dma_map_single(hace_dev->dev, rctx->digest,
 					       SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
-	rctx->buffer_dma_addr = dma_map_single(crypto_dev->dev, rctx->buffer,
+	rctx->buffer_dma_addr = dma_map_single(hace_dev->dev, rctx->buffer,
 					       rctx->buflen + rctx->block_size, DMA_TO_DEVICE);
 	hash_engine->src_dma = rctx->buffer_dma_addr;
 	hash_engine->src_length = rctx->bufcnt;
 	hash_engine->digeset_dma = rctx->digest_dma_addr;
 
 	if (rctx->flags & SHA_FLAGS_HMAC)
-		return aspeed_crypto_ahash_trigger(crypto_dev, aspeed_ahash_hmac_resume);
+		return aspeed_hace_ahash_trigger(hace_dev, aspeed_ahash_hmac_resume);
 
-	return aspeed_crypto_ahash_trigger(crypto_dev, aspeed_ahash_transfer);
+	return aspeed_hace_ahash_trigger(hace_dev, aspeed_ahash_transfer);
 }
 
-int aspeed_crypto_ahash_handle_queue(struct aspeed_crypto_dev *crypto_dev,
+int aspeed_hace_ahash_handle_queue(struct aspeed_hace_dev *hace_dev,
 				     struct crypto_async_request *new_areq)
 {
-	struct aspeed_engine_hash *hash_engine = &crypto_dev->hash_engine;
+	struct aspeed_engine_hash *hash_engine = &hace_dev->hash_engine;
 	struct crypto_async_request *areq, *backlog;
 	struct aspeed_sham_reqctx *rctx;
 	unsigned long flags;
@@ -410,17 +410,17 @@ int aspeed_crypto_ahash_handle_queue(struct aspeed_crypto_dev *crypto_dev,
 
 
 	if (rctx->op == SHA_OP_UPDATE)
-		aspeed_ahash_req_update(crypto_dev);
+		aspeed_ahash_req_update(hace_dev);
 	else if (rctx->op == SHA_OP_FINAL)
-		aspeed_ahash_req_final(crypto_dev);
+		aspeed_ahash_req_final(hace_dev);
 
 	return ret;
 }
 
-int aspeed_crypto_ahash_trigger(struct aspeed_crypto_dev *crypto_dev,
-				aspeed_crypto_fn_t resume)
+int aspeed_hace_ahash_trigger(struct aspeed_hace_dev *hace_dev,
+				aspeed_hace_fn_t resume)
 {
-	struct aspeed_engine_hash *hash_engine = &crypto_dev->hash_engine;
+	struct aspeed_engine_hash *hash_engine = &hace_dev->hash_engine;
 	struct ahash_request *req = hash_engine->ahash_req;
 	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
 
@@ -429,16 +429,16 @@ int aspeed_crypto_ahash_trigger(struct aspeed_crypto_dev *crypto_dev,
 	rctx->cmd |= HASH_CMD_INT_ENABLE;
 	hash_engine->resume = resume;
 #endif
-	aspeed_crypto_write(crypto_dev, hash_engine->src_dma, ASPEED_HACE_HASH_SRC);
-	aspeed_crypto_write(crypto_dev, hash_engine->digeset_dma, ASPEED_HACE_HASH_DIGEST_BUFF);
-	aspeed_crypto_write(crypto_dev, hash_engine->digeset_dma, ASPEED_HACE_HASH_KEY_BUFF);
-	aspeed_crypto_write(crypto_dev, hash_engine->src_length, ASPEED_HACE_HASH_DATA_LEN);
-	aspeed_crypto_write(crypto_dev, rctx->cmd, ASPEED_HACE_HASH_CMD);
+	aspeed_hace_write(hace_dev, hash_engine->src_dma, ASPEED_HACE_HASH_SRC);
+	aspeed_hace_write(hace_dev, hash_engine->digeset_dma, ASPEED_HACE_HASH_DIGEST_BUFF);
+	aspeed_hace_write(hace_dev, hash_engine->digeset_dma, ASPEED_HACE_HASH_KEY_BUFF);
+	aspeed_hace_write(hace_dev, hash_engine->src_length, ASPEED_HACE_HASH_DATA_LEN);
+	aspeed_hace_write(hace_dev, rctx->cmd, ASPEED_HACE_HASH_CMD);
 	// rctx->bufcnt = 0;
 #ifndef CONFIG_CRYPTO_DEV_ASPEED_AHASH_INT
-	while (aspeed_crypto_read(crypto_dev, ASPEED_HACE_STS) & HACE_HASH_BUSY);
-	aspeed_crypto_write(crypto_dev, sts, ASPEED_HACE_STS);
-	resume(crypto_dev);
+	while (aspeed_hace_read(hace_dev, ASPEED_HACE_STS) & HACE_HASH_BUSY);
+	aspeed_hace_write(hace_dev, sts, ASPEED_HACE_STS);
+	resume(hace_dev);
 	return 0;
 #endif
 	return -EINPROGRESS;
@@ -449,7 +449,7 @@ static int aspeed_sham_update(struct ahash_request *req)
 	struct crypto_ahash *tfm = crypto_ahash_reqtfm(req);
 	struct aspeed_sham_ctx *tctx = crypto_ahash_ctx(tfm);
 	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
-	struct aspeed_crypto_dev *crypto_dev = tctx->crypto_dev;
+	struct aspeed_hace_dev *hace_dev = tctx->hace_dev;
 
 	AHASH_DBG("\n");
 	// printk("req->nbytes: %d\n", req->nbytes);
@@ -473,7 +473,7 @@ static int aspeed_sham_update(struct ahash_request *req)
 		return 0;
 	}
 
-	return aspeed_crypto_ahash_handle_queue(crypto_dev, &req->base);
+	return aspeed_hace_ahash_handle_queue(hace_dev, &req->base);
 }
 
 static int aspeed_sham_shash_digest(struct crypto_shash *tfm, u32 flags,
@@ -492,14 +492,14 @@ static int aspeed_sham_final(struct ahash_request *req)
 	struct crypto_ahash *tfm = crypto_ahash_reqtfm(req);
 	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
 	struct aspeed_sham_ctx *tctx = crypto_ahash_ctx(tfm);
-	struct aspeed_crypto_dev *crypto_dev = tctx->crypto_dev;
+	struct aspeed_hace_dev *hace_dev = tctx->hace_dev;
 
 	AHASH_DBG("req->nbytes %d , rctx->total %d\n", req->nbytes, rctx->total);
 	rctx->op = SHA_OP_FINAL;
 
 	// aspeed_crypto_ahash_fill_padding(rctx);
 
-	return aspeed_crypto_ahash_handle_queue(crypto_dev, &req->base);
+	return aspeed_hace_ahash_handle_queue(hace_dev, &req->base);
 }
 
 static int aspeed_sham_finup(struct ahash_request *req)
@@ -640,15 +640,15 @@ static int aspeed_sham_setkey(struct crypto_ahash *tfm, const u8 *key,
 static int aspeed_sham_cra_init_alg(struct crypto_tfm *tfm, const char *alg_base)
 {
 	struct aspeed_sham_ctx *tctx = crypto_tfm_ctx(tfm);
-	struct aspeed_crypto_alg *algt;
+	struct aspeed_hace_alg *algt;
 	struct ahash_alg *alg = __crypto_ahash_alg(tfm->__crt_alg);
 
-	algt = container_of(alg, struct aspeed_crypto_alg, alg.ahash);
-	tctx->crypto_dev = algt->crypto_dev;
+	algt = container_of(alg, struct aspeed_hace_alg, alg.ahash);
+	tctx->hace_dev = algt->hace_dev;
 	tctx->flags = 0;
 
 	AHASH_DBG("%s crypto dev %x \n", crypto_tfm_alg_name(tfm),
-		  (u32)tctx->crypto_dev);
+		  (u32)tctx->hace_dev);
 
 	crypto_ahash_set_reqsize(__crypto_ahash_cast(tfm),
 				 sizeof(struct aspeed_sham_reqctx));
@@ -736,7 +736,7 @@ static int aspeed_sham_import(struct ahash_request *req, const void *in)
 	return 0;
 }
 
-struct aspeed_crypto_alg aspeed_ahash_algs[] = {
+struct aspeed_hace_alg aspeed_ahash_algs[] = {
 	{
 		.alg.ahash = {
 			.init	= aspeed_sham_init,
@@ -974,7 +974,7 @@ struct aspeed_crypto_alg aspeed_ahash_algs[] = {
 		},
 	},
 };
-struct aspeed_crypto_alg aspeed_ahash_algs_g6[] = {
+struct aspeed_hace_alg aspeed_ahash_algs_g6[] = {
 	{
 		.alg.ahash = {
 			.init	= aspeed_sham_init,
@@ -1095,20 +1095,20 @@ struct aspeed_crypto_alg aspeed_ahash_algs_g6[] = {
 	},
 };
 
-int aspeed_register_ahash_algs(struct aspeed_crypto_dev *crypto_dev)
+int aspeed_register_ahash_algs(struct aspeed_hace_dev *hace_dev)
 {
 	int i;
 	int err = 0;
 
 	for (i = 0; i < ARRAY_SIZE(aspeed_ahash_algs); i++) {
-		aspeed_ahash_algs[i].crypto_dev = crypto_dev;
+		aspeed_ahash_algs[i].hace_dev = hace_dev;
 		err = crypto_register_ahash(&aspeed_ahash_algs[i].alg.ahash);
 		if (err)
 			return err;
 	}
-	if (crypto_dev->version == 6) {
+	if (hace_dev->version == 6) {
 		for (i = 0; i < ARRAY_SIZE(aspeed_ahash_algs_g6); i++) {
-			aspeed_ahash_algs_g6[i].crypto_dev = crypto_dev;
+			aspeed_ahash_algs_g6[i].hace_dev = hace_dev;
 			err = crypto_register_ahash(&aspeed_ahash_algs_g6[i].alg.ahash);
 			if (err)
 				return err;

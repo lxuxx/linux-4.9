@@ -25,7 +25,7 @@
 #define ECDH_DBG(fmt, args...)
 #endif
 
-int aspeed_ecdh_trigger(struct aspeed_crypto_dev *crypto_dev)
+int aspeed_ecdh_trigger(struct aspeed_hace_dev *hace_dev)
 {
 	ECDH_DBG("\n");
 
@@ -104,7 +104,7 @@ static int aspeed_ecdh_set_secret(struct crypto_kpp *tfm, void *buf,
 	ECDH_DBG("len %d \n", len);
 
 	if (crypto_ecdh_decode_key(buf, len, &params) < 0) {
-		dev_err(&ctx->crypto_dev->dev, "crypto_ecdh_decode_key failed\n");
+		dev_err(&ctx->hace_dev->dev, "crypto_ecdh_decode_key failed\n");
 		return -EINVAL;
 	}
 	ECDH_DBG("curive_id %d, key size %d \n", params.curve_id, params.key_size);
@@ -139,7 +139,7 @@ static int aspeed_ecdh_init_tfm(struct crypto_kpp *tfm)
 	struct aspeed_crypto_alg *crypto_alg;
 	
 	crypto_alg = container_of(alg, struct aspeed_crypto_alg, alg.crypto);
-	ctx->crypto_dev = crypto_alg->crypto_dev;
+	ctx->hace_dev = crypto_alg->hace_dev;
 	ECDH_DBG("\n");
 
 	return 0;
@@ -171,12 +171,12 @@ struct aspeed_crypto_alg aspeed_kpp_algs[] = {
 	},
 };
 
-int aspeed_register_kpp_algs(struct aspeed_crypto_dev *crypto_dev)
+int aspeed_register_kpp_algs(struct aspeed_hace_dev *hace_dev)
 {
 	int i;
 	int err = 0;
 	for (i = 0; i < ARRAY_SIZE(aspeed_kpp_algs); i++) {
-		aspeed_kpp_algs[i].crypto_dev = crypto_dev;
+		aspeed_kpp_algs[i].hace_dev = hace_dev;
 		err = crypto_register_kpp(&aspeed_kpp_algs[i].alg.kpp);
 		if (err)
 			return err;
