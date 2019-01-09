@@ -15,7 +15,7 @@
  *
  */
 
-#include "aspeed-crypto.h"
+#include "aspeed-hace.h"
 
 // #define ASPEED_RSA_DEBUG
 

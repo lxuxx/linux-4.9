@@ -23,7 +23,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 
-#include "aspeed-crypto.h"
+#include "aspeed-hace.h"
 
 // #define ASPEED_CRYPTO_DEBUG
 

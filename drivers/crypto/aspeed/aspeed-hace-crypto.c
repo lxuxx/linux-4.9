@@ -14,7 +14,7 @@
  * GNU General Public License for more details.
  *
  */
-#include "aspeed-crypto.h"
+#include "aspeed-hace.h"
 
 // #define ASPEED_CIPHER_DEBUG
 
