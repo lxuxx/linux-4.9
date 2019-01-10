@@ -278,6 +278,9 @@
 			clocks = <&syscon ASPEED_CLK_GATE_ECLK>, <&syscon ASPEED_CLK_GATE_VCLK>;
 			clock-names = "eclk", "vclk";
 			resets = <&syscon ASPEED_RESET_VIDEO>;
+			
+			reg-mcr = <&mmc>;
+			reg-scu = <&syscon>;
 		};
 
 		sram@1e720000 {

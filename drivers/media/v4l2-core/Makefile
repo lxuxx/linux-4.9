@@ -18,8 +18,10 @@ ifeq ($(CONFIG_TRACEPOINTS),y)
 endif
 videodev-$(CONFIG_MEDIA_CONTROLLER) += v4l2-mc.o
 
-obj-$(CONFIG_VIDEO_V4L2) += videodev.o
-obj-$(CONFIG_VIDEO_V4L2) += v4l2-common.o
+#obj-$(CONFIG_VIDEO_V4L2) += videodev.o
+obj-y += videodev.o
+#obj-$(CONFIG_VIDEO_V4L2) += v4l2-common.o
+obj-y += v4l2-common.o
 obj-$(CONFIG_VIDEO_V4L2) += v4l2-dv-timings.o
 
 obj-$(CONFIG_VIDEO_TUNER) += tuner.o
@@ -34,10 +36,14 @@ obj-$(CONFIG_VIDEOBUF_DMA_CONTIG) += videobuf-dma-contig.o
 obj-$(CONFIG_VIDEOBUF_VMALLOC) += videobuf-vmalloc.o
 obj-$(CONFIG_VIDEOBUF_DVB) += videobuf-dvb.o
 
-obj-$(CONFIG_VIDEOBUF2_CORE) += videobuf2-core.o videobuf2-v4l2.o
-obj-$(CONFIG_VIDEOBUF2_MEMOPS) += videobuf2-memops.o
-obj-$(CONFIG_VIDEOBUF2_VMALLOC) += videobuf2-vmalloc.o
-obj-$(CONFIG_VIDEOBUF2_DMA_CONTIG) += videobuf2-dma-contig.o
+#obj-$(CONFIG_VIDEOBUF2_CORE) += videobuf2-core.o videobuf2-v4l2.o
+obj-y += videobuf2-core.o videobuf2-v4l2.o
+#obj-$(CONFIG_VIDEOBUF2_MEMOPS) += videobuf2-memops.o
+obj-y += videobuf2-memops.o
+#obj-$(CONFIG_VIDEOBUF2_VMALLOC) += videobuf2-vmalloc.o
+obj-y += videobuf2-vmalloc.o
+#obj-$(CONFIG_VIDEOBUF2_DMA_CONTIG) += videobuf2-dma-contig.o
+obj-y += videobuf2-dma-contig.o
 obj-$(CONFIG_VIDEOBUF2_DMA_SG) += videobuf2-dma-sg.o
 obj-$(CONFIG_VIDEOBUF2_DVB) += videobuf2-dvb.o
 
