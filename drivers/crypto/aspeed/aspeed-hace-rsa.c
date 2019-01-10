@@ -487,7 +487,7 @@ void RSAgetNp(struct aspeed_rsa_ctx *ctx, struct aspeed_rsa_key *rsa_key)
 int aspeed_hace_rsa_handle_queue(struct aspeed_hace_dev *hace_dev,
 				 struct crypto_async_request *new_areq)
 {
-	struct aspeed_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
+	struct aspeed_hace_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
 	struct crypto_async_request *areq, *backlog;
 	unsigned long flags;
 	int ret = 0;
@@ -523,7 +523,7 @@ int aspeed_hace_rsa_handle_queue(struct aspeed_hace_dev *hace_dev,
 
 static int aspeed_akcipher_complete(struct aspeed_hace_dev *hace_dev, int err)
 {
-	struct aspeed_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
+	struct aspeed_hace_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
 	struct akcipher_request *req = rsa_engine->akcipher_req;
 
 	RSA_DBG("\n");
@@ -538,7 +538,7 @@ static int aspeed_akcipher_complete(struct aspeed_hace_dev *hace_dev, int err)
 
 static int aspeed_akcipher_transfer(struct aspeed_hace_dev *hace_dev)
 {
-	struct aspeed_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
+	struct aspeed_hace_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
 	struct akcipher_request *req = rsa_engine->akcipher_req;
 	struct scatterlist *out_sg = req->dst;
 	u8 *xa_buff = rsa_engine->rsa_buff + ASPEED_RSA_XA_BUFF;
@@ -568,7 +568,7 @@ static int aspeed_akcipher_transfer(struct aspeed_hace_dev *hace_dev)
 static inline int aspeed_akcipher_wait_for_data_ready(struct aspeed_hace_dev *hace_dev,
 		aspeed_hace_fn_t resume)
 {
-	struct aspeed_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
+	struct aspeed_hace_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
 
 #ifdef CONFIG_CRYPTO_DEV_ASPEED_AKCIPHER_INT
 	u32 isr = aspeed_hace_read(hace_dev, ASPEED_HACE_STS);
@@ -591,7 +591,7 @@ static inline int aspeed_akcipher_wait_for_data_ready(struct aspeed_hace_dev *ha
 
 int aspeed_hace_rsa_trigger(struct aspeed_hace_dev *hace_dev)
 {
-	struct aspeed_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
+	struct aspeed_hace_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
 	struct akcipher_request *req = rsa_engine->akcipher_req;
 	struct crypto_akcipher *cipher = crypto_akcipher_reqtfm(req);
 	struct aspeed_rsa_ctx *ctx = crypto_tfm_ctx(&cipher->base);
@@ -846,7 +846,7 @@ struct aspeed_hace_alg aspeed_akcipher_algs[] = {
 	},
 };
 
-int aspeed_register_akcipher_algs(struct aspeed_hace_dev *hace_dev)
+int aspeed_register_hace_rsa_algs(struct aspeed_hace_dev *hace_dev)
 {
 	int i;
 	int err = 0;

@@ -25,25 +25,25 @@
 
 #include "aspeed-hace.h"
 
-// #define ASPEED_CRYPTO_DEBUG
+// #define ASPEED_HACE_DEBUG
 
-#ifdef ASPEED_CRYPTO_DEBUG
-//#define CRYPTO_DBUG(fmt, args...) printk(KERN_DEBUG "%s() " fmt, __FUNCTION__, ## args)
-#define CRYPTO_DBUG(fmt, args...) printk("%s() " fmt, __FUNCTION__, ## args)
+#ifdef ASPEED_HACE_DEBUG
+//#define HACE_DBUG(fmt, args...) printk(KERN_DEBUG "%s() " fmt, __FUNCTION__, ## args)
+#define HACE_DBUG(fmt, args...) printk("%s() " fmt, __FUNCTION__, ## args)
 #else
-#define CRYPTO_DBUG(fmt, args...)
+#define HACE_DBUG(fmt, args...)
 #endif
 
-static irqreturn_t aspeed_crypto_irq(int irq, void *dev)
+static irqreturn_t aspeed_hace_irq(int irq, void *dev)
 {
 	struct aspeed_hace_dev *hace_dev = (struct aspeed_hace_dev *)dev;
 	struct aspeed_engine_crypto *crypto_engine = &hace_dev->crypto_engine;
 	struct aspeed_engine_hash *hash_engine = &hace_dev->hash_engine;
-	struct aspeed_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
+	struct aspeed_hace_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
 	u32 sts = aspeed_hace_read(hace_dev, ASPEED_HACE_STS);
 	int handle = IRQ_NONE;
 
-	CRYPTO_DBUG("aspeed_crypto_irq sts %x \n", sts);
+	HACE_DBUG("aspeed_hace_irq sts %x \n", sts);
 	aspeed_hace_write(hace_dev, sts, ASPEED_HACE_STS);
 
 	if (sts & HACE_CRYPTO_ISR) {
@@ -72,7 +72,7 @@ static irqreturn_t aspeed_crypto_irq(int irq, void *dev)
 	return handle;
 }
 
-static void aspeed_crypto_sk_done_task(unsigned long data)
+static void aspeed_hace_cryptro_done_task(unsigned long data)
 {
 	struct aspeed_hace_dev *hace_dev = (struct aspeed_hace_dev *)data;
 	struct aspeed_engine_crypto *crypto_engine = &hace_dev->crypto_engine;
@@ -81,44 +81,44 @@ static void aspeed_crypto_sk_done_task(unsigned long data)
 	(void)crypto_engine->resume(hace_dev);
 }
 
-static void aspeed_crypto_ahash_done_task(unsigned long data)
+static void aspeed_hace_hash_done_task(unsigned long data)
 {
 	struct aspeed_hace_dev *hace_dev = (struct aspeed_hace_dev *)data;
 	struct aspeed_engine_hash *hash_engine = &hace_dev->hash_engine;
 
-	CRYPTO_DBUG("\n");
+	HACE_DBUG("\n");
 
 	(void)hash_engine->resume(hace_dev);
 }
 
-static void aspeed_crypto_rsa_done_task(unsigned long data)
+static void aspeed_hace_rsa_done_task(unsigned long data)
 {
 	struct aspeed_hace_dev *hace_dev = (struct aspeed_hace_dev *)data;
-	struct aspeed_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
+	struct aspeed_hace_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
 
-	CRYPTO_DBUG("\n");
+	HACE_DBUG("\n");
 
 	(void)rsa_engine->resume(hace_dev);
 }
-// static void aspeed_crypto_ahash_queue_task(unsigned long data)
+// static void aspeed_hace_hash_queue_task(unsigned long data)
 // {
 // 	struct aspeed_hace_dev *hace_dev = (struct aspeed_hace_dev *)data;
 
-// 	CRYPTO_DBUG("\n");
-// 	aspeed_hace_ahash_handle_queue(hace_dev, NULL);
+// 	HACE_DBUG("\n");
+// 	aspeed_hace_hash_handle_queue(hace_dev, NULL);
 // }
 
-static int aspeed_crypto_register(struct aspeed_hace_dev *hace_dev)
+static int aspeed_hace_register(struct aspeed_hace_dev *hace_dev)
 {
-	aspeed_register_skcipher_algs(hace_dev);
-	aspeed_register_ahash_algs(hace_dev);
+	aspeed_register_hace_crypto_algs(hace_dev);
+	aspeed_register_hace_hash_algs(hace_dev);
 	if (hace_dev->version != 6)
-		aspeed_register_akcipher_algs(hace_dev);
+		aspeed_register_hace_rsa_algs(hace_dev);
 
 	return 0;
 }
 
-// static void aspeed_crypto_unregister(void)
+// static void aspeed_hace_unregister(void)
 // {
 // #if 0
 // 	unsigned int i;
@@ -132,21 +132,21 @@ static int aspeed_crypto_register(struct aspeed_hace_dev *hace_dev)
 // #endif
 // }
 
-static const struct of_device_id aspeed_crypto_of_matches[] = {
-	{ .compatible = "aspeed,ast2400-crypto", .data = (void *) 0,},
-	{ .compatible = "aspeed,ast2500-crypto", .data = (void *) 5,},
-	{ .compatible = "aspeed,ast2600-crypto", .data = (void *) 6,},
+static const struct of_device_id aspeed_hace_of_matches[] = {
+	{ .compatible = "aspeed,ast2400-hace", .data = (void *) 0,},
+	{ .compatible = "aspeed,ast2500-hace", .data = (void *) 5,},
+	{ .compatible = "aspeed,ast2600-hace", .data = (void *) 6,},
 	{},
 };
 
-static int aspeed_crypto_probe(struct platform_device *pdev)
+static int aspeed_hace_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct aspeed_hace_dev *hace_dev;
-	const struct of_device_id *crypto_dev_id;
+	const struct of_device_id *hace_dev_id;
 	struct aspeed_engine_crypto *crypto_engine;
 	struct aspeed_engine_hash *hash_engine;
-	struct aspeed_engine_rsa *rsa_engine;
+	struct aspeed_hace_engine_rsa *rsa_engine;
 	int err;
 
 
@@ -156,28 +156,28 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	crypto_dev_id = of_match_device(aspeed_crypto_of_matches, &pdev->dev);
-	if (!crypto_dev_id)
+	hace_dev_id = of_match_device(aspeed_hace_of_matches, &pdev->dev);
+	if (!hace_dev_id)
 		return -EINVAL;
 
 	hace_dev->dev = dev;
-	hace_dev->version = (unsigned long)crypto_dev_id->data;
+	hace_dev->version = (unsigned long)hace_dev_id->data;
 	crypto_engine = &hace_dev->crypto_engine;
 	hash_engine = &hace_dev->hash_engine;
 	rsa_engine = &hace_dev->rsa_engine;
 
 	platform_set_drvdata(pdev, hace_dev);
 	spin_lock_init(&crypto_engine->lock);
-	tasklet_init(&crypto_engine->done_task, aspeed_crypto_sk_done_task, (unsigned long)hace_dev);
+	tasklet_init(&crypto_engine->done_task, aspeed_hace_cryptro_done_task, (unsigned long)hace_dev);
 	crypto_init_queue(&crypto_engine->queue, 50);
 
 	spin_lock_init(&hash_engine->lock);
-	tasklet_init(&hash_engine->done_task, aspeed_crypto_ahash_done_task, (unsigned long)hace_dev);
-	// tasklet_init(&hash_engine->queue_task, aspeed_crypto_ahash_queue_task, (unsigned long)hace_dev);
+	tasklet_init(&hash_engine->done_task, aspeed_hace_hash_done_task, (unsigned long)hace_dev);
+	// tasklet_init(&hash_engine->queue_task, aspeed_hace_hash_queue_task, (unsigned long)hace_dev);
 	crypto_init_queue(&hash_engine->queue, 50);
 
 	spin_lock_init(&rsa_engine->lock);
-	tasklet_init(&rsa_engine->done_task, aspeed_crypto_rsa_done_task, (unsigned long)hace_dev);
+	tasklet_init(&rsa_engine->done_task, aspeed_hace_rsa_done_task, (unsigned long)hace_dev);
 	crypto_init_queue(&rsa_engine->queue, 50);
 
 	hace_dev->regs = of_iomap(pdev->dev.of_node, 0);
@@ -192,7 +192,7 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 		return -ENXIO;
 	}
 
-	if (devm_request_irq(&pdev->dev, hace_dev->irq, aspeed_crypto_irq, 0, dev_name(&pdev->dev), hace_dev)) {
+	if (devm_request_irq(&pdev->dev, hace_dev->irq, aspeed_hace_irq, 0, dev_name(&pdev->dev), hace_dev)) {
 		dev_err(dev, "unable to request aes irq.\n");
 		return -EBUSY;
 	}
@@ -246,7 +246,7 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 		}
 	}
 
-	err = aspeed_crypto_register(hace_dev);
+	err = aspeed_hace_register(hace_dev);
 	if (err) {
 		dev_err(dev, "err in register alg");
 		return err;
@@ -257,18 +257,18 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int aspeed_crypto_remove(struct platform_device *pdev)
+static int aspeed_hace_remove(struct platform_device *pdev)
 {
 	// struct aspeed_hace_dev *hace_dev = platform_get_drvdata(pdev);
 
-	//aspeed_crypto_unregister();
+	//aspeed_hace_unregister();
 	// tasklet_kill(&hace_dev->done_task);
 	// tasklet_kill(&hace_dev->queue_task);
 	return 0;
 }
 
 #ifdef CONFIG_PM
-static int aspeed_crypto_suspend(struct device *dev)
+static int aspeed_hace_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct aspeed_hace_dev *hace_dev = platform_get_drvdata(pdev);
@@ -283,7 +283,7 @@ static int aspeed_crypto_suspend(struct device *dev)
 	return 0;
 }
 
-static int aspeed_crypto_resume(struct device *dev)
+static int aspeed_hace_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct aspeed_hace_dev *hace_dev = platform_get_drvdata(pdev);
@@ -293,22 +293,22 @@ static int aspeed_crypto_resume(struct device *dev)
 
 #endif /* CONFIG_PM */
 
-MODULE_DEVICE_TABLE(of, aspeed_crypto_of_matches);
+MODULE_DEVICE_TABLE(of, aspeed_hace_of_matches);
 
-static struct platform_driver aspeed_crypto_driver = {
-	.probe 		= aspeed_crypto_probe,
-	.remove		= aspeed_crypto_remove,
+static struct platform_driver aspeed_hace_driver = {
+	.probe 		= aspeed_hace_probe,
+	.remove		= aspeed_hace_remove,
 #ifdef CONFIG_PM
-	.suspend	= aspeed_crypto_suspend,
-	.resume 	= aspeed_crypto_resume,
+	.suspend	= aspeed_hace_suspend,
+	.resume 	= aspeed_hace_resume,
 #endif
 	.driver         = {
 		.name   = KBUILD_MODNAME,
-		.of_match_table = aspeed_crypto_of_matches,
+		.of_match_table = aspeed_hace_of_matches,
 	},
 };
 
-module_platform_driver(aspeed_crypto_driver);
+module_platform_driver(aspeed_hace_driver);
 
 MODULE_AUTHOR("Ryan Chen <ryan_chen@aspeedtech.com>");
 MODULE_DESCRIPTION("ASPEED Crypto driver");

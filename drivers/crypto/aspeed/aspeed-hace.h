@@ -125,7 +125,7 @@
 #define ASPEED_HACE_CMD_QUEUE_RP	0x5C
 #define ASPEED_HACE_ENG_FEATURE		0x60
 
-#define ASPEED_RSA_BUFF_SIZE	508
+#define ASPEED_RSA_BUFF_SIZE		508
 #define ASPEED_CRYPTO_SRC_DMA_BUF_LEN	0xa000
 #define ASPEED_CRYPTO_DST_DMA_BUF_LEN	0xa000
 #define ASPEED_CRYPTO_GCM_TAG_OFFSET	0x9ff0
@@ -279,7 +279,7 @@ struct aspeed_sham_reqctx {
 
 /******************************************************************************/
 /* akcipher rsa */
-struct aspeed_engine_rsa {
+struct aspeed_hace_engine_rsa {
 	struct crypto_queue		queue;
 	struct tasklet_struct		done_task;
 	// struct tasklet_struct		queue_task;
@@ -346,7 +346,7 @@ struct aspeed_hace_dev {
 	unsigned long			version;
 	struct aspeed_engine_crypto	crypto_engine;
 	struct aspeed_engine_hash	hash_engine;
-	struct aspeed_engine_rsa	rsa_engine;
+	struct aspeed_hace_engine_rsa	rsa_engine;
 };
 
 
@@ -384,13 +384,12 @@ extern int aspeed_hace_skcipher_trigger(struct aspeed_hace_dev *aspeed_hace);
 
 extern int aspeed_hace_ahash_trigger(struct aspeed_hace_dev *aspeed_hace,
 				     aspeed_hace_fn_t resume);
-extern int aspeed_hace_ahash_handle_queue(struct aspeed_hace_dev *aspeed_hace, struct crypto_async_request *areq);
+extern int aspeed_hace_hash_handle_queue(struct aspeed_hace_dev *aspeed_hace, struct crypto_async_request *areq);
 
 extern int aspeed_hace_rsa_trigger(struct aspeed_hace_dev *aspeed_hace);
 
-extern int aspeed_register_skcipher_algs(struct aspeed_hace_dev *hace_dev);
-extern int aspeed_register_ahash_algs(struct aspeed_hace_dev *hace_dev);
-extern int aspeed_register_akcipher_algs(struct aspeed_hace_dev *hace_dev);
-extern int aspeed_register_kpp_algs(struct aspeed_hace_dev *hace_dev);
+extern int aspeed_register_hace_crypto_algs(struct aspeed_hace_dev *hace_dev);
+extern int aspeed_register_hace_hash_algs(struct aspeed_hace_dev *hace_dev);
+extern int aspeed_register_hace_rsa_algs(struct aspeed_hace_dev *hace_dev);
 
 #endif

@@ -60,7 +60,7 @@ static const u32 sha512_iv[16] = {
 	0xabd9831fUL, 0x6bbd41fbUL, 0x19cde05bUL, 0x79217e13UL
 };
 
-static void aspeed_crypto_ahash_iV(struct aspeed_sham_reqctx *rctx)
+static void aspeed_ahash_iV(struct aspeed_sham_reqctx *rctx)
 {
 	if (rctx->flags & SHA_FLAGS_MD5)
 		memcpy(rctx->digest, md5_iv, 32);
@@ -76,7 +76,7 @@ static void aspeed_crypto_ahash_iV(struct aspeed_sham_reqctx *rctx)
 		memcpy(rctx->digest, sha512_iv, 64);
 }
 
-static void aspeed_crypto_ahash_fill_padding(struct aspeed_sham_reqctx *rctx)
+static void aspeed_ahash_fill_padding(struct aspeed_sham_reqctx *rctx)
 {
 	unsigned int index, padlen;
 	u64 bits[2];
@@ -216,7 +216,7 @@ static int aspeed_ahash_complete(struct aspeed_hace_dev *hace_dev, int err)
 		req->base.complete(&req->base, err);
 
 	// tasklet_schedule(&hash_engine->queue_task);
-	aspeed_hace_ahash_handle_queue(hace_dev, NULL);
+	aspeed_hace_hash_handle_queue(hace_dev, NULL);
 	return err;
 }
 
@@ -255,8 +255,8 @@ static int aspeed_ahash_hmac_resume(struct aspeed_hace_dev *hace_dev)
 	rctx->bufcnt = rctx->block_size + rctx->digsize;
 	rctx->digcnt[0] = rctx->block_size + rctx->digsize;
 
-	aspeed_crypto_ahash_fill_padding(rctx);
-	aspeed_crypto_ahash_iV(rctx);
+	aspeed_ahash_fill_padding(rctx);
+	aspeed_ahash_iV(rctx);
 
 	rctx->digest_dma_addr = dma_map_single(hace_dev->dev, rctx->digest,
 					       SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
@@ -290,7 +290,7 @@ static int aspeed_ahash_g6_update_resume(struct aspeed_hace_dev *hace_dev)
 
 	rctx->cmd &= ~HASH_CMD_HASH_SRC_SG_CTRL;
 	if (rctx->flags & SHA_FLAGS_FINUP) {
-		aspeed_crypto_ahash_fill_padding(rctx);
+		aspeed_ahash_fill_padding(rctx);
 		rctx->digest_dma_addr = dma_map_single(hace_dev->dev, rctx->digest,
 						       SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
 		rctx->buffer_dma_addr = dma_map_single(hace_dev->dev, rctx->buffer,
@@ -318,7 +318,7 @@ static int aspeed_ahash_update_resume(struct aspeed_hace_dev *hace_dev)
 			 SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
 	if (rctx->flags & SHA_FLAGS_FINUP) {
 		/* no final() after finup() */
-		aspeed_crypto_ahash_fill_padding(rctx);
+		aspeed_ahash_fill_padding(rctx);
 		rctx->buffer_dma_addr = dma_map_single(hace_dev->dev, rctx->buffer,
 						       rctx->buflen + rctx->block_size, DMA_TO_DEVICE);
 		rctx->digest_dma_addr = dma_map_single(hace_dev->dev, rctx->digest,
@@ -359,7 +359,7 @@ static int aspeed_ahash_req_final(struct aspeed_hace_dev *hace_dev)
 	struct aspeed_sham_reqctx *rctx = ahash_request_ctx(req);
 
 	AHASH_DBG("\n");
-	aspeed_crypto_ahash_fill_padding(rctx);
+	aspeed_ahash_fill_padding(rctx);
 	// aspeed_ahash_dma_prepare(hace_dev);
 	rctx->digest_dma_addr = dma_map_single(hace_dev->dev, rctx->digest,
 					       SHA512_DIGEST_SIZE, DMA_BIDIRECTIONAL);
@@ -375,7 +375,7 @@ static int aspeed_ahash_req_final(struct aspeed_hace_dev *hace_dev)
 	return aspeed_hace_ahash_trigger(hace_dev, aspeed_ahash_transfer);
 }
 
-int aspeed_hace_ahash_handle_queue(struct aspeed_hace_dev *hace_dev,
+int aspeed_hace_hash_handle_queue(struct aspeed_hace_dev *hace_dev,
 				     struct crypto_async_request *new_areq)
 {
 	struct aspeed_engine_hash *hash_engine = &hace_dev->hash_engine;
@@ -473,7 +473,7 @@ static int aspeed_sham_update(struct ahash_request *req)
 		return 0;
 	}
 
-	return aspeed_hace_ahash_handle_queue(hace_dev, &req->base);
+	return aspeed_hace_hash_handle_queue(hace_dev, &req->base);
 }
 
 static int aspeed_sham_shash_digest(struct crypto_shash *tfm, u32 flags,
@@ -497,9 +497,9 @@ static int aspeed_sham_final(struct ahash_request *req)
 	AHASH_DBG("req->nbytes %d , rctx->total %d\n", req->nbytes, rctx->total);
 	rctx->op = SHA_OP_FINAL;
 
-	// aspeed_crypto_ahash_fill_padding(rctx);
+	// aspeed_ahash_fill_padding(rctx);
 
-	return aspeed_hace_ahash_handle_queue(hace_dev, &req->base);
+	return aspeed_hace_hash_handle_queue(hace_dev, &req->base);
 }
 
 static int aspeed_sham_finup(struct ahash_request *req)
@@ -1095,7 +1095,7 @@ struct aspeed_hace_alg aspeed_ahash_algs_g6[] = {
 	},
 };
 
-int aspeed_register_ahash_algs(struct aspeed_hace_dev *hace_dev)
+int aspeed_register_hace_hash_algs(struct aspeed_hace_dev *hace_dev)
 {
 	int i;
 	int err = 0;

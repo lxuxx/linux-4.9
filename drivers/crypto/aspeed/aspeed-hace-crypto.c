@@ -1435,7 +1435,7 @@ struct aspeed_hace_alg aspeed_aead_algs_g6[] = {
 	}
 };
 
-int aspeed_register_skcipher_algs(struct aspeed_hace_dev *hace_dev)
+int aspeed_register_hace_crypto_algs(struct aspeed_hace_dev *hace_dev)
 {
 	int i;
 	int err = 0;
