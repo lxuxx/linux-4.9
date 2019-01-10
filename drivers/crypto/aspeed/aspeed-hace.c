@@ -39,6 +39,7 @@ static irqreturn_t aspeed_crypto_irq(int irq, void *dev)
 	struct aspeed_hace_dev *hace_dev = (struct aspeed_hace_dev *)dev;
 	struct aspeed_engine_crypto *crypto_engine = &hace_dev->crypto_engine;
 	struct aspeed_engine_hash *hash_engine = &hace_dev->hash_engine;
+	struct aspeed_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
 	u32 sts = aspeed_hace_read(hace_dev, ASPEED_HACE_STS);
 	int handle = IRQ_NONE;
 
@@ -60,14 +61,14 @@ static irqreturn_t aspeed_crypto_irq(int irq, void *dev)
 			dev_warn(hace_dev->dev, "CRYPTO interrupt when no active requests.\n");
 		handle = IRQ_HANDLED;
 	}
-	// if (sts & HACE_RSA_ISR) {
-	// 	aspeed_hace_write(hace_dev, 0, ASPEED_HACE_RSA_CMD);
-	// 	if (hace_dev->flags & CRYPTO_FLAGS_BUSY)
-	// 		tasklet_schedule(&hace_dev->done_task);
-	// 	else
-	// 		dev_warn(hace_dev->dev, "CRYPTO interrupt when no active requests.\n");
-	// 	handle = IRQ_HANDLED;
-	// }
+	if (sts & HACE_RSA_ISR) {
+		aspeed_hace_write(hace_dev, 0, ASPEED_HACE_RSA_CMD);
+		if (rsa_engine->flags & CRYPTO_FLAGS_BUSY)
+			tasklet_schedule(&rsa_engine->done_task);
+		else
+			dev_warn(hace_dev->dev, "CRYPTO interrupt when no active requests.\n");
+		handle = IRQ_HANDLED;
+	}
 	return handle;
 }
 
@@ -90,6 +91,15 @@ static void aspeed_crypto_ahash_done_task(unsigned long data)
 	(void)hash_engine->resume(hace_dev);
 }
 
+static void aspeed_crypto_rsa_done_task(unsigned long data)
+{
+	struct aspeed_hace_dev *hace_dev = (struct aspeed_hace_dev *)data;
+	struct aspeed_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
+
+	CRYPTO_DBUG("\n");
+
+	(void)rsa_engine->resume(hace_dev);
+}
 // static void aspeed_crypto_ahash_queue_task(unsigned long data)
 // {
 // 	struct aspeed_hace_dev *hace_dev = (struct aspeed_hace_dev *)data;
@@ -102,7 +112,8 @@ static int aspeed_crypto_register(struct aspeed_hace_dev *hace_dev)
 {
 	aspeed_register_skcipher_algs(hace_dev);
 	aspeed_register_ahash_algs(hace_dev);
-	// aspeed_register_akcipher_algs(hace_dev);
+	if (hace_dev->version != 6)
+		aspeed_register_akcipher_algs(hace_dev);
 
 	return 0;
 }
@@ -135,6 +146,7 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 	const struct of_device_id *crypto_dev_id;
 	struct aspeed_engine_crypto *crypto_engine;
 	struct aspeed_engine_hash *hash_engine;
+	struct aspeed_engine_rsa *rsa_engine;
 	int err;
 
 
@@ -152,6 +164,7 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 	hace_dev->version = (unsigned long)crypto_dev_id->data;
 	crypto_engine = &hace_dev->crypto_engine;
 	hash_engine = &hace_dev->hash_engine;
+	rsa_engine = &hace_dev->rsa_engine;
 
 	platform_set_drvdata(pdev, hace_dev);
 	spin_lock_init(&crypto_engine->lock);
@@ -163,17 +176,15 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 	// tasklet_init(&hash_engine->queue_task, aspeed_crypto_ahash_queue_task, (unsigned long)hace_dev);
 	crypto_init_queue(&hash_engine->queue, 50);
 
+	spin_lock_init(&rsa_engine->lock);
+	tasklet_init(&rsa_engine->done_task, aspeed_crypto_rsa_done_task, (unsigned long)hace_dev);
+	crypto_init_queue(&rsa_engine->queue, 50);
+
 	hace_dev->regs = of_iomap(pdev->dev.of_node, 0);
 	if (!(hace_dev->regs)) {
 		dev_err(dev, "can't ioremap\n");
 		return -ENOMEM;
 	}
-
-	// hace_dev->rsa_buff = of_iomap(pdev->dev.of_node, 1);
-	// if (!(hace_dev->rsa_buff)) {
-	// 	dev_err(dev, "can't rsa ioremap\n");
-	// 	return -ENOMEM;
-	// }
 
 	hace_dev->irq = platform_get_irq(pdev, 0);
 	if (!hace_dev->irq) {
@@ -194,28 +205,18 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 
 	clk_prepare_enable(hace_dev->yclk);
 
-	hace_dev->rsaclk = devm_clk_get(&pdev->dev, "rsaclk");
-	if (IS_ERR(hace_dev->rsaclk)) {
-		dev_err(&pdev->dev, "no rsaclk clock defined\n");
-		return -ENODEV;
+	if (hace_dev->version != 6) {
+		hace_dev->rsaclk = devm_clk_get(&pdev->dev, "rsaclk");
+		if (IS_ERR(hace_dev->rsaclk)) {
+			dev_err(&pdev->dev, "no rsaclk clock defined\n");
+			return -ENODEV;
+		}
+		clk_prepare_enable(hace_dev->rsaclk);
 	}
 
-	clk_prepare_enable(hace_dev->rsaclk);
-
-
-
-	// if (of_device_is_compatible(pdev->dev.of_node,
-	// 			    "aspeed,ast2600-crypto")) {
-	// 	hace_dev->version = ASPEED_CRYPTO_G6;
-	// 	hace_dev->rsa_max_buf_len = ASPEED_CRYPTO_G6_RSA_BUFF_SIZE;
-	// } else {
-	// 	hace_dev->version = 0;
-	// 	hace_dev->rsa_max_buf_len = ASPEED_CRYPTO_RSA_BUFF_SIZE;
-	// }
-
 	// 8-byte aligned
-	crypto_engine->cipher_addr = dma_alloc_coherent(&pdev->dev, 0xa000,
-				 &crypto_engine->cipher_dma_addr, GFP_KERNEL);
+	crypto_engine->cipher_addr = dma_alloc_coherent(&pdev->dev, ASPEED_CRYPTO_SRC_DMA_BUF_LEN,
+				     &crypto_engine->cipher_dma_addr, GFP_KERNEL);
 
 	if (!crypto_engine->cipher_addr) {
 		printk("error buff allocation\n");
@@ -223,21 +224,28 @@ static int aspeed_crypto_probe(struct platform_device *pdev)
 	}
 
 	hash_engine->ahash_src_addr = dma_alloc_coherent(&pdev->dev,
-				       APSEED_CRYPTO_SRC_DMA_BUF_LEN,
-				       &hash_engine->ahash_src_dma_addr, GFP_KERNEL);
+				      ASPEED_HASH_SRC_DMA_BUF_LEN,
+				      &hash_engine->ahash_src_dma_addr, GFP_KERNEL);
 	if (!hash_engine->ahash_src_addr) {
 		printk("error buff allocation\n");
 		return -ENOMEM;
 	}
 	if (hace_dev->version == 6) {
 		crypto_engine->dst_sg_addr = dma_alloc_coherent(&pdev->dev,
-					 APSEED_CRYPTO_DST_DMA_BUF_LEN,
-					 &crypto_engine->dst_sg_dma_addr, GFP_KERNEL);
+					     ASPEED_CRYPTO_DST_DMA_BUF_LEN,
+					     &crypto_engine->dst_sg_dma_addr, GFP_KERNEL);
 		if (!crypto_engine->dst_sg_addr) {
 			printk("error buff allocation\n");
 			return -ENOMEM;
 		}
+	} else {
+		rsa_engine->rsa_buff = of_iomap(pdev->dev.of_node, 1);
+		if (!(rsa_engine->rsa_buff)) {
+			dev_err(dev, "can't rsa ioremap\n");
+			return -ENOMEM;
+		}
 	}
+
 	err = aspeed_crypto_register(hace_dev);
 	if (err) {
 		dev_err(dev, "err in register alg");

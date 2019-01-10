@@ -1,5 +1,5 @@
-#ifndef __ASPEED_CRYPTO_H__
-#define __ASPEED_CRYPTO_H__
+#ifndef __ASPEED_HACE_H__
+#define __ASPEED_HACE_H__
 
 #include <linux/interrupt.h>
 #include <linux/delay.h>
@@ -125,12 +125,11 @@
 #define ASPEED_HACE_CMD_QUEUE_RP	0x5C
 #define ASPEED_HACE_ENG_FEATURE		0x60
 
-#define ASPEED_CRYPTO_G6		BIT(0)
-#define ASPEED_CRYPTO_G6_RSA_BUFF_SIZE	508
-#define ASPEED_CRYPTO_RSA_BUFF_SIZE	508
-#define APSEED_CRYPTO_SRC_DMA_BUF_LEN	0xa000
-#define APSEED_CRYPTO_DST_DMA_BUF_LEN	0xa000
-#define APSEED_CRYPTO_GCM_TAG_OFFSET	0x9ff0
+#define ASPEED_RSA_BUFF_SIZE	508
+#define ASPEED_CRYPTO_SRC_DMA_BUF_LEN	0xa000
+#define ASPEED_CRYPTO_DST_DMA_BUF_LEN	0xa000
+#define ASPEED_CRYPTO_GCM_TAG_OFFSET	0x9ff0
+#define ASPEED_HASH_SRC_DMA_BUF_LEN	0xa000
 
 #define HACE_CMD_IV_REQUIRE		(HACE_CMD_CBC | HACE_CMD_CFB | \
 					 HACE_CMD_OFB | HACE_CMD_CTR)
@@ -280,10 +279,17 @@ struct aspeed_sham_reqctx {
 
 /******************************************************************************/
 /* akcipher rsa */
-struct aspeed_engine_akcipher {
-	void __iomem			*rsa_buff;
-	unsigned long			rsa_max_buf_len;
+struct aspeed_engine_rsa {
+	struct crypto_queue		queue;
+	struct tasklet_struct		done_task;
+	// struct tasklet_struct		queue_task;
+	bool				is_async;
+	spinlock_t			lock;
+	aspeed_hace_fn_t		resume;
+	unsigned long			flags;
+
 	struct akcipher_request		*akcipher_req;
+	void __iomem			*rsa_buff;
 
 };
 
@@ -340,6 +346,7 @@ struct aspeed_hace_dev {
 	unsigned long			version;
 	struct aspeed_engine_crypto	crypto_engine;
 	struct aspeed_engine_hash	hash_engine;
+	struct aspeed_engine_rsa	rsa_engine;
 };
 
 
@@ -376,7 +383,7 @@ aspeed_hace_read(struct aspeed_hace_dev *crypto, u32 reg)
 extern int aspeed_hace_skcipher_trigger(struct aspeed_hace_dev *aspeed_hace);
 
 extern int aspeed_hace_ahash_trigger(struct aspeed_hace_dev *aspeed_hace,
-				       aspeed_hace_fn_t resume);
+				     aspeed_hace_fn_t resume);
 extern int aspeed_hace_ahash_handle_queue(struct aspeed_hace_dev *aspeed_hace, struct crypto_async_request *areq);
 
 extern int aspeed_hace_rsa_trigger(struct aspeed_hace_dev *aspeed_hace);

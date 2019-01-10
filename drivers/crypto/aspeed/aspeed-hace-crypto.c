@@ -689,7 +689,7 @@ static int aspeed_aead_transfer(struct aspeed_hace_dev *hace_dev)
 		authsize = crypto_aead_authsize(cipher);
 		offset = req->assoclen + req->cryptlen - authsize;
 		scatterwalk_map_and_copy(tag, req->src, offset, authsize, 0);
-		err = crypto_memneq(crypto_engine->dst_sg_addr + APSEED_CRYPTO_GCM_TAG_OFFSET,
+		err = crypto_memneq(crypto_engine->dst_sg_addr + ASPEED_CRYPTO_GCM_TAG_OFFSET,
 				    tag, authsize) ? -EBADMSG : 0;
 	}
 	if (req->src == req->dst) {
@@ -749,7 +749,7 @@ static int  aspeed_aead_start(struct aspeed_hace_dev *hace_dev)
 	dst_list = (struct aspeed_sg_list *) crypto_engine->dst_sg_addr;
 	src_dma_addr = crypto_engine->cipher_dma_addr;
 	dst_dma_addr = crypto_engine->dst_sg_dma_addr;
-	tag_dma_addr = crypto_engine->dst_sg_dma_addr + APSEED_CRYPTO_GCM_TAG_OFFSET;
+	tag_dma_addr = crypto_engine->dst_sg_dma_addr + ASPEED_CRYPTO_GCM_TAG_OFFSET;
 	if (enc)
 		total = req->assoclen + req->cryptlen;
 	else
