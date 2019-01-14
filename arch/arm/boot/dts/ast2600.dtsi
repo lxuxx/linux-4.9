@@ -1,16 +1,13 @@
-#include "skeleton.dtsi"
+// SPDX-License-Identifier: GPL-2.0+
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/aspeed-clock.h>
 #include <dt-bindings/gpio/gpio.h>
 / {
-	model = "AST2600 SOC";
-	compatible = "aspeed";
+	model = "Aspeed BMC";
+	compatible = "aspeed,ast2600";
 	#address-cells = <1>;
 	#size-cells = <1>;
 
-	memory@80000000 {
-		reg = <0x80000000 0x20000000>;
-	};
 
 	cpus {
 		#address-cells = <1>;
@@ -22,55 +19,70 @@
 			clock-frequency = <25000000>;
 			reg = <0>;
 		};
-
 	};
-#if 1
-        timer {
-                compatible = "arm,armv7-timer";
+
+	memory@80000000 {
+		reg = <0x80000000 0>;
+	};
+
+	timer {
+		compatible = "arm,armv7-timer";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
-			<GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
-			<GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
-			<GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
-		clock-frequency = <25000000>;
-        };
-#endif
-    soc {
-               compatible = "simple-bus";
-                #address-cells = <1>;
-                #size-cells = <1>;
-                device_type = "soc";
-                interrupt-parent = <&gic>;
-                ranges;
+				<GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+				<GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+				<GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
+				clock-frequency = <25000000>;
+		arm,cpu-registers-not-fw-configured;
+	};
 
-		gic: interrupt-controller@40460000 {
-                        compatible = "arm,cortex-a7-gic";
-                        interrupts = <GIC_PPI 9 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>;
-                        #interrupt-cells = <3>;
-                        interrupt-controller;
+	soc {
+			compatible = "simple-bus";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			device_type = "soc";
 			interrupt-parent = <&gic>;
-                        reg = <0x40461000 0x1000>,
-                                <0x40462000 0x1000>,
-                                <0x40464000 0x2000>,
-                                <0x40466000 0x2000>;
-                };
+			ranges;
+
+			gic: interrupt-controller@40460000 {
+					compatible = "arm,cortex-a7-gic";
+					interrupts = <GIC_PPI 9 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>;
+					#interrupt-cells = <3>;
+					interrupt-controller;
+					interrupt-parent = <&gic>;
+					reg = <0x40461000 0x1000>,
+						<0x40462000 0x1000>,
+						<0x40464000 0x2000>,
+						<0x40466000 0x2000>;
+			};
+
+			mac0: ftgmac@1e660000 {
+				compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
+				reg = <0x1e660000 0x180>, <0x1e650000 0x4>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+				interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
+#if 0
+				phy-handle = <&phy0>;
+#endif
+			};
 
 #if 0
-		timer: timer@1e782000 {
-                        /* This timer is a Faraday FTTMR010 derivative */
-                        compatible = "aspeed,ast2500-timer";
-                        reg = <0x1e782000 0x90>;
-                        interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
-                        clock-frequency = <25000000>;
-		};
-#endif 		
-		uart0: serial@1e784000 {
-                compatible = "ns16550a";
-                reg = <0x1e784000 0x1000>;
-                reg-shift = <2>;
-                interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
-                clock-frequency = <1846154>;
-                no-loopback-test;
-        };
-     };
+			timer: timer@1e782000 {
+                /* This timer is a Faraday FTTMR010 derivative */
+                compatible = "aspeed,ast2500-timer";
+                reg = <0x1e782000 0x90>;
+                interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
+                clock-frequency = <25000000>;
+			};
+#endif
+			uart5: serial@1e784000 {
+			    compatible = "ns16550a";
+			    reg = <0x1e784000 0x1000>;
+			    reg-shift = <2>;
+			    interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
+			    clock-frequency = <1846154>;
+			    no-loopback-test;
+			};
+	};
 };

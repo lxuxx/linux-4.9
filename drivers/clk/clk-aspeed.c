@@ -34,6 +34,17 @@
 #define  AST2400_CLK_SOURCE_SEL	BIT(18)
 #define ASPEED_CLK_SELECTION_2	0xd8
 #define ASPEED_RESET_CTRL2	0xd4
+//**************************************************************************
+#define ASPEED_G6_RESET_CTRL		0x40
+#define ASPEED_G6_RESET_CTRL2		0x50
+
+#define ASPEED_G6_CLK_SELECTION		0x300
+#define ASPEED_G6_CLK_SELECTION2	0x304
+#define ASPEED_G6_CLK_SELECTION3	0x310
+
+#define ASPEED_G6_CLK_STOP_CTRL		0x80
+#define ASPEED_G6_CLK_STOP_CTRL2	0x90
+//**************************************************************************
 
 /* Globally visible clocks */
 static DEFINE_SPINLOCK(aspeed_clk_lock);
@@ -485,6 +496,114 @@ static const struct clk_ops aspeed_clk_gate_ops = {
 	.is_enabled = aspeed_clk_is_enabled,
 };
 
+static int aspeed_g6_clk_is_enabled(struct clk_hw *hw)
+{
+	struct aspeed_clk_gate *gate = to_aspeed_clk_gate(hw);
+	u32 clk = BIT(gate->clock_idx);
+	u32 rst = BIT(gate->reset_idx);
+	u32 enval = (gate->flags & CLK_GATE_SET_TO_DISABLE) ? 0 : clk;
+	u32 reg;
+
+	printk("aspeed_g6_clk_is_enabled gate->clock_idx %d, reset_idx %d\n", gate->clock_idx, gate->reset_idx);
+	/*
+	 * If the IP is in reset, treat the clock as not enabled,
+	 * this happens with some clocks such as the USB one when
+	 * coming from cold reset. Without this, aspeed_clk_enable()
+	 * will fail to lift the reset.
+	 */
+	if (gate->reset_idx >= 0) {
+		regmap_read(gate->map, ASPEED_G6_RESET_CTRL, &reg);
+		if (reg & rst)
+			return 0;
+	}
+
+	regmap_read(gate->map, ASPEED_G6_CLK_STOP_CTRL, &reg);
+
+	return ((reg & clk) == enval) ? 1 : 0;
+}
+
+static int aspeed_g6_clk_enable(struct clk_hw *hw)
+{
+	struct aspeed_clk_gate *gate = to_aspeed_clk_gate(hw);
+	unsigned long flags;
+	u32 clk = BIT(gate->clock_idx);
+	u32 rst = BIT(gate->reset_idx);
+	u32 enval;
+
+	printk("aspeed_g6_clk_enable gate->clock_idx %d, reset_idx %d\n", gate->clock_idx, gate->reset_idx);
+
+	spin_lock_irqsave(gate->lock, flags);
+
+#if 0
+	if (aspeed_clk_is_enabled(hw)) {
+		spin_unlock_irqrestore(gate->lock, flags);
+		return 0;
+	}
+#endif
+
+	if (gate->reset_idx >= 0) {
+		/* Put IP in reset */
+		regmap_update_bits(gate->map, ASPEED_G6_RESET_CTRL, rst, rst);
+
+		/* Delay 100us */
+		udelay(100);
+	}
+
+	/* Enable clock */
+	if(gate->clock_idx == aspeed_gates[ASPEED_CLK_GATE_SDEXTCLK].clock_idx) {
+		/* sd ext clk */
+		regmap_update_bits(gate->map, ASPEED_G6_CLK_SELECTION, ASPEED_SDIO_CLK_EN, ASPEED_SDIO_CLK_EN);
+		printk("enable sd card clk\n");
+	} else {
+		enval = (gate->flags & CLK_GATE_SET_TO_DISABLE) ? 0 : clk;
+		printk("enval %x gate->flags %x enable g6 clk gate->clock_idx %d gate->reset_idx %d \n",enval, gate->flags, gate->clock_idx, gate->reset_idx);
+		if(enval) {
+			printk("write 80 \n");
+			regmap_update_bits(gate->map, ASPEED_G6_CLK_STOP_CTRL, clk, enval);
+		} else {
+			printk("write 84 \n");
+			regmap_update_bits(gate->map, ASPEED_G6_CLK_STOP_CTRL + 0x4, clk, clk);
+		}
+
+	}
+
+	if (gate->reset_idx >= 0) {
+		/* A delay of 10ms is specified by the ASPEED docs */
+		mdelay(10);
+
+		/* Take IP out of reset */
+		//regmap_update_bits(gate->map, ASPEED_G6_RESET_CTRL, rst, 0);
+		regmap_update_bits(gate->map, ASPEED_G6_RESET_CTRL + 0x4, rst, rst);
+	}
+
+	spin_unlock_irqrestore(gate->lock, flags);
+
+	return 0;
+}
+
+static void aspeed_g6_clk_disable(struct clk_hw *hw)
+{
+	struct aspeed_clk_gate *gate = to_aspeed_clk_gate(hw);
+	unsigned long flags;
+	u32 clk = BIT(gate->clock_idx);
+	u32 enval;
+
+	printk("aspeed_g6_clk_disable gate->clock_idx %d, reset_idx %d\n", gate->clock_idx, gate->reset_idx);
+
+	spin_lock_irqsave(gate->lock, flags);
+
+	enval = (gate->flags & CLK_GATE_SET_TO_DISABLE) ? clk : 0;
+	regmap_update_bits(gate->map, ASPEED_G6_CLK_STOP_CTRL, clk, enval);
+
+	spin_unlock_irqrestore(gate->lock, flags);
+}
+
+static const struct clk_ops aspeed_g6_clk_gate_ops = {
+	.enable = aspeed_g6_clk_enable,
+	.disable = aspeed_g6_clk_disable,
+	.is_enabled = aspeed_g6_clk_is_enabled,
+};
+
 /**
  * struct aspeed_reset - Aspeed reset controller
  * @map: regmap to access the containing system controller
@@ -565,7 +684,7 @@ static const struct reset_control_ops aspeed_reset_ops = {
 static struct clk_hw *aspeed_clk_hw_register_gate(struct device *dev,
 		const char *name, const char *parent_name, unsigned long flags,
 		struct regmap *map, u8 clock_idx, u8 reset_idx,
-		u8 clk_gate_flags, spinlock_t *lock)
+		u8 clk_gate_flags, spinlock_t *lock, int version)
 {
 	struct aspeed_clk_gate *gate;
 	struct clk_init_data init;
@@ -577,7 +696,12 @@ static struct clk_hw *aspeed_clk_hw_register_gate(struct device *dev,
 		return ERR_PTR(-ENOMEM);
 
 	init.name = name;
-	init.ops = &aspeed_clk_gate_ops;
+
+	if (version)
+		init.ops = &aspeed_g6_clk_gate_ops;
+	else
+		init.ops = &aspeed_clk_gate_ops;
+	
 	init.flags = flags;
 	init.parent_names = parent_name ? &parent_name : NULL;
 	init.num_parents = parent_name ? 1 : 0;
@@ -751,7 +875,8 @@ else
 				gd->clock_idx,
 				gd->reset_idx,
 				gate_flags,
-				&aspeed_clk_lock);
+				&aspeed_clk_lock,
+				soc_data->new_version);
 		if (IS_ERR(hw))
 			return PTR_ERR(hw);
 		aspeed_clk_data->hws[i] = hw;
