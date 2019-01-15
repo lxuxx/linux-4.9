@@ -14,7 +14,7 @@
  * GNU General Public License for more details.
  *
  */
-#include "aspeed-crypto.h"
+#include "aspeed-acry.h"
 
 #define ASPEED_ECDH_DEBUG
 
@@ -136,9 +136,9 @@ static int aspeed_ecdh_init_tfm(struct crypto_kpp *tfm)
 {
 	struct aspeed_ecdh_ctx *ctx = kpp_tfm_ctx(tfm);
 	struct crypto_alg *alg = tfm->base.__crt_alg;
-	struct aspeed_crypto_alg *crypto_alg;
+	struct aspeed_hace_alg *crypto_alg;
 	
-	crypto_alg = container_of(alg, struct aspeed_crypto_alg, alg.crypto);
+	crypto_alg = container_of(alg, struct aspeed_hace_alg, alg.crypto);
 	ctx->hace_dev = crypto_alg->hace_dev;
 	ECDH_DBG("\n");
 
@@ -151,7 +151,7 @@ static void aspeed_ecdh_exit_tfm(struct crypto_tfm *tfm)
 	ECDH_DBG("\n");
 }
 
-struct aspeed_crypto_alg aspeed_kpp_algs[] = {
+struct aspeed_hace_alg aspeed_kpp_algs[] = {
 	{
 		.alg.kpp = {
 			.set_secret = aspeed_ecdh_set_secret,
