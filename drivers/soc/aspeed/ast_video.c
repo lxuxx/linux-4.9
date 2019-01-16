@@ -38,6 +38,8 @@
 #include <linux/mfd/syscon.h>
 #include <linux/dma-mapping.h>
 #include <asm/io.h>
+#include <linux/of.h>
+#include <linux/of_reserved_mem.h>
 #include <asm/uaccess.h>
 #include <linux/aspeed-sdmc.h>
 #include <linux/ast_lcd.h>
@@ -2213,10 +2215,10 @@ static void ast_video_ctrl_init(struct ast_video_data *ast_video)
 					, AST_VIDEO_MODE_DETECT);
 }
 
-static long ast_scu_reset_video(struct ast_video_data *ast_video)
+static void ast_scu_reset_video(struct ast_video_data *ast_video)
 {
 	reset_control_assert(ast_video->reset);
-	udelay(100);	
+	udelay(100);
 	reset_control_deassert(ast_video->reset);
 }
 
@@ -2231,7 +2233,6 @@ static long ast_video_ioctl(struct file *fp, unsigned int cmd, unsigned long arg
 
 	int vga_enable = 0;
 	int encrypt_en = 0;
-	int compression_source = 0;
 	struct ast_mode_detection mode_detection;
 	struct ast_auto_mode auto_mode;
 	void __user *argp = (void __user *)arg;
@@ -2633,6 +2634,7 @@ static u8 ast_get_compress_jpeg_mode(struct ast_video_data *ast_video, u8 eng_id
 		}
 		break;
 	}
+	return 0;
 }
 
 static void ast_set_compress_jpeg_mode(struct ast_video_data *ast_video, u8 eng_idx, u8 jpeg_mode)
@@ -2709,27 +2711,29 @@ static void ast_set_compress_encrypt_en(struct ast_video_data *ast_video, u8 eng
 static u8 *ast_get_compress_encrypt_key(struct ast_video_data *ast_video, u8 eng_idx)
 {
 	switch (eng_idx) {
-	case 0:
-		return ast_video->EncodeKeys;
-		break;
-	case 1:
-		return ast_video->EncodeKeys;
-		break;
-	}
+		case 0:
+			return ast_video->EncodeKeys;
+			break;
+		case 1:
+			return ast_video->EncodeKeys;
+			break;
+		}
+	return 0;
 }
 
 static void ast_set_compress_encrypt_key(struct ast_video_data *ast_video, u8 eng_idx, u8 *key)
 {
 	switch (eng_idx) {
-	case 0:	//video 1
-		memset(ast_video->EncodeKeys, 0, 256);
-		//due to system have enter key must be remove
-		memcpy(ast_video->EncodeKeys, key, strlen(key) - 1);
-		ast_video_encryption_key_setup(ast_video);
-		break;
-	case 1:	//video M
-		break;
+		case 0:	//video 1
+			memset(ast_video->EncodeKeys, 0, 256);
+			//due to system have enter key must be remove
+			memcpy(ast_video->EncodeKeys, key, strlen(key) - 1);
+			ast_video_encryption_key_setup(ast_video);
+			break;
+		case 1:	//video M
+			break;
 	}
+	return 0;
 }
 
 static u8 ast_get_compress_encrypt_mode(struct ast_video_data *ast_video)
@@ -2854,13 +2858,15 @@ static const struct attribute_group compress_attribute_groups[] = {
 };
 
 /************************************************** SYS FS End ***********************************************************/
-
+static const struct aspeed_video_config ast2600_config = { 
+	.version = 6, 
+	.dram_base =0x80000000, 
+};
 
 static const struct aspeed_video_config ast2500_config = { 
 	.version = 5, 
 	.dram_base =0x80000000, 
 };
-
 
 static const struct aspeed_video_config ast2400_config = { 
 	.version = 4, 
@@ -2869,7 +2875,8 @@ static const struct aspeed_video_config ast2400_config = {
 
 static const struct of_device_id aspeed_video_matches[] = {
 	{ .compatible = "aspeed,ast2400-video",	.data = &ast2400_config, },
-	{ .compatible = "aspeed,ast2500-video",	.data = &ast2500_config, },	
+	{ .compatible = "aspeed,ast2500-video",	.data = &ast2500_config, },
+	{ .compatible = "aspeed,ast2600-video",	.data = &ast2600_config, },
 	{},
 };
 
@@ -2897,7 +2904,18 @@ static int ast_video_probe(struct platform_device *pdev)
 
 	ast_video->config = (struct aspeed_video_config *) video_dev_id->data;
 
-	if (ast_video->config->version == 5) {
+	if (ast_video->config->version == 6) {
+		ast_video->gfx = syscon_regmap_lookup_by_compatible("aspeed,ast-g6-gfx");
+		if (IS_ERR(ast_video->gfx)) {
+			dev_err(&pdev->dev, "failed to find 2600 GFX regmap\n");
+			return PTR_ERR(ast_video->gfx);
+		}
+		ast_video->scu = syscon_regmap_lookup_by_compatible("aspeed,ast2600-scu");
+		if (IS_ERR(ast_video->scu)) {
+			dev_err(&pdev->dev, "failed to find 2600 SCU regmap\n");
+			return PTR_ERR(ast_video->scu);
+		}
+	} else if (ast_video->config->version == 5) {
 		ast_video->gfx = syscon_regmap_lookup_by_compatible("aspeed,ast-g5-gfx");
 		if (IS_ERR(ast_video->gfx)) {
 			dev_err(&pdev->dev, "failed to find 2500 GFX regmap\n");
@@ -2936,6 +2954,19 @@ static int ast_video_probe(struct platform_device *pdev)
 	//Phy assign
 	ast_video->video_mem_size = CONFIG_AST_VIDEO_MEM_SIZE;
 	VIDEO_DBG("video_mem_size %d MB\n", ast_video->video_mem_size / 1024 / 1024);
+
+	ret = of_reserved_mem_device_init(&pdev->dev);
+	if (ret) {
+		dev_err(&pdev->dev, "Unable to reserve memory\n");
+		goto out;
+	}
+
+	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to set DMA mask\n");
+		of_reserved_mem_device_release(&pdev->dev);
+		goto out;
+	}
 
 	ast_video->video_mem.virt = dma_alloc_coherent(&pdev->dev, CONFIG_AST_VIDEO_MEM_SIZE, &ast_video->video_mem.dma, GFP_KERNEL);
 	if(!ast_video->video_mem.virt){
@@ -3075,7 +3106,6 @@ out:
 
 static int ast_video_remove(struct platform_device *pdev)
 {
-	struct resource *res0;
 	struct ast_video_data *ast_video = platform_get_drvdata(pdev);
 	int i;
 	VIDEO_DBG("ast_video_remove\n");
