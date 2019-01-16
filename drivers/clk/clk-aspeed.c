@@ -128,6 +128,21 @@ static const struct aspeed_gate_data aspeed_gates[] = {
 	[ASPEED_CLK_GATE_SDEXTCLK] = { 29, -1, "sdextclk-gate",		"sdio",	0 }, /* For card clk */		
 };
 
+//ast2400
+static const char * const ast2400_eclk_parent_names[] = {
+	"mpll/2",
+	"hpll",
+	"inverted mpll/2",
+	"inverted hpll",
+};
+
+//ast2500
+static const char * const eclk_parent_names[] = {
+	"mpll",
+	"hpll",
+	"dpll",
+};
+
 static const struct clk_div_table ast2500_eclk_div_table[] = {
 	{ 0x0, 2 }, 
 	{ 0x1, 2 },
@@ -437,12 +452,10 @@ static int aspeed_clk_enable(struct clk_hw *hw)
 
 	spin_lock_irqsave(gate->lock, flags);
 
-#if 0
 	if (aspeed_clk_is_enabled(hw)) {
 		spin_unlock_irqrestore(gate->lock, flags);
 		return 0;
 	}
-#endif
 
 	if (gate->reset_idx >= 0) {
 		/* Put IP in reset */
@@ -531,15 +544,15 @@ static int aspeed_g6_clk_enable(struct clk_hw *hw)
 	u32 enval;
 
 	printk("aspeed_g6_clk_enable gate->clock_idx %d, reset_idx %d\n", gate->clock_idx, gate->reset_idx);
+	printk("aspeed_g6_clk_enable ~~~~~ %s	\n", aspeed_gates[gate->clock_idx].name);
 
 	spin_lock_irqsave(gate->lock, flags);
 
-#if 0
 	if (aspeed_clk_is_enabled(hw)) {
+		printk("aspeed_clk_is_enabled ~~~~~ %s  \n", aspeed_gates[gate->clock_idx].name);
 		spin_unlock_irqrestore(gate->lock, flags);
 		return 0;
 	}
-#endif
 
 	if (gate->reset_idx >= 0) {
 		/* Put IP in reset */
@@ -806,14 +819,6 @@ static int aspeed_clk_probe(struct platform_device *pdev)
 	if (IS_ERR(hw))
 		return PTR_ERR(hw);
 	aspeed_clk_data->hws[ASPEED_CLK_MAC] = hw;
-	/* Video Engine clock divider */
-	hw = clk_hw_register_divider_table(dev, "eclk", NULL, 0,
-			scu_base + ASPEED_CLK_SELECTION, 28, 3, 0,
-			soc_data->eclk_div_table,
-			&aspeed_clk_lock);
-	if (IS_ERR(hw))
-		return PTR_ERR(hw);
-	aspeed_clk_data->hws[ASPEED_CLK_ECLK] = hw;
 
 #if 0
 if(GET_CHIP_REVISION(ast_scu_read(AST_SCU_REVISION_ID)) == 4)
@@ -847,6 +852,35 @@ else
 		return PTR_ERR(hw);
 	aspeed_clk_data->hws[ASPEED_CLK_24M] = hw;
 
+#if 1
+	/* Video Engine clock divider */
+	hw = clk_hw_register_divider_table(dev, "eclk", NULL, 0,
+			scu_base + ASPEED_CLK_SELECTION, 28, 3, 0,
+			soc_data->eclk_div_table,
+			&aspeed_clk_lock);
+	if (IS_ERR(hw))
+		return PTR_ERR(hw);
+	aspeed_clk_data->hws[ASPEED_CLK_ECLK] = hw;
+#else
+
+	hw = clk_hw_register_mux(dev, "eclk-mux", eclk_parent_names,
+				 ARRAY_SIZE(eclk_parent_names), 0,
+				 scu_base + ASPEED_CLK_SELECTION, 2, 0x3, 0,
+				 &aspeed_clk_lock);
+	if (IS_ERR(hw))
+		return PTR_ERR(hw);
+	aspeed_clk_data->hws[ASPEED_CLK_ECLK_MUX] = hw;
+
+	/* Video Engine clock divider */
+	hw = clk_hw_register_divider_table(dev, "eclk", "eclk-mux", 0,
+					   scu_base + ASPEED_CLK_SELECTION, 28,
+					   3, 0, soc_data->eclk_div_table,
+					   &aspeed_clk_lock);
+	if (IS_ERR(hw))
+		return PTR_ERR(hw);
+	aspeed_clk_data->hws[ASPEED_CLK_ECLK] = hw;
+#endif
+	
 	/*
 	 * TODO: There are a number of clocks that not included in this driver
 	 * as more information is required:
