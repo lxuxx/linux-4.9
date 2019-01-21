@@ -10,31 +10,27 @@
 	#size-cells = <1>;
 	interrupt-parent = <&vic>;
 
-        aliases {
-                i2c0 = &i2c0;
-                i2c1 = &i2c1;
-                i2c2 = &i2c2;
-                i2c3 = &i2c3;
-                i2c4 = &i2c4;
-                i2c5 = &i2c5;
-                i2c6 = &i2c6;
-                i2c7 = &i2c7;
-                i2c8 = &i2c8;
-				i2c9 = &i2c9;
-				i2c10 = &i2c10;
-				i2c11 = &i2c11;
-				i2c12 = &i2c12;
-				i2c13 = &i2c13;
-#if 0
-		        serial0 = &uart1;
-		        serial1 = &uart2;
-		        serial2 = &uart3;
-		        serial3 = &uart4;
-#endif
-                serial4 = &uart5;
-#if 0
-                serial5 = &vuart;
-#endif
+	aliases {
+		i2c0 = &i2c0;
+		i2c1 = &i2c1;
+		i2c2 = &i2c2;
+		i2c3 = &i2c3;
+		i2c4 = &i2c4;
+		i2c5 = &i2c5;
+		i2c6 = &i2c6;
+		i2c7 = &i2c7;
+		i2c8 = &i2c8;
+		i2c9 = &i2c9;
+		i2c10 = &i2c10;
+		i2c11 = &i2c11;
+		i2c12 = &i2c12;
+		i2c13 = &i2c13;
+		serial0 = &uart1;
+		serial1 = &uart2;
+		serial2 = &uart3;
+		serial3 = &uart4;
+		serial4 = &uart5;
+		serial5 = &vuart;
         };
 
 	cpus {
@@ -53,24 +49,46 @@
 		reg = <0x80000000 0>;
 	};
 
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		video_memory: video {
+			size = <0x04000000>;
+			alignment = <0x01000000>;
+			compatible = "shared-dma-pool";
+			no-map;
+		};
+	};
+
 	ahb {
 		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
 
+
+		vic: interrupt-controller@1e6c0080 {
+			compatible = "aspeed,ast2500-vic";
+			interrupt-controller;
+			#interrupt-cells = <1>;
+			valid-sources = <0xfefff7ff 0x0807ffff>;
+			reg = <0x1e6c0080 0x80>;
+		};
+
 #if 0
 		ftgmac_mdio0: mdio@1e660060 {
-                                compatible = "aspeed,ast2500-mdio";
-                                #address-cells = <1>;
-                                #size-cells = <0>;
-                                reg = <0x1e660060 0x4>;
-                                phy0: ethernet-phy@0 {
-                                        device_type = "ethernet-phy";
-					compatible = "ethernet-phy-ieee802.3-c22";
-                                        reg = <0>;
-                                };
+                        compatible = "aspeed,ast2500-mdio";
+                        #address-cells = <1>;
+                        #size-cells = <0>;
+                        reg = <0x1e660060 0x4>;
+                        phy0: ethernet-phy@0 {
+                                device_type = "ethernet-phy";
+				compatible = "ethernet-phy-ieee802.3-c22";
+                                reg = <0>;
                         };
+		};
 #endif
 		mac0: ftgmac@1e660000 {
 			compatible = "aspeed,ast2600-mac", "faraday,ftgmac100";
@@ -84,24 +102,17 @@
 #endif
 		};
 #if 0
-			ftgmac_mdio1: mdio@1e680a060 {
-                                compatible = "aspeed,ast2500-mdio";
-                                #address-cells = <1>;
-                                #size-cells = <0>;
-                                reg = <0x1e680060 0x4>;
-				phy1: ethernet-phy@0 {
-					device_type = "ethernet-phy";
-                                        reg = <0>;
-                                };
-#endif
-		vic: interrupt-controller@1e6c0080 {
-			compatible = "aspeed,ast2500-vic";
-			interrupt-controller;
-			#interrupt-cells = <1>;
-			valid-sources = <0xfefff7ff 0x0807ffff>;
-			reg = <0x1e6c0080 0x80>;
+		ftgmac_mdio1: mdio@1e680a060 {
+			compatible = "aspeed,ast2500-mdio";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			reg = <0x1e680060 0x4>;
+			phy1: ethernet-phy@0 {
+				device_type = "ethernet-phy";
+			        reg = <0>;
+			};
 		};
-
+#endif
 		ehci0: usb@1e6a1000 {
 			compatible = "aspeed,ast2500-ehci", "generic-ehci";
 			reg = <0x1e6a1000 0x100>;
@@ -131,96 +142,238 @@
 			interrupts = <0>;
 		};
 
-		syscon: syscon@1e6e2000 {
-			compatible = "aspeed,ast2600-scu", "syscon", "simple-mfd";
-			reg = <0x1e6e2000 0x1000>;
-			ranges = <0 0x1e6e2000 0x1000>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			#clock-cells = <1>;
-			#reset-cells = <1>;
-		};
-
-		jtag: jtag@1e6e4000 {
-			compatible = "aspeed,ast2600-jtag";
-			reg= <0x1e6e4000 0x20>;
-			interrupts = <27>;
-			clocks = <&syscon ASPEED_CLK_HPLL>;
-			resets = <&syscon ASPEED_RESET_JTAG_MASTER>;
-			reset-names = "jtag";
-		};
-
-		xdma: xdma@1e6e7000 {
-			compatible = "aspeed,ast2600-xdma";
-			reg = <0x1e6e7000 0x80>;
-			interrupts = <6>;
- 			interrupts-extended = <&vic 6>, <&scu_ic ASPEED_SCU_PCIE_REST_LOW_TO_HIGH>;
-			resets = <&syscon ASPEED_RESET_XDMA>;
-		};
-
-		mctp: mctp@1e6e8000 {
-			compatible = "aspeed,ast2600-mctp";
-			reg = <0x1e6e8000 0x30 0x1e6ed0c4 0x04>;
-			interrupts = <26>;
- 			interrupts-extended = <&vic 26>, <&scu_ic ASPEED_SCU_PCIE_REST_LOW_TO_HIGH>;
-			resets = <&syscon ASPEED_RESET_MCTP>;
-		};
-
-		espi: espi@1e6ee000 {
-			compatible = "aspeed,ast2600-espi";
-			reg = <0x1e6ee000 0x200>;
-			interrupts = <23>;
-			resets = <&syscon ASPEED_RESET_ESPI>;
-		};
-
-		timer: timer@1e782000 {
-			/* This timer is a Faraday FTTMR010 derivative */
-			compatible = "aspeed,ast2600-timer";
-			reg = <0x1e782000 0x90>;
-			interrupts = <16 17 18 35 36 37 38 39>;
-			clocks = <&syscon ASPEED_CLK_APB>;
-			clock-names = "PCLK";
-		};
-
-		uart5: serial@1e784000 {
-			compatible = "ns16550a";
-			reg = <0x1e784000 0x1000>;
-			reg-shift = <2>;
-			interrupts = <8>;
-#if 1
-			clock-frequency = <1846154>;
-#else
-			clocks = <&syscon ASPEED_CLK_GATE_UART5CLK>;
-#endif
-			no-loopback-test;
-		};
-
-		wdt1: watchdog@1e785000 {
-			compatible = "aspeed,ast2600-wdt";
-			reg = <0x1e785000 0x20>;
-			clocks = <&syscon ASPEED_CLK_APB>;
-		};
-
-		wdt2: watchdog@1e785020 {
-			compatible = "aspeed,ast2600-wdt";
-			reg = <0x1e785020 0x20>;
-			clocks = <&syscon ASPEED_CLK_APB>;
-		};
-
-		wdt3: watchdog@1e785040 {
-			compatible = "aspeed,ast2600-wdt";
-			reg = <0x1e785040 0x20>;
-			clocks = <&syscon ASPEED_CLK_APB>;
-			status = "disabled";
-		};
-
-		i2c: i2c@1e78a000 {
+		apb {
 			compatible = "simple-bus";
 			#address-cells = <1>;
 			#size-cells = <1>;
-			ranges = <0 0x1e78a000 0x1000>;
-		};
+			ranges;
 
+			syscon: syscon@1e6e2000 {
+				compatible = "aspeed,ast2600-scu", "syscon", "simple-mfd";
+				reg = <0x1e6e2000 0x1000>;
+				ranges = <0 0x1e6e2000 0x1000>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+				#clock-cells = <1>;
+				#reset-cells = <1>;
+			};
+
+			jtag: jtag@1e6e4000 {
+				compatible = "aspeed,ast2600-jtag";
+				reg= <0x1e6e4000 0x20>;
+				interrupts = <27>;
+				clocks = <&syscon ASPEED_CLK_HPLL>;
+				resets = <&syscon ASPEED_RESET_JTAG_MASTER>;
+				reset-names = "jtag";
+			};
+
+			gfx: display@1e6e6000 {
+				compatible = "aspeed,ast-g6-gfx", "syscon";
+				reg = <0x1e6e6000 0x1000>;
+				interrupts = <14>;
+				clocks = <&syscon ASPEED_CLK_GATE_D1CLK>;
+				resets = <&syscon ASPEED_RESET_CRT>, <&syscon ASPEED_RESET_CRT1>;
+				reset-names = "crt", "crt1";
+			};
+
+			xdma: xdma@1e6e7000 {
+				compatible = "aspeed,ast2600-xdma";
+				reg = <0x1e6e7000 0x80>;
+				interrupts = <6>;
+				interrupts-extended = <&vic 6>, <&scu_ic ASPEED_SCU_PCIE_REST_LOW_TO_HIGH>;
+				resets = <&syscon ASPEED_RESET_XDMA>;
+			};
+
+			mctp: mctp@1e6e8000 {
+				compatible = "aspeed,ast2600-mctp";
+				reg = <0x1e6e8000 0x30 0x1e6ed0c4 0x04>;
+				interrupts = <26>;
+	 			interrupts-extended = <&vic 26>, <&scu_ic ASPEED_SCU_PCIE_REST_LOW_TO_HIGH>;
+				resets = <&syscon ASPEED_RESET_MCTP>;
+			};
+
+			espi: espi@1e6ee000 {
+				compatible = "aspeed,ast2600-espi";
+				reg = <0x1e6ee000 0x200>;
+				interrupts = <23>;
+				resets = <&syscon ASPEED_RESET_ESPI>;
+			};
+
+			video: video@1e700000 {
+				compatible = "aspeed,ast2600-video";
+				/* 184MB : 40MB*/
+				reg = <0x1e700000 0x300>;
+				interrupts = <7>;
+				memory-region = <&video_memory>;
+				clocks = <&syscon ASPEED_CLK_GATE_ECLK>, <&syscon ASPEED_CLK_GATE_VCLK>;
+				clock-names = "eclk", "vclk";
+				resets = <&syscon ASPEED_RESET_VIDEO>;
+			};
+			
+
+			timer: timer@1e782000 {
+				/* This timer is a Faraday FTTMR010 derivative */
+				compatible = "aspeed,ast2600-timer";
+				reg = <0x1e782000 0x90>;
+				interrupts = <16 17 18 35 36 37 38 39>;
+				clocks = <&syscon ASPEED_CLK_APB>;
+				clock-names = "PCLK";
+			};
+
+			uart1: serial@1e783000 {
+				compatible = "ns16550a";
+				reg = <0x1e783000 0x20>;
+				reg-shift = <2>;
+				interrupts = <47>;
+				clocks = <&syscon ASPEED_CLK_GATE_UART1CLK>;
+				resets = <&lpc_reset 4>;
+				no-loopback-test;
+#if 0				
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_txd1_default &pinctrl_rxd1_default>;
+#endif				
+				status = "disabled";
+			};
+
+			uart5: serial@1e784000 {
+				compatible = "ns16550a";
+				reg = <0x1e784000 0x1000>;
+				reg-shift = <2>;
+				interrupts = <8>;
+#if 1
+				clock-frequency = <1846154>;
+#else
+				clocks = <&syscon ASPEED_CLK_GATE_UART5CLK>;
+#endif
+				no-loopback-test;
+			};
+
+			wdt1: watchdog@1e785000 {
+				compatible = "aspeed,ast2600-wdt";
+				reg = <0x1e785000 0x20>;
+				clocks = <&syscon ASPEED_CLK_APB>;
+			};
+
+			wdt2: watchdog@1e785020 {
+				compatible = "aspeed,ast2600-wdt";
+				reg = <0x1e785020 0x20>;
+				clocks = <&syscon ASPEED_CLK_APB>;
+			};
+
+			wdt3: watchdog@1e785040 {
+				compatible = "aspeed,ast2600-wdt";
+				reg = <0x1e785040 0x20>;
+				clocks = <&syscon ASPEED_CLK_APB>;
+			};
+			vuart: serial@1e787000 {
+				compatible = "aspeed,ast2500-vuart";
+				reg = <0x1e787000 0x40>;
+				reg-shift = <2>;
+				interrupts = <8>;
+				clocks = <&syscon ASPEED_CLK_APB>;
+				no-loopback-test;
+				port_address = <0x3f8>;
+				serial_irq = <4>;
+			};
+
+			lpc: lpc@1e789000 {
+				compatible = "aspeed,ast-lpc", "simple-mfd", "syscon";
+				reg = <0x1e789000 0x200>;
+				interrupts = <8>;
+
+				#address-cells = <1>;
+				#size-cells = <1>;
+				ranges = <0x0 0x1e789000 0x200>;
+
+				lpc_bmc: lpc-bmc@0 {
+					compatible = "aspeed,ast2500-lpc-bmc";
+					reg = <0x0 0x80>;
+				};
+
+				lpc_host: lpc-host@80 {
+					compatible = "aspeed,ast2500-lpc-host", "simple-mfd", "syscon";
+					reg = <0x80 0x1e0>;
+					reg-io-width = <4>;
+
+					#address-cells = <1>;
+					#size-cells = <1>;
+					ranges = <0x0 0x80 0x1e0>;
+
+					lhc: lhc@20 {
+						compatible = "aspeed,ast2500-lhc";
+						reg = <0x20 0x24 0x48 0x8>;
+					};
+
+					lpc_reset: reset-controller@18 {
+						compatible = "aspeed,ast2500-lpc-reset";
+						reg = <0x18 0x4>;
+						#reset-cells = <1>;
+					};
+
+				};
+			};
+			
+			uart2: serial@1e78d000 {
+				compatible = "ns16550a";
+				reg = <0x1e78d000 0x20>;
+				reg-shift = <2>;
+				interrupts = <48>;
+				clocks = <&syscon ASPEED_CLK_GATE_UART2CLK>;
+				resets = <&lpc_reset 5>;
+				no-loopback-test;
+#if 0				
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_txd2_default &pinctrl_rxd2_default>;
+#endif				
+				status = "disabled";
+			};
+
+			uart3: serial@1e78e000 {
+				compatible = "ns16550a";
+				reg = <0x1e78e000 0x20>;
+				reg-shift = <2>;
+				interrupts = <49>;
+				clocks = <&syscon ASPEED_CLK_GATE_UART3CLK>;
+				resets = <&lpc_reset 6>;
+				no-loopback-test;
+#if 0				
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_txd3_default &pinctrl_rxd3_default>;
+#endif				
+			};
+
+			uart4: serial@1e78f000 {
+				compatible = "ns16550a";
+				reg = <0x1e78f000 0x20>;
+				reg-shift = <2>;
+				interrupts = <50>;
+				clocks = <&syscon ASPEED_CLK_GATE_UART4CLK>;
+				resets = <&lpc_reset 7>;
+				no-loopback-test;
+#if 0				
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_txd4_default &pinctrl_rxd4_default>;
+#endif				
+				status = "disabled";
+			};
+
+			i2c: i2c@1e78a000 {
+				compatible = "simple-bus";
+				#address-cells = <1>;
+				#size-cells = <1>;
+				ranges = <0 0x1e78a000 0x1000>;
+			};
+
+			i3c: i3c-master@1e7a0000 {
+				compatible = "snps,dw-i3c-master-1.00a";
+				#address-cells = <3>;
+				#size-cells = <0>;
+				reg = <0x1e7a0000 0x1000>;
+				interrupts = <37>;
+				clocks = <&syscon ASPEED_CLK_APB>;
+			};
+
+		};
 	};
 
 };
