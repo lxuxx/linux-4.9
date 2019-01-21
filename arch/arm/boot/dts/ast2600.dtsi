@@ -43,35 +43,34 @@
 		enable-method = "aspeed,ast2600-smp";
 
 		cpu@0 {
-		      compatible = "arm,cortex-a7";
-		      device_type = "cpu";
-		      reg = <0>;
-		      clock-frequency = <48000000>;
+			compatible = "arm,cortex-a7";
+			device_type = "cpu";
+			reg = <0>;
+			clock-frequency = <48000000>;
 		};
-		#if 0
-		cpu@1 {
-		      compatible = "arm,cortex-a7";
-		      device_type = "cpu";
-		      reg = <1>;
-		      clock-frequency = <48000000>;
-		};
-#endif
-	};
 
-	smp-memram@0 {
-		compatible = "aspeed,ast2600-smpmem";
-		reg = <0x1E6E2180 0x10>;
+		cpu@1 {
+			compatible = "arm,cortex-a7";
+			device_type = "cpu";
+			reg = <1>;
+			clock-frequency = <48000000>;
+		};
+
+		smp-memram@0 {
+			compatible = "aspeed,ast2600-smpmem";
+			reg = <0x1E6E2180 0x40>;
+		};
+
 	};
 
 	timer {
 		compatible = "arm,armv7-timer";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
-					<GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
-					<GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
-					<GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
+				<GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+				<GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+				<GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
 		clock-frequency = <25000000>;
-		arm,cpu-registers-not-fw-configured;
 	};
 
 	memory@80000000 {
