@@ -2291,15 +2291,15 @@ static irqreturn_t ast_video_isr(int this_irq, void *dev_id)
 		if (status & VIDEO_COMPRESS_COMPLETE) {
 			ast_video_write(ast_video, VIDEO_COMPRESS_COMPLETE, AST_VIDEO_INT_STS);
 			VIDEO_DBG("compress complete \n");
+			swap0 = ast_video_read(ast_video, AST_VIDEO_SOURCE_BUFF0);
+			swap1 = ast_video_read(ast_video, AST_VIDEO_SOURCE_BUFF1);
+			ast_video_write(ast_video, swap1, AST_VIDEO_SOURCE_BUFF0);
+			ast_video_write(ast_video, swap0, AST_VIDEO_SOURCE_BUFF1);		
 			complete(&ast_video->compression_complete);
 		}
 		if (status & VIDEO_CAPTURE_COMPLETE) {
 			ast_video_write(ast_video, VIDEO_CAPTURE_COMPLETE, AST_VIDEO_INT_STS);
 			VIDEO_DBG("capture complete \n");
-			swap0 = ast_video_read(ast_video, AST_VIDEO_SOURCE_BUFF0);
-			swap1 = ast_video_read(ast_video, AST_VIDEO_SOURCE_BUFF1);
-			ast_video_write(ast_video, swap1, AST_VIDEO_SOURCE_BUFF0);
-			ast_video_write(ast_video, swap0, AST_VIDEO_SOURCE_BUFF1);
 			complete(&ast_video->capture_complete);
 		}
 	}
@@ -2465,7 +2465,6 @@ static long ast_video_ioctl(struct file *fp, unsigned int cmd, unsigned long arg
 		break;
 	case AST_VIDEO_ENG_CONFIG:
 		ret = copy_from_user(&video_config, argp, sizeof(struct ast_video_config));
-
 		ast_video_set_eng_config(ast_video, &video_config);
 		break;
 	case AST_VIDEO_SET_SCALING:
