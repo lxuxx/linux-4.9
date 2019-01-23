@@ -118,22 +118,20 @@ static ssize_t value_store(struct device *dev,
 	struct gpiod_data *data = dev_get_drvdata(dev);
 	struct gpio_desc *desc = data->desc;
 	ssize_t			status;
-	long		value;
 
 	mutex_lock(&data->mutex);
 
-#if 0 //Ryan Modify for AST GPIO Feature
 	if (!test_bit(FLAG_IS_OUT, &desc->flags)) {
 		status = -EPERM;
 	} else {
-#endif	
+		long		value;
 
 		status = kstrtol(buf, 0, &value);
 		if (status == 0) {
 			gpiod_set_value_cansleep(desc, value);
 			status = size;
 		}
-//	}
+	}
 
 	mutex_unlock(&data->mutex);
 
@@ -470,11 +468,15 @@ static ssize_t export_store(struct class *class,
 			status = -ENODEV;
 		goto done;
 	}
-	status = gpiod_export(desc, true);
-	if (status < 0)
-		gpiod_free(desc);
-	else
-		set_bit(FLAG_SYSFS, &desc->flags);
+
+	status = gpiod_set_transitory(desc, false);
+	if (!status) {
+		status = gpiod_export(desc, true);
+		if (status < 0)
+			gpiod_free(desc);
+		else
+			set_bit(FLAG_SYSFS, &desc->flags);
+	}
 
 done:
 	if (status)

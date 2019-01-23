@@ -677,7 +677,7 @@ ast_gpio_probe(struct platform_device *pdev)
 #endif	
 	gpio->chip.get = ast_gpio_get;
 	gpio->chip.set = ast_gpio_set;
-	gpio->chip.set_debounce = ast_gpio_set_debounce;
+//	gpio->chip.set_debounce = ast_gpio_set_debounce;
 
 	GPIODBUG("gpio port num %d, total gpio pin : %d\n", gpio->config->nr_gpio_ports, gpio->chip.ngpio);
 
