@@ -2281,6 +2281,30 @@ int gpiod_direction_input(struct gpio_desc *desc)
 }
 EXPORT_SYMBOL_GPL(gpiod_direction_input);
 
+int gpiod_direction_passthrough(struct gpio_desc *desc) {
+	struct gpio_chip	*chip;
+	int			status = -EINVAL;
+
+	VALIDATE_DESC(desc);
+	chip = desc->gdev->chip;
+
+	if (!chip->direction_passthrough) {
+		gpiod_warn(desc,
+			"%s: missing direction_passthrough() operations\n",
+			__func__);
+		return -EIO;
+	}
+
+	status = chip->direction_passthrough(chip, gpio_chip_hwgpio(desc));
+	if (status == 0)
+		clear_bit(FLAG_IS_OUT, &desc->flags);
+
+	trace_gpio_direction(desc_to_gpio(desc), 1, status);
+
+	return status;
+}
+EXPORT_SYMBOL_GPL(gpiod_direction_passthrough);
+
 static int gpio_set_drive_single_ended(struct gpio_chip *gc, unsigned offset,
 				       enum pin_config_param mode)
 {

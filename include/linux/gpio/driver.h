@@ -124,6 +124,8 @@ struct gpio_chip {
 						unsigned offset);
 	int			(*direction_output)(struct gpio_chip *chip,
 						unsigned offset, int value);
+	int 		(*direction_passthrough)(struct gpio_chip *chip,
+						unsigned offset);
 	int			(*get)(struct gpio_chip *chip,
 						unsigned offset);
 	void			(*set)(struct gpio_chip *chip,

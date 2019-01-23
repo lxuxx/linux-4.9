@@ -297,6 +297,34 @@ static int aspeed_gpio_dir_out(struct gpio_chip *gc,
 	return 0;
 }
 
+/*  "passthrough" to enable passthrough like "echo passthrough > /sys/class/gpio/gpio35/direction" */
+static int aspeed_gpio_dir_passthrough(struct gpio_chip *gc,
+			       unsigned int offset)
+{
+	struct aspeed_gpio *gpio = gpiochip_get_data(gc);
+	const struct aspeed_gpio_bank *bank = to_bank(offset);
+	void __iomem *addr = bank_reg(gpio, bank, reg_dir);
+	unsigned long flags;
+	bool copro;
+	u32 reg;
+	printk("kwin::aspeed_gpio_dir_passthrough");
+	//TODO enable_passthrouhg();
+	spin_lock_irqsave(&gpio->lock, flags);
+
+	reg = ioread32(addr);
+	reg |= GPIO_BIT(offset);
+
+	copro = aspeed_gpio_copro_request(gpio, offset);
+	//__aspeed_gpio_set(gc, offset, val);
+	iowrite32(reg, addr);
+
+	if (copro)
+		aspeed_gpio_copro_release(gpio, offset);
+	spin_unlock_irqrestore(&gpio->lock, flags);
+
+	return 0;
+}
+
 static int aspeed_gpio_get_direction(struct gpio_chip *gc, unsigned int offset)
 {
 	struct aspeed_gpio *gpio = gpiochip_get_data(gc);

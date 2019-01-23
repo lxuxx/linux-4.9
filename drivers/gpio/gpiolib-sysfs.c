@@ -87,6 +87,8 @@ static ssize_t direction_store(struct device *dev,
 		status = gpiod_direction_output_raw(desc, 0);
 	else if (sysfs_streq(buf, "in"))
 		status = gpiod_direction_input(desc);
+	else if (sysfs_streq(buf, "passthrough"))
+		status = gpiod_direction_passthrough(desc);	
 	else
 		status = -EINVAL;
 
