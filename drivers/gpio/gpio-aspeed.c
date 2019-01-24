@@ -301,6 +301,8 @@ static int aspeed_gpio_dir_out(struct gpio_chip *gc,
 static int aspeed_gpio_dir_passthrough(struct gpio_chip *gc,
 			       unsigned int offset)
 {
+	//TODO ~~
+#if 0
 	struct aspeed_gpio *gpio = gpiochip_get_data(gc);
 	const struct aspeed_gpio_bank *bank = to_bank(offset);
 	void __iomem *addr = bank_reg(gpio, bank, reg_dir);
@@ -321,7 +323,7 @@ static int aspeed_gpio_dir_passthrough(struct gpio_chip *gc,
 	if (copro)
 		aspeed_gpio_copro_release(gpio, offset);
 	spin_unlock_irqrestore(&gpio->lock, flags);
-
+#endif
 	return 0;
 }
 
