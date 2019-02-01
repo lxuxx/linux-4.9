@@ -62,6 +62,14 @@
 		};
 	};
 
+	clocks {
+		pwm_tacho_fixed_clk: fixedclk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <24000000>;
+		};
+	};
+
 	ahb {
 		compatible = "simple-bus";
 		#address-cells = <1>;
@@ -147,6 +155,72 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			ranges;
+
+			pwm_tacho: pwm-tacho-controller@1e610000 {
+				compatible = "aspeed,ast2600-pwm-tachometer";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				reg = <0x1e610000 0x100>;
+				clocks = <&pwm_tacho_fixed_clk>;
+				resets = <&syscon ASPEED_RESET_PWM>;
+#if 0
+			fan@0 {
+				reg = <0x00>;
+				period = /bits/ 8 <>;
+				cooling-levels = /bits/ 8 <125 151 177 203 229 255>;
+				aspeed,fan-tach-ch = /bits/ 8 <0x00>;
+                	};
+			fan@1 {
+				reg = <0x01>;
+				cooling-levels = /bits/ 8 <125 151 177 203 229 255>;
+				aspeed,fan-tach-ch = /bits/ 8 <0x01>;
+			};
+
+                fan@2 {
+                        reg = <0x02>;
+			cooling-levels = /bits/ 8 <125 151 177 203 229 255>;
+                        aspeed,fan-tach-ch = /bits/ 8 <0x02>;
+                };
+
+                fan@3 {
+                        reg = <0x03>;
+			cooling-levels = /bits/ 8 <125 151 177 203 229 255>;
+                        aspeed,fan-tach-ch = /bits/ 8 <0x03>;
+                };
+
+                fan@4 {
+                        reg = <0x00>;
+			cooling-levels = /bits/ 8 <125 151 177 203 229 255>;
+                        aspeed,fan-tach-ch = /bits/ 8 <0x04>;
+                };
+
+                fan@5 {
+                        reg = <0x01>;
+			cooling-levels = /bits/ 8 <125 151 177 203 229 255>;
+                        aspeed,fan-tach-ch = /bits/ 8 <0x05>;
+                };
+
+                fan@6 {
+                        reg = <0x02>;
+			cooling-levels = /bits/ 8 <125 151 177 203 229 255>;
+                        aspeed,fan-tach-ch = /bits/ 8 <0x06>;
+                };
+
+                fan@7 {
+                        reg = <0x03>;
+			cooling-levels = /bits/ 8 <125 151 177 203 229 255>;
+                        aspeed,fan-tach-ch = /bits/ 8 <0x07>;
+                };
+#else
+			fan@15 {
+                                reg = <0x0f>;
+                                period = /bits/ 8 <0xf0>;
+                                cooling-levels = /bits/ 8 <125 151 177 203 229 255>;
+                                aspeed,fan-tach-ch = /bits/ 8 <0x0f>;
+                        };
+
+#endif
+			};
 
 			syscon: syscon@1e6e2000 {
 				compatible = "aspeed,ast2600-scu", "syscon", "simple-mfd";
@@ -276,9 +350,9 @@
 			};
 
 			lpc: lpc@1e789000 {
-				compatible = "aspeed,ast-lpc", "simple-mfd", "syscon";
+				compatible = "aspeed,ast-lpc", "simple-mfd";
 				reg = <0x1e789000 0x200>;
-				interrupts = <8>;
+				interrupts = <35>;
 
 				#address-cells = <1>;
 				#size-cells = <1>;

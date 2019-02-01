@@ -56,6 +56,7 @@
 #define ASPEED_PWM_DUTY_CYCLE		0x04	//PWM0 Duty Cycle Register
 #define ASPEED_PWM_DUTY_CYCLE_CH(x)		((x * 0x10) + 0x04)
 #define  PWM_LOOP_BIT_MASK				(0xf << 24)	//loop bit [7:0]
+#define  PWM_PERIOD_BIT					(24)	//pwm period bit [7:0]
 #define  PWM_PERIOD_BIT_MASK			(0xff << 24)	//pwm period bit [7:0]
 #define  PWM_RISING_FALLING_AS_WDT_MASK (0xff << 16)	//pwm rising/falling point bit [7:0] as WDT
 #define  PWM_RISING_FALLING_MASK		(0xffff)	
@@ -119,6 +120,7 @@ struct aspeed_pwm_channel_params {
 	u8	falling;
 };
 
+
 static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 	[0] = {
 		.load_wdt_selection = 0,
@@ -127,7 +129,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,	
 	},
 	[1] = {
 		.load_wdt_selection = 0,
@@ -136,7 +140,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,
 	},
 	[2] = {
 		.load_wdt_selection = 0,
@@ -145,7 +151,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,		
 	},
 	[3] = {
 		.load_wdt_selection = 0,
@@ -154,7 +162,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,		
 	},
 	[4] = {
 		.load_wdt_selection = 0,
@@ -163,7 +173,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,		
 	},
 	[5] = {
 		.load_wdt_selection = 0,
@@ -172,7 +184,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,		
 	},
 	[6] = {
 		.load_wdt_selection = 0,
@@ -181,7 +195,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,		
 	},
 	[7] = {
 		.load_wdt_selection = 0,
@@ -190,7 +206,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,		
 	},
 	[8] = {
 		.load_wdt_selection = 0,
@@ -199,7 +217,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,		
 	},
 	[9] = {
 		.load_wdt_selection = 0,
@@ -208,7 +228,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,		
 	},
 	[10] = {
 		.load_wdt_selection = 0,
@@ -217,7 +239,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,		
 	},
 	[11] = {
 		.load_wdt_selection = 0,
@@ -226,7 +250,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,		
 	},
 	[12] = {
 		.load_wdt_selection = 0,
@@ -235,7 +261,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,		
 	},
 	[13] = {
 		.load_wdt_selection = 0,
@@ -244,7 +272,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,		
 	},
 	[14] = {
 		.load_wdt_selection = 0,
@@ -253,7 +283,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,		
 	},
 	[15] = {
 		.load_wdt_selection = 0,
@@ -262,7 +294,9 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.invert_pin = 0,
 		.devide_h = 20,
 		.devide_l = 16,
-		.period = 24,
+		.period = 0xff,
+		.rising = 0x00,
+		.falling = 0x80,		
 	},
 };
 
@@ -276,7 +310,6 @@ struct aspeed_pwm_tachometer_data {
 	u8 type_fan_tach_clock_division[3];
 	u8 type_fan_tach_mode[3];
 	u16 type_fan_tach_unit[3];
-	u8 fan_tach_ch_source[16];
 	struct aspeed_pwm_channel_params *pwm_channel;
 	struct aspeed_cooling_device *cdev[8];
 	const struct attribute_group *groups[3];
@@ -326,19 +359,13 @@ static void aspeed_set_pwm_channel_enable(struct regmap *regmap, u8 pwm_channel,
 	printk("aspeed_set_pwm_channel_enable ch[%d], enable %d \n", pwm_channel, enable);
 
 	regmap_update_bits(regmap, ASPEED_PWM_CTRL_CH(pwm_channel), (PWM_CLK_ENABLE | PWM_PIN_EN), enable ? (PWM_CLK_ENABLE | PWM_PIN_EN) : 0);
-
 }
 
+#define ASPEED_PWM_DEFAULT_PERIOD	0xFF
 static void aspeed_set_pwm_channel_duty_rising_falling(struct regmap *regmap,
 						    u8 pwm_channel, u8 rising,
 						    u8 falling)
 {
-	u32 reg_value = (rising << PWM_RISING_RISING_BIT) | (falling << PWM_RISING_FALLING_BIT);
-	printk("aspeed_set_pwm_channel_duty_rising_falling pwm_channel %d , rising %d, falling %d \n", pwm_channel, rising, falling);
-	
-	regmap_update_bits(regmap, ASPEED_PWM_DUTY_CYCLE_CH(pwm_channel),
-			   PWM_RISING_FALLING_MASK,
-			   reg_value);
 }
 
 static void aspeed_set_tacho_type_enable(struct regmap *regmap, u8 type,
@@ -386,21 +413,23 @@ static void aspeed_set_fan_tach_ch_enable(struct regmap *regmap, u8 fan_tach_ch,
 static void aspeed_set_pwm_channel_fan_ctrl(struct aspeed_pwm_tachometer_data *priv,
 					 u8 index, u8 fan_ctrl)
 {
-	u16 period, dc_time_on;
+	u32 reg_value = 0;
 
-	printk("aspeed_set_pwm_channel_fan_ctrl , channel %d , fan_ctrl %d defaule period %d \n", index, fan_ctrl, priv->pwm_channel[index].period);
-	period = priv->pwm_channel[index].period;
+	printk("aspeed_set_pwm_channel_fan_ctrl channel %d , fan_ctrl %d defaule period %d \n", index, fan_ctrl, priv->pwm_channel[index].period);
 
-	dc_time_on = (fan_ctrl * period) / PWM_MAX;
-	printk("dc_time_on %d \n", dc_time_on);
-	if (dc_time_on == 0) {
+	if (fan_ctrl == 0) {
 		aspeed_set_pwm_channel_enable(priv->regmap, index, false);
 	} else {
-		if (dc_time_on == period)
-			dc_time_on = 0;
+		reg_value = (priv->pwm_channel[index].period << PWM_PERIOD_BIT) | 
+					(0 << PWM_RISING_RISING_BIT) | (fan_ctrl << PWM_RISING_FALLING_BIT);
 
-		aspeed_set_pwm_channel_duty_rising_falling(priv->regmap, index, 0,
-							dc_time_on);
+#if 1
+		regmap_write(priv->regmap, ASPEED_PWM_DUTY_CYCLE_CH(index), reg_value);
+#else
+		regmap_update_bits(priv->regmap, ASPEED_PWM_DUTY_CYCLE_CH(index),
+				   PWM_PERIOD_BIT_MASK | PWM_RISING_FALLING_MASK,
+				   reg_value);
+#endif
 		aspeed_set_pwm_channel_enable(priv->regmap, index, true);
 	}
 
@@ -521,7 +550,6 @@ static ssize_t show_pwm(struct device *dev, struct device_attribute *attr,
 	struct sensor_device_attribute *sensor_attr = to_sensor_dev_attr(attr);
 	int index = sensor_attr->index;
 	struct aspeed_pwm_tachometer_data *priv = dev_get_drvdata(dev);
-	printk("show_pwm \n");
 
 	return sprintf(buf, "%u\n", priv->pwm_channel[index].falling);
 }
@@ -681,11 +709,10 @@ static const struct attribute_group fan_dev_group = {
 static void aspeed_create_pwm_channel(struct aspeed_pwm_tachometer_data *priv,
 				   u8 pwm_channel)
 {
-	aspeed_set_pwm_channel_enable(priv->regmap, pwm_channel, true);
 	priv->pwm_present[pwm_channel] = true;
 
-	priv->pwm_channel[pwm_channel].falling = INIT_FAN_CTRL;
-	aspeed_set_pwm_channel_fan_ctrl(priv, pwm_channel, INIT_FAN_CTRL);
+	//use default 
+	aspeed_set_pwm_channel_fan_ctrl(priv, pwm_channel, priv->pwm_channel[pwm_channel].falling );
 }
 
 static void aspeed_create_fan_tach_channel(struct aspeed_pwm_tachometer_data *priv,
@@ -699,7 +726,6 @@ static void aspeed_create_fan_tach_channel(struct aspeed_pwm_tachometer_data *pr
 		index = fan_tach_ch[val];
 		aspeed_set_fan_tach_ch_enable(priv->regmap, index, true);
 		priv->fan_tach_present[index] = true;
-		priv->fan_tach_ch_source[index] = pwm_source;
 		printk("aspeed_create_fan_tach_channel fan idx %d, pwm_soource %d \n", index, pwm_source);
 	}
 }
@@ -709,7 +735,7 @@ aspeed_pwm_cz_get_max_state(struct thermal_cooling_device *tcdev,
 			    unsigned long *state)
 {
 	struct aspeed_cooling_device *cdev = tcdev->devdata;
-	printk("aspeed_pwm_cz_get_max_state TODO　\n");
+	printk("aspeed_pwm_cz_get_max_state TODO　~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 
 	*state = cdev->max_state;
 
@@ -721,7 +747,7 @@ aspeed_pwm_cz_get_cur_state(struct thermal_cooling_device *tcdev,
 			    unsigned long *state)
 {
 	struct aspeed_cooling_device *cdev = tcdev->devdata;
-	printk("aspeed_pwm_cz_get_cur_state TODO　\n");
+	printk("aspeed_pwm_cz_get_cur_state TODO　~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 
 	*state = cdev->cur_state;
 
