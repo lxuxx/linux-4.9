@@ -529,7 +529,7 @@ static int aspeed_get_fan_tach_ch_rpm(struct aspeed_pwm_tachometer_data *priv,
 
 	regmap_read(priv->regmap, ASPEED_TECHO_STS_CH(fan_tach_ch), &val);
 	raw_data = val & TACHO_VALUE_MASK;
-	
+
 	tach_div = priv->techo_channel[fan_tach_ch].divide;
 	/*
 	 * We need the mode to determine if the raw_data is double (from
@@ -537,8 +537,9 @@ static int aspeed_get_fan_tach_ch_rpm(struct aspeed_pwm_tachometer_data *priv,
 	 */
 	mode = priv->techo_channel[fan_tach_ch].tacho_edge;
 	both = (mode & BOTH_EDGES) ? 1 : 0;
+	printk("clk %d, raw_data %x , tach_div %x  both %x \n", priv->clk_freq, raw_data, tach_div, both);
 
-	tach_div = (0x4 << both) << (tach_div * 2);
+	tach_div = (0x1 << both) << (tach_div * 2);
 	clk_source = priv->clk_freq;
 
 	if (raw_data == 0)
@@ -590,7 +591,7 @@ static ssize_t show_rpm(struct device *dev, struct device_attribute *attr,
 	int index = sensor_attr->index;
 	int rpm;
 	struct aspeed_pwm_tachometer_data *priv = dev_get_drvdata(dev);
-printk("show_rpm \n");
+
 	rpm = aspeed_get_fan_tach_ch_rpm(priv, index);
 	if (rpm < 0)
 		return rpm;
