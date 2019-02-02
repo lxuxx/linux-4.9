@@ -1,5 +1,5 @@
 /*
- * Copyright Aspeed Technology.
+ * Copyright (C) ASPEED Technology Inc.
  * Shivah Shankar S <shivahshankar.shankarnarayanrao@aspeedtech.com>  
  *
  * This program is free software; you can redistribute it and/or modify
@@ -22,21 +22,6 @@
 #include <asm/proc-fns.h>
 #include <asm/smp_scu.h>
 #include <asm/smp_plat.h>
-
-
-#include <linux/delay.h>
-#include <linux/device.h>
-#include <linux/smp.h>
-#include <linux/io.h>
-#include <linux/of.h>
-#include <linux/of_device.h>
-#include <linux/of_platform.h>
-#include <linux/of_address.h>
-#include <asm/cacheflush.h>
-#include <asm/smp.h>
-#include <asm/smp_plat.h>
-#include <asm/smp_scu.h>
-
 
 #include "core.h"
 #define AST2600_BOOT_ADDR_REG_OFFSET 0x0

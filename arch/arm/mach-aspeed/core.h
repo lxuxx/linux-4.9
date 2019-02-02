@@ -1,5 +1,5 @@
 /*
- * Copyright Aspeed Technology.
+ * Copyright (C) ASPEED Technology Inc.
  * Shivah Shankar S <shivahshankar.shankarnarayanrao@aspeedtech.com>  
  *
  * This program is free software; you can redistribute it and/or modify
