@@ -71,7 +71,9 @@
 #define  TECHO_ENABLE					BIT(28)	//{enable tacho}
 #define  TECHO_DEBOUNCE_MASK			(0x3 << 26) //{tacho de-bounce}
 #define  TECHIO_EDGE_MASK				(0x3 << 24) //tacho edge}
+#define  TECHIO_EDGE_BIT				(24) //tacho edge}
 #define  TECHO_CLK_DIV_T_MASK			(0xf << 20) 
+#define  TECHO_CLK_DIV_BIT				(20)
 #define  TECHO_THRESHOLD_MASK			(0xfffff)	//tacho threshold bit
 /*
 \xregmid {23:20}{RW}{tacho clock division T bit [3:0]}{
@@ -97,24 +99,14 @@
 #define  TACHO_VALUE_MASK	0xfffff	//tacho value bit [19:0]}
 
 #define MAX_CDEV_NAME_LEN 16
-#define PWM_MAX 255
-
-/*
- * 5:4 Type N fan tach mode selection bit:
- * 00: falling
- * 01: rising
- * 10: both
- * 11: reserved.
- */
-#define INIT_FAN_CTRL 0xFF
 
 struct aspeed_pwm_channel_params {
 	int load_wdt_selection;		//0: rising , 1: falling
 	int load_wdt_enable;
 	int	duty_sync_enable;
 	int invert_pin;
-	u8	devide_h;
-	u8	devide_l;
+	u8	divide_h;
+	u8	divide_l;
 	u8	period;
 	u8	rising;
 	u8	falling;
@@ -127,8 +119,8 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,	
@@ -138,8 +130,8 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,
@@ -149,8 +141,8 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,		
@@ -160,8 +152,8 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,		
@@ -171,8 +163,8 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,		
@@ -182,8 +174,8 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,		
@@ -193,8 +185,8 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,		
@@ -204,8 +196,8 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,		
@@ -215,8 +207,8 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,		
@@ -226,8 +218,8 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,		
@@ -237,8 +229,8 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,		
@@ -248,8 +240,8 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,		
@@ -259,8 +251,8 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,		
@@ -270,8 +262,8 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,		
@@ -281,8 +273,8 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,		
@@ -292,11 +284,126 @@ static const struct aspeed_pwm_channel_params default_pwm_params[] = {
 		.load_wdt_enable = 0,
 		.duty_sync_enable = 0,
 		.invert_pin = 0,
-		.devide_h = 20,
-		.devide_l = 16,
+		.divide_h = 20,
+		.divide_l = 16,
 		.period = 0xff,
 		.rising = 0x00,
 		.falling = 0x80,		
+	},
+};
+
+/*
+ * 5:4 fan tach edge mode selection bit:
+ * 00: falling
+ * 01: rising
+ * 10: both
+ * 11: reserved.
+ */
+
+struct aspeed_techo_channel_params {
+	int limited_inverse;
+	u16 threshold;
+	u8	tacho_edge;
+	u8	divide;
+};
+
+
+static const struct aspeed_techo_channel_params default_techo_params[] = {
+	[0] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
+	},
+	[1] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
+	},
+	[2] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
+	},
+	[3] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
+	},
+	[4] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
+	},
+	[5] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
+	},
+	[6] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
+	},
+	[7] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
+	},
+	[8] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
+	},
+	[9] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
+	},
+	[10] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
+	},
+	[11] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
+	},
+	[12] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
+	},
+	[13] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
+	},
+	[14] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
+	},
+	[15] = {
+		.limited_inverse = 0,
+		.threshold = 0,
+		.tacho_edge = 0,
+		.divide = 3,
 	},
 };
 
@@ -306,11 +413,8 @@ struct aspeed_pwm_tachometer_data {
 	struct reset_control *reset;	
 	bool pwm_present[16];
 	bool fan_tach_present[16];
-
-	u8 type_fan_tach_clock_division[3];
-	u8 type_fan_tach_mode[3];
-	u16 type_fan_tach_unit[3];
 	struct aspeed_pwm_channel_params *pwm_channel;
+	struct aspeed_techo_channel_params *techo_channel;
 	struct aspeed_cooling_device *cdev[8];
 	const struct attribute_group *groups[3];
 };
@@ -361,52 +465,30 @@ static void aspeed_set_pwm_channel_enable(struct regmap *regmap, u8 pwm_channel,
 	regmap_update_bits(regmap, ASPEED_PWM_CTRL_CH(pwm_channel), (PWM_CLK_ENABLE | PWM_PIN_EN), enable ? (PWM_CLK_ENABLE | PWM_PIN_EN) : 0);
 }
 
-#define ASPEED_PWM_DEFAULT_PERIOD	0xFF
-static void aspeed_set_pwm_channel_duty_rising_falling(struct regmap *regmap,
-						    u8 pwm_channel, u8 rising,
-						    u8 falling)
-{
-}
-
-static void aspeed_set_tacho_type_enable(struct regmap *regmap, u8 type,
-					 bool enable)
-{
-	printk("aspeed_set_tacho_type_enable \n");
-
-#if 0
-	regmap_update_bits(regmap, type_params[type].ctrl_reg,
-			   TYPE_CTRL_FAN_TYPE_EN,
-			   enable ? TYPE_CTRL_FAN_TYPE_EN : 0);
-#endif
-}
-
-static void aspeed_set_tacho_type_values(struct regmap *regmap, u8 type,
-					 u8 mode, u16 unit, u8 division)
-{
-	printk("aspeed_set_tacho_type_values \n");
-
-#if 0
-	u32 reg_value = ((mode << TYPE_CTRL_FAN_MODE) |
-			 (unit << TYPE_CTRL_FAN_PERIOD) |
-			 (division << TYPE_CTRL_FAN_DIVISION));
-
-	regmap_update_bits(regmap, type_params[type].ctrl_reg,
-			   TYPE_CTRL_FAN_MASK, reg_value);
-	regmap_update_bits(regmap, type_params[type].ctrl_reg1,
-			   TYPE_CTRL_FAN1_MASK, unit << 16);
-#endif	
-}
-
-static void aspeed_set_fan_tach_ch_enable(struct regmap *regmap, u8 fan_tach_ch,
+static void aspeed_set_fan_tach_ch_enable(struct aspeed_pwm_tachometer_data *priv, u8 fan_tach_ch,
 					  bool enable)
 {
-	printk("aspeed_set_fan_tach_ch_enable \n");
+	u32 reg_value = 0;
 
-#if 0
-	regmap_update_bits(regmap, ASPEED_PTCR_CTRL,
-			   ASPEED_PTCR_CTRL_FAN_NUM_EN(fan_tach_ch),
+	printk("aspeed_set_fan_tach_ch_enable [%d]\n", enable);
+
+	reg_value = TECHO_ENABLE | 
+			(priv->techo_channel[fan_tach_ch].tacho_edge << TECHIO_EDGE_BIT) |
+			(priv->techo_channel[fan_tach_ch].divide << TECHO_CLK_DIV_BIT);
+
+	if(priv->techo_channel[fan_tach_ch].limited_inverse)
+		reg_value |= TECHO_INVERS_LIMIT;
+		
+	if(priv->techo_channel[fan_tach_ch].threshold)
+		reg_value |= (TECHO_IER | priv->techo_channel[fan_tach_ch].threshold); 
+
+#if 1
+	regmap_write(priv->regmap, ASPEED_TECHO_CTRL_CH(fan_tach_ch), reg_value);
+#else
+	regmap_update_bits(regmap, ASPEED_TECHO_CTRL_CH(fan_tach_ch),
+			   TECHO_ENABLE,
 			   enable ?
-			   ASPEED_PTCR_CTRL_FAN_NUM_EN(fan_tach_ch) : 0);
+			   TECHO_ENABLE : 0);
 #endif
 }
 
@@ -435,74 +517,25 @@ static void aspeed_set_pwm_channel_fan_ctrl(struct aspeed_pwm_tachometer_data *p
 
 }
 
-static u32 aspeed_get_fan_tach_ch_measure_period(struct aspeed_pwm_tachometer_data
-						 *priv, u8 type)
-{
-	printk("aspeed_get_fan_tach_ch_measure_period \n");
-
-#if 0
-	u32 clk;
-	u16 tacho_unit;
-	u8 clk_unit, div_h, div_l, tacho_div;
-
-	clk = priv->clk_freq;
-	clk_unit = priv->type_pwm_clock_unit[type];
-	div_h = priv->type_pwm_clock_division_h[type];
-	div_h = 0x1 << div_h;
-	div_l = priv->type_pwm_clock_division_l[type];
-	if (div_l == 0)
-		div_l = 1;
-	else
-		div_l = div_l * 2;
-
-	tacho_unit = priv->type_fan_tach_unit[type];
-	tacho_div = priv->type_fan_tach_clock_division[type];
-
-	tacho_div = 0x4 << (tacho_div * 2);
-	return clk / (clk_unit * div_h * div_l * tacho_div * tacho_unit);
-#else
-	return 0;
-#endif
-}
+#define BOTH_EDGES 0x02 /* 10b */
 
 static int aspeed_get_fan_tach_ch_rpm(struct aspeed_pwm_tachometer_data *priv,
 				      u8 fan_tach_ch)
 {
-	printk("aspeed_get_fan_tach_ch_rpm \n");
+	u32 raw_data, tach_div, clk_source, val;
+	u8 mode, both;
 
-#if 0
-	u32 raw_data, tach_div, clk_source, msec, usec, val;
-	u8 fan_tach_ch_source, type, mode, both;
-	int ret;
+	printk("aspeed_get_fan_tach_ch_rpm fan_tach_ch %d \n", fan_tach_ch);
 
-	regmap_write(priv->regmap, ASPEED_PTCR_TRIGGER, 0);
-	regmap_write(priv->regmap, ASPEED_PTCR_TRIGGER, 0x1 << fan_tach_ch);
-
-	fan_tach_ch_source = priv->fan_tach_ch_source[fan_tach_ch];
-	type = priv->pwm_channel_type[fan_tach_ch_source];
-
-	msec = (1000 / aspeed_get_fan_tach_ch_measure_period(priv, type));
-	usec = msec * 1000;
-
-	ret = regmap_read_poll_timeout(
-		priv->regmap,
-		ASPEED_PTCR_RESULT,
-		val,
-		(val & RESULT_STATUS_MASK),
-		ASPEED_RPM_STATUS_SLEEP_USEC,
-		usec);
-
-	/* return -ETIMEDOUT if we didn't get an answer. */
-	if (ret)
-		return ret;
-
-	raw_data = val & RESULT_VALUE_MASK;
-	tach_div = priv->type_fan_tach_clock_division[type];
+	regmap_read(priv->regmap, ASPEED_TECHO_STS_CH(fan_tach_ch), &val);
+	raw_data = val & TACHO_VALUE_MASK;
+	
+	tach_div = priv->techo_channel[fan_tach_ch].divide;
 	/*
 	 * We need the mode to determine if the raw_data is double (from
 	 * counting both edges).
 	 */
-	mode = priv->type_fan_tach_mode[type];
+	mode = priv->techo_channel[fan_tach_ch].tacho_edge;
 	both = (mode & BOTH_EDGES) ? 1 : 0;
 
 	tach_div = (0x4 << both) << (tach_div * 2);
@@ -512,9 +545,7 @@ static int aspeed_get_fan_tach_ch_rpm(struct aspeed_pwm_tachometer_data *priv,
 		return 0;
 
 	return (clk_source * 60) / (2 * raw_data * tach_div);
-#else
-	return 0;
-#endif
+
 }
 
 static ssize_t set_pwm(struct device *dev, struct device_attribute *attr,
@@ -529,8 +560,6 @@ static ssize_t set_pwm(struct device *dev, struct device_attribute *attr,
 	ret = kstrtol(buf, 10, &fan_ctrl);
 	if (ret != 0)
 		return ret;
-
-	printk("set_pwm %d\n", fan_ctrl);	
 
 	if (fan_ctrl < 0 || fan_ctrl > 0x100)
 		return -EINVAL;
@@ -717,16 +746,15 @@ static void aspeed_create_pwm_channel(struct aspeed_pwm_tachometer_data *priv,
 
 static void aspeed_create_fan_tach_channel(struct aspeed_pwm_tachometer_data *priv,
 					   u8 *fan_tach_ch,
-					   int count,
-					   u8 pwm_source)
+					   int count)
 {
 	u8 val, index;
-	printk("aspeed_create_fan_tach_channel \n");
+printk("aspeed_create_fan_tach_channel count %d \n", count);
 	for (val = 0; val < count; val++) {
 		index = fan_tach_ch[val];
-		aspeed_set_fan_tach_ch_enable(priv->regmap, index, true);
 		priv->fan_tach_present[index] = true;
-		printk("aspeed_create_fan_tach_channel fan idx %d, pwm_soource %d \n", index, pwm_source);
+		aspeed_set_fan_tach_ch_enable(priv, index, true);
+		printk("aspeed_create_fan_tach_channel fan idx %d \n", index);
 	}
 }
 
@@ -862,8 +890,8 @@ static int aspeed_create_fan(struct device *dev,
 					fan_tach_ch, count);
 	if (ret)
 		return ret;
-	aspeed_create_fan_tach_channel(priv, fan_tach_ch, count, pwm_channel);
-	printk("aspeed_create_fan 4 \n");
+
+	aspeed_create_fan_tach_channel(priv, fan_tach_ch, count);
 
 	return 0;
 }
@@ -890,7 +918,9 @@ static int aspeed_pwm_tachometer_probe(struct platform_device *pdev)
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
-	priv->pwm_channel = default_pwm_params;
+	
+	priv->pwm_channel = default_pwm_params;	
+	priv->techo_channel = default_techo_params;
 	priv->regmap = devm_regmap_init(dev, NULL, (__force void *)regs,
 			&aspeed_pwm_tachometer_regmap_config);
 	if (IS_ERR(priv->regmap))
@@ -900,8 +930,6 @@ static int aspeed_pwm_tachometer_probe(struct platform_device *pdev)
 	if (IS_ERR(clk))
 		return -ENODEV;
 	priv->clk_freq = clk_get_rate(clk);
-
-	printk("aspeed_pwm_tachometer_probe priv->clk_freq %d \n", priv->clk_freq);	
 
 	priv->reset = devm_reset_control_get(&pdev->dev, NULL);
 	if (IS_ERR(priv->reset)) {
