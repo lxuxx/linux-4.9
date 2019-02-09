@@ -8,6 +8,9 @@ config ASPEED_SDHCI_IRQCHIP
 config ASPEED_I2C_IRQCHIP
 	bool
 
+config ASPEED_SCU_IRQCHIP
+	bool
+
 config ARM_GIC
 	bool
 	select IRQ_DOMAIN

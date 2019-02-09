@@ -38,6 +38,8 @@
 #include <linux/mfd/syscon.h>
 #include <linux/dma-mapping.h>
 #include <asm/io.h>
+#include <linux/of.h>
+#include <linux/of_reserved_mem.h>
 #include <asm/uaccess.h>
 #include <linux/aspeed-sdmc.h>
 #include <linux/ast_lcd.h>
@@ -508,6 +510,19 @@ struct ast_auto_mode {
 	u32	block_count;					//get
 };
 
+struct ast_capture_mode {
+	u8	engine_idx;					//set 0: engine 0, engine 1
+	u8	differential;					//set 0: full, 1:diff frame
+	u8	mode_change;				//get 0: no, 1:change
+};
+
+struct ast_compression_mode {
+	u8	engine_idx;					//set 0: engine 0, engine 1
+	u8	mode_change;				//get 0: no, 1:change
+	u32	total_size;					//get
+	u32	block_count;					//get
+};
+
 struct ast_scaling {
 	u8	engine;					//0: engine 0, engine 1
 	u8	enable;
@@ -534,8 +549,8 @@ struct ast_mode_detection {
 #define AST_VIDEO_SET_SCALING					_IOW(VIDEOIOC_BASE, 0x6, struct ast_scaling*)
 
 #define AST_VIDEO_AUTOMODE_TRIGGER			_IOWR(VIDEOIOC_BASE, 0x7, struct ast_auto_mode*)
-#define AST_VIDEO_CAPTURE_TRIGGER				_IOWR(VIDEOIOC_BASE, 0x8, unsigned long)
-#define AST_VIDEO_COMPRESSION_TRIGGER		_IOWR(VIDEOIOC_BASE, 0x9, unsigned long)
+#define AST_VIDEO_CAPTURE_TRIGGER				_IOWR(VIDEOIOC_BASE, 0x8, struct ast_capture_mode*)
+#define AST_VIDEO_COMPRESSION_TRIGGER		_IOWR(VIDEOIOC_BASE, 0x9, struct ast_compression_mode*)
 
 #define AST_VIDEO_SET_VGA_DISPLAY				_IOW(VIDEOIOC_BASE, 0xa, int)
 #define AST_VIDEO_SET_ENCRYPTION				_IOW(VIDEOIOC_BASE, 0xb, int)
@@ -1541,7 +1556,7 @@ static void ast_video_set_eng_config(struct ast_video_data *ast_video, struct as
 
 	ast_video_write(ast_video, VIDEO_COMPRESS_COMPLETE | VIDEO_CAPTURE_COMPLETE | VIDEO_MODE_DETECT_WDT, AST_VIDEO_INT_EN);
 
-	if (ast_video->config->version == 5) {
+	if ((ast_video->config->version == 5) || (ast_video->config->version == 6)) {
 		if (video_config->compression_format)
 			ctrl |= G5_VIDEO_COMPRESS_JPEG_MODE;
 		else
@@ -1641,7 +1656,7 @@ static void ast_video_set_0_scaling(struct ast_video_data *ast_video, struct ast
 			if ((v_factor * (scaling->y - 1)) != (ast_video->src_fbinfo.y - 1) * 4096)
 				v_factor += 1;
 
-			if (ast_video->config->version != 5)
+			if ((ast_video->config->version != 5) && (ast_video->config->version != 6))
 				ctrl |= VIDEO_CTRL_DWN_SCALING_ENABLE_LINE_BUFFER;
 
 			if (ast_video->src_fbinfo.x <= scaling->x * 2) {
@@ -1677,7 +1692,7 @@ static void ast_video_set_0_scaling(struct ast_video_data *ast_video, struct ast
 	ast_video_write(ast_video, ctrl, AST_VIDEO_CTRL);
 
 	//capture x y
-	if (ast_video->config->version == 5) {
+	if ((ast_video->config->version == 5) || (ast_video->config->version == 6)) {
 		//A1 issue fix
 		if (ast_video->src_fbinfo.x == 1680) {
 			ast_video_write(ast_video, VIDEO_CAPTURE_H(1728) | VIDEO_CAPTURE_V(ast_video->src_fbinfo.y), AST_VIDEO_CAPTURE_WIN);
@@ -1736,7 +1751,7 @@ static void ast_video_set_1_scaling(struct ast_video_data *ast_video, struct ast
 	}
 
 	//capture x y
-	if (ast_video->config->version == 5) {
+	if ((ast_video->config->version == 5) || (ast_video->config->version == 6)) {
 		if (ast_video->src_fbinfo.x == 1680) {
 			ast_video_write(ast_video, VIDEO_CAPTURE_H(1728) | VIDEO_CAPTURE_V(ast_video->src_fbinfo.y), AST_VM_CAPTURE_WIN);
 		} else {
@@ -1915,6 +1930,195 @@ Redo:
 
 }
 
+static void ast_video_capture_trigger(struct ast_video_data *ast_video, struct ast_capture_mode *capture_mode)
+{
+	int timeout = 0;
+
+	VIDEO_DBG("\n");
+
+	if (ast_video->mode_change) {
+		capture_mode->mode_change = ast_video->mode_change;
+		ast_video->mode_change = 0;
+		return;
+	}
+
+	switch (capture_mode->engine_idx) {
+	case 0:
+		init_completion(&ast_video->capture_complete);
+
+		if (capture_mode->differential)
+			ast_video_write(ast_video, ast_video_read(ast_video, AST_VIDEO_BCD_CTRL) | VIDEO_BCD_CHG_EN, AST_VIDEO_BCD_CTRL);
+		else
+			ast_video_write(ast_video, ast_video_read(ast_video, AST_VIDEO_BCD_CTRL) & ~VIDEO_BCD_CHG_EN, AST_VIDEO_BCD_CTRL);
+
+		ast_video_write(ast_video, ast_video_read(ast_video, AST_VIDEO_SEQ_CTRL) & ~(VIDEO_CAPTURE_TRIGGER | VIDEO_COMPRESS_FORCE_IDLE | VIDEO_COMPRESS_TRIGGER | VIDEO_AUTO_COMPRESS), AST_VIDEO_SEQ_CTRL);
+		//If CPU is too fast, pleas read back and trigger
+		ast_video_write(ast_video, ast_video_read(ast_video, AST_VIDEO_SEQ_CTRL) | VIDEO_CAPTURE_TRIGGER, AST_VIDEO_SEQ_CTRL);
+
+		timeout = wait_for_completion_interruptible_timeout(&ast_video->capture_complete, HZ / 2);
+
+		if (timeout == 0) {
+			printk("compression timeout sts %x \n", ast_video_read(ast_video, AST_VIDEO_INT_STS));
+		}
+		break;
+	case 1:
+//		init_completion(&ast_video->automode_vm_complete);
+		if (capture_mode->differential) {
+			ast_video_write(ast_video, ast_video_read(ast_video, AST_VM_BCD_CTRL) | VIDEO_BCD_CHG_EN, AST_VM_BCD_CTRL);
+		} else {
+			ast_video_write(ast_video, ast_video_read(ast_video, AST_VM_BCD_CTRL) & ~VIDEO_BCD_CHG_EN, AST_VM_BCD_CTRL);
+		}
+		ast_video_write(ast_video, ast_video_read(ast_video, AST_VM_SEQ_CTRL) & ~(VIDEO_CAPTURE_TRIGGER | VIDEO_COMPRESS_TRIGGER | VIDEO_AUTO_COMPRESS), AST_VM_SEQ_CTRL);
+
+		ast_video_write(ast_video, ast_video_read(ast_video, AST_VM_SEQ_CTRL) | VIDEO_CAPTURE_TRIGGER, AST_VM_SEQ_CTRL);
+		udelay(10);
+//AST_G5 Issue in isr bit 19, so use polling mode for wait engine idle
+#if 1
+		timeout = 0;
+		while (1) {
+			timeout++;
+			if ((ast_video_read(ast_video, AST_VM_SEQ_CTRL) & 0x50000) == 0x50000)
+				break;
+
+			mdelay(1);
+			if (timeout > 100)
+				break;
+		}
+
+		if (timeout >= 100) {
+			printk("Engine hang time out \n");
+		} 
+//			printk("0 isr %x \n", ast_video_read(ast_video, AST_VIDEO_INT_STS));
+		//must clear it
+		ast_video_write(ast_video, (ast_video_read(ast_video, AST_VM_SEQ_CTRL) & ~(VIDEO_CAPTURE_TRIGGER | VIDEO_COMPRESS_TRIGGER)) , AST_VM_SEQ_CTRL);
+//			printk("1 isr %x \n", ast_video_read(ast_video, AST_VIDEO_INT_STS));
+#else
+		timeout = wait_for_completion_interruptible_timeout(&ast_video->automode_vm_complete, 10 * HZ);
+
+		if (timeout == 0) {
+			printk("compression timeout sts %x \n", ast_video_read(ast_video, AST_VIDEO_INT_STS));
+			return 0;
+		} else {
+			printk("%x size = %x \n", ast_video_read(ast_video, 0x270), ast_video_read(ast_video, AST_VM_COMPRESS_FRAME_END));
+			return ast_video_read(ast_video, AST_VM_COMPRESS_FRAME_END);
+		}
+#endif
+		break;
+	}
+
+	if (ast_video->mode_change) {
+		capture_mode->mode_change = ast_video->mode_change;
+		ast_video->mode_change = 0;
+	}
+
+}
+
+static void ast_video_compression_trigger(struct ast_video_data *ast_video, struct ast_compression_mode *compression_mode)
+{
+	int timeout = 0;
+
+	VIDEO_DBG("\n");
+	//u8 *buff = ast_video->stream_virt;
+
+	if (ast_video->mode_change) {
+		compression_mode->mode_change = ast_video->mode_change;
+		ast_video->mode_change = 0;
+		return;
+	}
+
+	switch (compression_mode->engine_idx) {
+	case 0:
+		init_completion(&ast_video->compression_complete);
+		ast_video_write(ast_video, ast_video_read(ast_video, AST_VIDEO_SEQ_CTRL) & ~(VIDEO_CAPTURE_TRIGGER | VIDEO_COMPRESS_FORCE_IDLE | VIDEO_COMPRESS_TRIGGER | VIDEO_AUTO_COMPRESS) , AST_VIDEO_SEQ_CTRL);
+		//If CPU is too fast, pleas read back and trigger
+		ast_video_write(ast_video, ast_video_read(ast_video, AST_VIDEO_SEQ_CTRL) | VIDEO_COMPRESS_TRIGGER, AST_VIDEO_SEQ_CTRL);
+
+		timeout = wait_for_completion_interruptible_timeout(&ast_video->compression_complete, HZ / 2);
+
+		if (timeout == 0) {
+			printk("compression timeout sts %x \n", ast_video_read(ast_video, AST_VIDEO_INT_STS));
+			compression_mode->total_size = 0;
+			compression_mode->block_count = 0;
+		} else {
+			compression_mode->total_size = ast_video_read(ast_video, AST_VIDEO_COMPRESS_DATA_COUNT);
+			compression_mode->block_count = ast_video_read(ast_video, AST_VIDEO_COMPRESS_BLOCK_COUNT) >> 16;
+
+			if ((ast_video->config->version == 5) || (ast_video->config->version == 6)) {
+				if(ast_video_read(ast_video, AST_VIDEO_SEQ_CTRL) & G5_VIDEO_COMPRESS_JPEG_MODE) {
+					compression_mode->total_size = ast_video_read(ast_video, AST_VIDEO_JPEG_COUNT);
+//					if((buff[compression_mode->total_size - 2] != 0xff) && (buff[compression_mode->total_size - 1] != 0xd9))
+//						printk("Error --- %x %x\n", buff[compression_mode->total_size - 2], buff[compression_mode->total_size - 1]);
+//					printk("jpeg %d compression_mode->total_size %d , block count %d \n",compression_mode->differential, compression_mode->total_size, compression_mode->block_count);
+				} else {
+//					printk("%d	compression_mode->total_size %d , block count %d \n",compression_mode->differential, compression_mode->total_size, compression_mode->block_count);					
+				}
+			} else {
+				if (ast_video_read(ast_video, AST_VIDEO_SEQ_CTRL) & VIDEO_COMPRESS_JPEG_MODE) {
+					compression_mode->total_size = ast_video_read(ast_video, AST_VIDEO_JPEG_COUNT);
+//					if((buff[compression_mode->total_size - 2] != 0xff) && (buff[compression_mode->total_size - 1] != 0xd9)) {
+//						printk("Error --- %x %x\n", buff[compression_mode->total_size - 2], buff[compression_mode->total_size - 1]);
+//					}
+//					printk("jpeg %d compression_mode->total_size %d , block count %d \n",compression_mode->differential, compression_mode->total_size, compression_mode->block_count);
+				} else {
+//					printk("%d	compression_mode->total_size %d , block count %d \n",compression_mode->differential, compression_mode->total_size, compression_mode->block_count);
+				}
+			}
+		}
+
+		break;
+	case 1:
+//		init_completion(&ast_video->automode_vm_complete);
+		ast_video_write(ast_video, ast_video_read(ast_video, AST_VM_SEQ_CTRL) & ~(VIDEO_CAPTURE_TRIGGER | VIDEO_COMPRESS_TRIGGER | VIDEO_AUTO_COMPRESS), AST_VM_SEQ_CTRL);
+
+		ast_video_write(ast_video, ast_video_read(ast_video, AST_VM_SEQ_CTRL) | VIDEO_COMPRESS_TRIGGER, AST_VM_SEQ_CTRL);
+		udelay(10);
+//AST_G5 Issue in isr bit 19, so use polling mode for wait engine idle
+#if 1
+		timeout = 0;
+		while (1) {
+			timeout++;
+			if ((ast_video_read(ast_video, AST_VM_SEQ_CTRL) & 0x50000) == 0x50000)
+				break;
+
+			mdelay(1);
+			if (timeout > 100)
+				break;
+		}
+
+		if (timeout >= 100) {
+			printk("Engine hang time out \n");
+			compression_mode->total_size = 0;
+			compression_mode->block_count = 0;
+		} else {
+			compression_mode->total_size = ast_video_read(ast_video, AST_VM_COMPRESS_FRAME_END);
+			compression_mode->block_count = ast_video_read(ast_video, AST_VM_COMPRESS_BLOCK_COUNT);
+		}
+
+//			printk("0 isr %x \n", ast_video_read(ast_video, AST_VIDEO_INT_STS));
+		//must clear it
+		ast_video_write(ast_video, ast_video_read(ast_video, AST_VM_SEQ_CTRL) & ~VIDEO_COMPRESS_TRIGGER, AST_VM_SEQ_CTRL);
+//			printk("1 isr %x \n", ast_video_read(ast_video, AST_VIDEO_INT_STS));
+#else
+		timeout = wait_for_completion_interruptible_timeout(&ast_video->automode_vm_complete, 10 * HZ);
+
+		if (timeout == 0) {
+			printk("compression timeout sts %x \n", ast_video_read(ast_video, AST_VIDEO_INT_STS));
+			return 0;
+		} else {
+			printk("%x size = %x \n", ast_video_read(ast_video, 0x270), ast_video_read(ast_video, AST_VM_COMPRESS_FRAME_END));
+			return ast_video_read(ast_video, AST_VM_COMPRESS_FRAME_END);
+		}
+#endif
+		break;
+	}
+
+	if (ast_video->mode_change) {
+		compression_mode->mode_change = ast_video->mode_change;
+		ast_video->mode_change = 0;
+	}
+
+}
+
 /*return compression size */
 static void ast_video_auto_mode_trigger(struct ast_video_data *ast_video, struct ast_auto_mode *auto_mode)
 {
@@ -1952,7 +2156,7 @@ static void ast_video_auto_mode_trigger(struct ast_video_data *ast_video, struct
 			auto_mode->total_size = ast_video_read(ast_video, AST_VIDEO_COMPRESS_DATA_COUNT);
 			auto_mode->block_count = ast_video_read(ast_video, AST_VIDEO_COMPRESS_BLOCK_COUNT) >> 16;
 
-			if (ast_video->config->version == 5) {
+			if ((ast_video->config->version == 5) || (ast_video->config->version == 6)) {
 				if(ast_video_read(ast_video, AST_VIDEO_SEQ_CTRL) & G5_VIDEO_COMPRESS_JPEG_MODE) {
 					auto_mode->total_size = ast_video_read(ast_video, AST_VIDEO_JPEG_COUNT);
 //					if((buff[auto_mode->total_size - 2] != 0xff) && (buff[auto_mode->total_size - 1] != 0xd9))
@@ -2087,15 +2291,15 @@ static irqreturn_t ast_video_isr(int this_irq, void *dev_id)
 		if (status & VIDEO_COMPRESS_COMPLETE) {
 			ast_video_write(ast_video, VIDEO_COMPRESS_COMPLETE, AST_VIDEO_INT_STS);
 			VIDEO_DBG("compress complete \n");
+			swap0 = ast_video_read(ast_video, AST_VIDEO_SOURCE_BUFF0);
+			swap1 = ast_video_read(ast_video, AST_VIDEO_SOURCE_BUFF1);
+			ast_video_write(ast_video, swap1, AST_VIDEO_SOURCE_BUFF0);
+			ast_video_write(ast_video, swap0, AST_VIDEO_SOURCE_BUFF1);		
 			complete(&ast_video->compression_complete);
 		}
 		if (status & VIDEO_CAPTURE_COMPLETE) {
 			ast_video_write(ast_video, VIDEO_CAPTURE_COMPLETE, AST_VIDEO_INT_STS);
 			VIDEO_DBG("capture complete \n");
-			swap0 = ast_video_read(ast_video, AST_VIDEO_SOURCE_BUFF0);
-			swap1 = ast_video_read(ast_video, AST_VIDEO_SOURCE_BUFF1);
-			ast_video_write(ast_video, swap1, AST_VIDEO_SOURCE_BUFF0);
-			ast_video_write(ast_video, swap0, AST_VIDEO_SOURCE_BUFF1);
 			complete(&ast_video->capture_complete);
 		}
 	}
@@ -2213,10 +2417,10 @@ static void ast_video_ctrl_init(struct ast_video_data *ast_video)
 					, AST_VIDEO_MODE_DETECT);
 }
 
-static long ast_scu_reset_video(struct ast_video_data *ast_video)
+static void ast_scu_reset_video(struct ast_video_data *ast_video)
 {
 	reset_control_assert(ast_video->reset);
-	udelay(100);	
+	udelay(100);
 	reset_control_deassert(ast_video->reset);
 }
 
@@ -2231,7 +2435,6 @@ static long ast_video_ioctl(struct file *fp, unsigned int cmd, unsigned long arg
 
 	int vga_enable = 0;
 	int encrypt_en = 0;
-	int compression_source = 0;
 	struct ast_mode_detection mode_detection;
 	struct ast_auto_mode auto_mode;
 	void __user *argp = (void __user *)arg;
@@ -2262,7 +2465,6 @@ static long ast_video_ioctl(struct file *fp, unsigned int cmd, unsigned long arg
 		break;
 	case AST_VIDEO_ENG_CONFIG:
 		ret = copy_from_user(&video_config, argp, sizeof(struct ast_video_config));
-
 		ast_video_set_eng_config(ast_video, &video_config);
 		break;
 	case AST_VIDEO_SET_SCALING:
@@ -2282,8 +2484,10 @@ static long ast_video_ioctl(struct file *fp, unsigned int cmd, unsigned long arg
 		ret = copy_to_user(argp, &auto_mode, sizeof(struct ast_auto_mode));
 		break;
 	case AST_VIDEO_CAPTURE_TRIGGER:
+ 		ast_video_capture_trigger(ast_video, (struct ast_capture_mode *) argp);
 		break;
 	case AST_VIDEO_COMPRESSION_TRIGGER:
+		ast_video_compression_trigger(ast_video, (struct ast_compression_mode *) argp);
 		break;
 	case AST_VIDEO_SET_VGA_DISPLAY:
 		ret = __get_user(vga_enable, (int __user *)arg);
@@ -2607,7 +2811,7 @@ static u8 ast_get_compress_jpeg_mode(struct ast_video_data *ast_video, u8 eng_id
 {
 	switch (eng_idx) {
 	case 0:
-		if (ast_video->config->version == 5) {
+		if ((ast_video->config->version == 5) || (ast_video->config->version == 6)) {
 			if (ast_video_read(ast_video, AST_VIDEO_SEQ_CTRL) & G5_VIDEO_COMPRESS_JPEG_MODE)
 				return 1;
 			else
@@ -2620,7 +2824,7 @@ static u8 ast_get_compress_jpeg_mode(struct ast_video_data *ast_video, u8 eng_id
 		}
 		break;
 	case 1:
-		if (ast_video->config->version == 5) {
+		if ((ast_video->config->version == 5) || (ast_video->config->version == 6)) {
 			if (ast_video_read(ast_video, AST_VM_SEQ_CTRL) & G5_VIDEO_COMPRESS_JPEG_MODE)
 				return 1;
 			else
@@ -2633,6 +2837,7 @@ static u8 ast_get_compress_jpeg_mode(struct ast_video_data *ast_video, u8 eng_id
 		}
 		break;
 	}
+	return 0;
 }
 
 static void ast_set_compress_jpeg_mode(struct ast_video_data *ast_video, u8 eng_idx, u8 jpeg_mode)
@@ -2640,13 +2845,13 @@ static void ast_set_compress_jpeg_mode(struct ast_video_data *ast_video, u8 eng_
 	switch (eng_idx) {
 	case 0:	//video 1
 		if (jpeg_mode) {
-			if (ast_video->config->version == 5) {
+			if ((ast_video->config->version == 5) || (ast_video->config->version == 6)) {
 				ast_video_write(ast_video, ast_video_read(ast_video, AST_VIDEO_SEQ_CTRL) | G5_VIDEO_COMPRESS_JPEG_MODE, AST_VIDEO_SEQ_CTRL);
 			} else {
 				ast_video_write(ast_video, ast_video_read(ast_video, AST_VIDEO_SEQ_CTRL) | VIDEO_COMPRESS_JPEG_MODE, AST_VIDEO_SEQ_CTRL);
 			}
 		} else {
-			if (ast_video->config->version == 5) {
+			if ((ast_video->config->version == 5) || (ast_video->config->version == 6)) {
 				ast_video_write(ast_video, ast_video_read(ast_video, AST_VIDEO_SEQ_CTRL) & ~G5_VIDEO_COMPRESS_JPEG_MODE , AST_VIDEO_SEQ_CTRL);
 			} else {
 				ast_video_write(ast_video, ast_video_read(ast_video, AST_VIDEO_SEQ_CTRL) & ~VIDEO_COMPRESS_JPEG_MODE , AST_VIDEO_SEQ_CTRL);
@@ -2656,14 +2861,14 @@ static void ast_set_compress_jpeg_mode(struct ast_video_data *ast_video, u8 eng_
 		break;
 	case 1:	//video M
 		if (jpeg_mode) {
-			if (ast_video->config->version == 5)
+			if ((ast_video->config->version == 5) || (ast_video->config->version == 6)) {
 				ast_video_write(ast_video, ast_video_read(ast_video, AST_VM_SEQ_CTRL) | G5_VIDEO_COMPRESS_JPEG_MODE, AST_VM_SEQ_CTRL);
-			else
+			} else
 				ast_video_write(ast_video, ast_video_read(ast_video, AST_VM_SEQ_CTRL) | VIDEO_COMPRESS_JPEG_MODE, AST_VM_SEQ_CTRL);
 		} else {
-			if (ast_video->config->version == 5)
+			if ((ast_video->config->version == 5) || (ast_video->config->version == 6)) {
 				ast_video_write(ast_video, ast_video_read(ast_video, AST_VM_SEQ_CTRL) & ~G5_VIDEO_COMPRESS_JPEG_MODE , AST_VM_SEQ_CTRL);
-			else
+			} else
 				ast_video_write(ast_video, ast_video_read(ast_video, AST_VM_SEQ_CTRL) & ~VIDEO_COMPRESS_JPEG_MODE , AST_VM_SEQ_CTRL);
 		}
 		break;
@@ -2709,27 +2914,29 @@ static void ast_set_compress_encrypt_en(struct ast_video_data *ast_video, u8 eng
 static u8 *ast_get_compress_encrypt_key(struct ast_video_data *ast_video, u8 eng_idx)
 {
 	switch (eng_idx) {
-	case 0:
-		return ast_video->EncodeKeys;
-		break;
-	case 1:
-		return ast_video->EncodeKeys;
-		break;
-	}
+		case 0:
+			return ast_video->EncodeKeys;
+			break;
+		case 1:
+			return ast_video->EncodeKeys;
+			break;
+		}
+	return 0;
 }
 
 static void ast_set_compress_encrypt_key(struct ast_video_data *ast_video, u8 eng_idx, u8 *key)
 {
 	switch (eng_idx) {
-	case 0:	//video 1
-		memset(ast_video->EncodeKeys, 0, 256);
-		//due to system have enter key must be remove
-		memcpy(ast_video->EncodeKeys, key, strlen(key) - 1);
-		ast_video_encryption_key_setup(ast_video);
-		break;
-	case 1:	//video M
-		break;
+		case 0:	//video 1
+			memset(ast_video->EncodeKeys, 0, 256);
+			//due to system have enter key must be remove
+			memcpy(ast_video->EncodeKeys, key, strlen(key) - 1);
+			ast_video_encryption_key_setup(ast_video);
+			break;
+		case 1:	//video M
+			break;
 	}
+	return 0;
 }
 
 static u8 ast_get_compress_encrypt_mode(struct ast_video_data *ast_video)
@@ -2773,7 +2980,7 @@ ast_store_compress(struct device *dev, struct device_attribute *attr, const char
 		ast_set_compress_encrypt_en(ast_video, sensor_attr->index, input_val);
 		break;
 	case 4: //
-		ast_set_compress_encrypt_key(ast_video, sensor_attr->index, sysfsbuf);
+		ast_set_compress_encrypt_key(ast_video, sensor_attr->index, (u8 *)sysfsbuf);
 		break;
 	case 5: //
 		ast_set_compress_encrypt_mode(ast_video, sensor_attr->index);
@@ -2854,13 +3061,15 @@ static const struct attribute_group compress_attribute_groups[] = {
 };
 
 /************************************************** SYS FS End ***********************************************************/
-
+static const struct aspeed_video_config ast2600_config = { 
+	.version = 6, 
+	.dram_base =0x80000000, 
+};
 
 static const struct aspeed_video_config ast2500_config = { 
 	.version = 5, 
 	.dram_base =0x80000000, 
 };
-
 
 static const struct aspeed_video_config ast2400_config = { 
 	.version = 4, 
@@ -2869,7 +3078,8 @@ static const struct aspeed_video_config ast2400_config = {
 
 static const struct of_device_id aspeed_video_matches[] = {
 	{ .compatible = "aspeed,ast2400-video",	.data = &ast2400_config, },
-	{ .compatible = "aspeed,ast2500-video",	.data = &ast2500_config, },	
+	{ .compatible = "aspeed,ast2500-video",	.data = &ast2500_config, },
+	{ .compatible = "aspeed,ast2600-video",	.data = &ast2600_config, },
 	{},
 };
 
@@ -2884,8 +3094,6 @@ static int ast_video_probe(struct platform_device *pdev)
 	int i;
 	struct ast_video_data *ast_video;
 	const struct of_device_id *video_dev_id;	
-	u32 vga = ast_scu_get_vga_memsize();
-	u32 dram = ast_sdmc_get_mem_size();
 
 	if (!(ast_video = devm_kzalloc(&pdev->dev, sizeof(struct ast_video_data), GFP_KERNEL))) {
 		return -ENOMEM;
@@ -2897,7 +3105,18 @@ static int ast_video_probe(struct platform_device *pdev)
 
 	ast_video->config = (struct aspeed_video_config *) video_dev_id->data;
 
-	if (ast_video->config->version == 5) {
+	if (ast_video->config->version == 6) {
+		ast_video->gfx = syscon_regmap_lookup_by_compatible("aspeed,ast-g6-gfx");
+		if (IS_ERR(ast_video->gfx)) {
+			dev_err(&pdev->dev, "failed to find 2600 GFX regmap\n");
+			return PTR_ERR(ast_video->gfx);
+		}
+		ast_video->scu = syscon_regmap_lookup_by_compatible("aspeed,ast2600-scu");
+		if (IS_ERR(ast_video->scu)) {
+			dev_err(&pdev->dev, "failed to find 2600 SCU regmap\n");
+			return PTR_ERR(ast_video->scu);
+		}
+	} else if (ast_video->config->version == 5) {
 		ast_video->gfx = syscon_regmap_lookup_by_compatible("aspeed,ast-g5-gfx");
 		if (IS_ERR(ast_video->gfx)) {
 			dev_err(&pdev->dev, "failed to find 2500 GFX regmap\n");
@@ -2936,6 +3155,19 @@ static int ast_video_probe(struct platform_device *pdev)
 	//Phy assign
 	ast_video->video_mem_size = CONFIG_AST_VIDEO_MEM_SIZE;
 	VIDEO_DBG("video_mem_size %d MB\n", ast_video->video_mem_size / 1024 / 1024);
+
+	ret = of_reserved_mem_device_init(&pdev->dev);
+	if (ret) {
+		dev_err(&pdev->dev, "Unable to reserve memory\n");
+		goto out;
+	}
+
+	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to set DMA mask\n");
+		of_reserved_mem_device_release(&pdev->dev);
+		goto out;
+	}
 
 	ast_video->video_mem.virt = dma_alloc_coherent(&pdev->dev, CONFIG_AST_VIDEO_MEM_SIZE, &ast_video->video_mem.dma, GFP_KERNEL);
 	if(!ast_video->video_mem.virt){
@@ -3063,10 +3295,6 @@ out_misc:
 
 out_region1:
 	iounmap(ast_video->stream_virt);
-
-out_region0:
-	devm_release_mem_region(&pdev->dev, res0->start, res0->end - res0->start + 1);
-
 out:
 	printk(KERN_WARNING "applesmc: driver init failed (ret=%d)!\n", ret);
 	return ret;
@@ -3075,7 +3303,6 @@ out:
 
 static int ast_video_remove(struct platform_device *pdev)
 {
-	struct resource *res0;
 	struct ast_video_data *ast_video = platform_get_drvdata(pdev);
 	int i;
 	VIDEO_DBG("ast_video_remove\n");

@@ -160,7 +160,6 @@ static int aspeed_scu_ic_probe(struct platform_device *pdev)
 
 err_iounmap:
 	iounmap(scu_irq->regs);
-err_free_ic:
 	kfree(scu_irq);
 	return ret;
 }
