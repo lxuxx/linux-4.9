@@ -45,8 +45,7 @@
 
 #include "8250.h"
 #include <linux/dma-mapping.h>
-#include <mach/ast-uart-dma.h>
-#include <mach/ast-bmc-scu.h>
+#include "ast-uart-dma.h"
 
 //#define CONFIG_UART_DMA_DEBUG
 //#define CONFIG_UART_TX_DMA_DEBUG
@@ -783,11 +782,12 @@ static int serial8250_startup(struct uart_port *port)
 	(void) serial_inp(up, UART_MSR);
 
 	ast_uart_irq[0].up = up;
+#if 0
 	retval = request_irq(up->port.irq, ast_uart_interrupt,
 				 irq_flags, "ast-uart-dma", ast_uart_irq);
 	if (retval)
 		return retval;
-
+#endif
 	/*
 	 * Now, initialize the UART
 	 */
@@ -914,7 +914,7 @@ static void serial8250_shutdown(struct uart_port *port)
 #endif
 
 	//Tx buffer will free by serial_core.c 
-	free_irq(up->port.irq, ast_uart_irq);
+//	free_irq(up->port.irq, ast_uart_irq);
 
 }
 
@@ -1240,9 +1240,9 @@ static struct uart_driver serial8250_reg = {
  * all entries to have at least UPF_BOOT_AUTOCONF set.
  */
 static int channel_index = 0;
-static int serial8250_probe(struct platform_device *dev)
+static int serial8250_probe(struct platform_device *pdev)
 {
-    struct device_node *np = dev->dev.of_node;
+    struct device_node *np = pdev->dev.of_node;
     struct uart_port port;
     struct ast_uart_sdma_data *uart_dma_data;
     struct ast_uart_port *up = NULL;
@@ -1257,23 +1257,24 @@ static int serial8250_probe(struct platform_device *dev)
     memset(&port, 0, sizeof(struct uart_port));
 
     uart_dma_data = kzalloc(sizeof(struct ast_uart_sdma_data), GFP_KERNEL);
-    res = platform_get_resource(dev, IORESOURCE_IRQ, 0);
+
+#if 0
+    res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
     if (!res) {
-        dev_err(&dev->dev,
+        dev_err(&pdev->dev,
                 "IRQ not found\n");
         return -ENODEV;
     }
     port.irq = res->start;
+#endif
 
-    res = platform_get_resource(dev, IORESOURCE_MEM, 0);
+    res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
     if (!res) {
-        dev_err(&dev->dev,
-                "Register base not found");
+        dev_err(&pdev->dev,
+                "Register base not found %x ", res);
         return -ENODEV;
     }
     port.mapbase = res->start;
-
-
 
     if (of_property_read_u32(np, "clocks", &read) == 0) {
         port.uartclk = read;
@@ -1288,14 +1289,14 @@ static int serial8250_probe(struct platform_device *dev)
     }
     port.iotype = UPIO_MEM;
     port.flags = UPF_IOREMAP | UPF_BOOT_AUTOCONF | UPF_SKIP_TEST;
-    port.dev        = &dev->dev;
+    port.dev        = &pdev->dev;
     port.private_data = uart_dma_data;
     if (share_irqs)
         port.flags |= UPF_SHARE_IRQ;
 
     ret = ast_uart_register_port(&port);
     if (ret < 0) {
-        dev_err(&dev->dev, "unable to register port at index %d "
+        dev_err(&pdev->dev, "unable to register port at index %d "
                 "(IO%lx MEM%llx IRQ%d): %d\n", channel_index,
                 port.iobase, (unsigned long long)port.mapbase,
                 port.irq, ret);
@@ -1328,7 +1329,7 @@ static int serial8250_probe(struct platform_device *dev)
 out_ast_uart_unregister_port:
     up = &ast_uart_ports[channel_index];
 
-    if (up->port.dev == &dev->dev)
+    if (up->port.dev == &pdev->dev)
         ast_uart_unregister_port(channel_index);
     return ret;
 
@@ -1484,7 +1485,6 @@ int ast_uart_register_port(struct uart_port *port)
 			ret = uart->port.line;
 
 		spin_lock_init(&uart->lock);
-
 
 #if defined(CONFIG_AST_UART_SDMA)
 		tasklet_init(&uart->tx_tasklet, ast_uart_tx_sdma_tasklet_func,

@@ -23,10 +23,8 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 
-#include <mach/irqs.h>
-#include <mach/hardware.h>
-#include <mach/ast-uart-dma.h>
-#include <mach/regs-uart-sdma.h>
+#include "ast-uart-dma.h"
+#include "regs-uart-sdma.h"
 
 //#define AST_UART_SDMA_DEBUG
 
@@ -451,8 +449,7 @@ struct ast_sdma sdma;
 
 static int ast_uart_sdma_probe(struct platform_device *pdev)
 {
-
-    	int i, ret;
+   	int i, ret;
 	struct device	*dev = &pdev->dev;
 	struct resource	*res;	
 	struct ast_sdma *sdma = &ast_uart_sdma;	

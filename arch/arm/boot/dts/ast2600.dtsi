@@ -140,15 +140,16 @@
 				interrupts = <GIC_SPI 47 IRQ_TYPE_LEVEL_HIGH>;
 #if 1
 				clock-frequency = <1846154>;
-#else								
+#else
 				clocks = <&syscon ASPEED_CLK_GATE_UART1CLK>;
-#endif				
+#endif
 				resets = <&lpc_reset 4>;
 				no-loopback-test;
-#if 0				
+#if 0
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_txd1_default &pinctrl_rxd1_default>;
-#endif				
+#endif
+				status = "disabled";	
 			};
 
 			uart5: serial@1e784000 {
@@ -237,10 +238,11 @@
 #endif
 				resets = <&lpc_reset 5>;
 				no-loopback-test;
-#if 0				
+#if 0
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_txd2_default &pinctrl_rxd2_default>;
-#endif				
+#endif
+				status = "disabled";
 			};
 
 			uart3: serial@1e78e000 {
@@ -255,10 +257,11 @@
 #endif
 				resets = <&lpc_reset 6>;
 				no-loopback-test;
-#if 0				
+#if 0
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_txd3_default &pinctrl_rxd3_default>;
-#endif				
+#endif
+				status = "disabled";
 			};
 
 			uart4: serial@1e78f000 {
@@ -273,13 +276,61 @@
 #endif
 				resets = <&lpc_reset 7>;
 				no-loopback-test;
-#if 0				
+#if 0
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_txd4_default &pinctrl_rxd4_default>;
-#endif				
+#endif
 				status = "disabled";
 			};
 
+#if 0
+			ast_uart_sdma: uart_sdma@1e79e000 {
+				compatible = "aspeed,ast-uart-sdma";
+				reg = <0x1e79e000 0x400>;
+				interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
+			};
+
+			dma_uart0: dma_uart0@1e783000{
+				compatible = "aspeed,ast-sdma-uart";
+				reg = <0x1e783000 0x1000>;
+				clocks = <1846154>;
+				clock-frequency = <1846154>;
+				interrupts = <33>;
+				reg-shift = <2>;
+				dma-channel = <0>;
+				no-loopback-test;
+			};
+
+			dma_uart1: dma_uart1@1e78d000{
+				compatible = "aspeed,ast-sdma-uart";
+				reg = <0x1e78d000 0x1000>;
+				interrupts = <34>;
+				clock-frequency = <1846154>;
+				reg-shift = <2>;
+				dma-channel = <1>;
+				no-loopback-test;
+			};
+
+			dma_uart2: dma_uart2@1e78e000{
+				compatible = "aspeed,ast-sdma-uart";
+				reg = <0x1e78e000 0x1000>;
+				interrupts = <33>;
+				clock-frequency = <1846154>;
+				reg-shift = <2>;
+				dma-channel = <2>;
+				no-loopback-test;
+			};
+
+			dma_uart3: dma_uart3@1e78f000{
+				compatible = "aspeed,ast-sdma-uart";
+				reg = <0x1e78f000 0x1000>;
+				interrupts = <34>;
+				clock-frequency = <1846154>;
+				reg-shift = <2>;
+				dma-channel = <3>;
+				no-loopback-test;
+			};
+#endif
 			i2c: i2c@1e78a000 {
 				compatible = "simple-bus";
 				#address-cells = <1>;
