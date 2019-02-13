@@ -517,6 +517,8 @@ static void aspeed_g6_xdma_xfer(struct aspeed_xdma_info *aspeed_xdma, struct asp
 
 	if(xdma_xfer->host_addr_high != 0)
 		aspeed_xdma->new_xfer_cmd_desc[aspeed_xdma->desc_index].cmd2_high = G6_CMD_64BIT_ADDR;
+	else
+		aspeed_xdma->new_xfer_cmd_desc[aspeed_xdma->desc_index].cmd2_high = 0;
 
 	if (xdma_xfer->stream_dir) {
 		aspeed_xdma->new_xfer_cmd_desc[aspeed_xdma->desc_index].cmd1_low = G6_BMC_ADDR(bmc_addr);
@@ -606,12 +608,15 @@ static irqreturn_t aspeed_pcie_raise_isr(int this_irq, void *dev_id)
 
 	XDMA_DBUG("\n");
 	switch (aspeed_xdma->xdma_version) {
-	case 0:
-		aspeed_xdma_ctrl_init(aspeed_xdma);
-		break;
-	case 5:
-		aspeed_g5_xdma_ctrl_init(aspeed_xdma);
-		break;
+		case 0:
+			aspeed_xdma_ctrl_init(aspeed_xdma);
+			break;
+		case 5:
+			aspeed_g5_xdma_ctrl_init(aspeed_xdma);
+			break;
+		case 6:
+			aspeed_g6_xdma_ctrl_init(aspeed_xdma);
+			break;
 	}
 	return IRQ_HANDLED;
 }
@@ -624,7 +629,7 @@ static irqreturn_t aspeed_xdma_isr(int this_irq, void *dev_id)
 	if(aspeed_xdma->xdma_version == 6) {
 		sts = aspeed_xdma_read(aspeed_xdma, ASPEED_G6_XDMA_CTRL_ISR);
 
-		XDMA_DBUG("%x 6666\n", sts);
+		XDMA_DBUG("%x \n", sts);
 
 		if (sts & G6_XDMA_DS_DIRTY_FRAME) {
 			XDMA_DBUG("G6_XDMA_BMC_DS_DIRTY_STS \n");
