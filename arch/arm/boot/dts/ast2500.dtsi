@@ -820,7 +820,7 @@
 		interrupt-controller;
 	};
 
-	i2c0: i2c@40 {
+	i2c0: i2c-bus@40 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -834,7 +834,7 @@
 		/* Does not need pinctrl properties */
 	};
 
-	i2c1: i2c@80 {
+	i2c1: i2c-bus@80 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -847,7 +847,8 @@
 		interrupt-parent = <&i2c_ic>;
 		/* Does not need pinctrl properties */
 	};
-	i2c2: i2c@C0 {
+
+	i2c2: i2c-bus@c0 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -861,7 +862,8 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c3_default>;		
 	};
-	i2c3: i2c@100 {
+
+	i2c3: i2c-bus@100 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -875,7 +877,8 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c4_default>;
 	};
-	i2c4: i2c@140 {
+
+	i2c4: i2c-bus@140 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -889,7 +892,8 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c5_default>;
 	};
-	i2c5: i2c@180 {
+
+	i2c5: i2c-bus@180 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -903,7 +907,8 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c6_default>;
 	};
-	i2c6: i2c@1c0 {
+
+	i2c6: i2c-bus@1c0 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -914,6 +919,7 @@
 		bus-frequency = <100000>;
 		interrupts = <6>;
 		interrupt-parent = <&i2c_ic>;
+		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_i2c7_default>;
 	};
 	i2c7: i2c@300 {
@@ -959,7 +965,8 @@
 		pinctrl-0 = <&pinctrl_i2c10_default>;
 		status = "disabled";
 	};
-	i2c10: i2c@3C0 {
+
+	i2c10: i2c-bus@3c0 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -974,7 +981,8 @@
 		pinctrl-0 = <&pinctrl_i2c11_default>;
 		status = "disabled";
 	};
-	i2c11: i2c@400 {
+
+	i2c11: i2c-bus@400 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -989,7 +997,8 @@
 		pinctrl-0 = <&pinctrl_i2c12_default>;
 		status = "disabled";
 	};
-	i2c12: i2c@440 {
+
+	i2c12: i2c-bus@440 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
@@ -1004,7 +1013,8 @@
 		pinctrl-0 = <&pinctrl_i2c13_default>;
 		status = "disabled";
 	};
-	i2c13: i2c@480 {
+
+	i2c13: i2c-bus@480 {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		#interrupt-cells = <1>;
