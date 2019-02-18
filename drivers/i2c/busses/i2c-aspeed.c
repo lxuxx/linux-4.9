@@ -124,6 +124,7 @@
 #define ASPEED_I2CD_DEV_ADDR_MASK			GENMASK(6, 0)
 
 #define ASPEED_I2CD_DMA_MAX_SIZE			4095
+
 enum aspeed_i2c_master_state {
 	ASPEED_I2C_MASTER_INACTIVE,
 	ASPEED_I2C_MASTER_START,
@@ -446,7 +447,6 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 	u8 recv_byte = 0;
 	int ret;
 	int i;
-	dev_dbg(bus->dev, "aspeed_i2c_master_irq %d\n", irq_status);
 
 	if (irq_status & ASPEED_I2CD_INTR_BUS_RECOVER_DONE) {
 		bus->master_state = ASPEED_I2C_MASTER_INACTIVE;
@@ -514,8 +514,6 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 			bus->master_state = ASPEED_I2C_MASTER_TX_FIRST;
 	}
 
-	dev_dbg(bus->dev, "bus->master_state %d\n", bus->master_state);
-
 	switch (bus->master_state) {
 	case ASPEED_I2C_MASTER_TX:
 		dev_dbg(bus->dev, "ASPEED_I2C_MASTER_TX \n");
@@ -528,7 +526,6 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 			goto error_and_stop;
 		}
 		irq_handled |= ASPEED_I2CD_INTR_TX_ACK;
-		dev_dbg(bus->dev, "ASPEED_I2C_MASTER_TX fall through \n");
 		/* fall through */
 	case ASPEED_I2C_MASTER_TX_FIRST:
 		dev_dbg(bus->dev, "ASPEED_I2C_MASTER_TX_FIRST bus->buf_index %d \n", bus->buf_index);
@@ -611,7 +608,6 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 			msg->len = recv_byte +
 					((msg->flags & I2C_CLIENT_PEC) ? 2 : 1);
 			msg->flags &= ~I2C_M_RECV_LEN;
-			dev_dbg(bus->dev, "~I2C_M_RECV_LEN new msg->len %d \n", msg->len);
 		}
 
 		if (bus->buf_index < msg->len) {
