@@ -1,13 +1,15 @@
 /*
  *  Aspeed 24XX/25XX I2C Controller.
  *
- *  Copyright (C) 2012-2017 ASPEED Technology Inc.
+ *  Copyright ASPEED Technology Inc.
  *  Copyright 2017 IBM Corporation
  *  Copyright 2017 Google, Inc.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
  *  published by the Free Software Foundation.
+ *  
+ *  Add i2c dma mode [ryan_chen@aspeedtech.com]
  */
 
 #include <linux/clk.h>
@@ -29,6 +31,7 @@
 #include <linux/platform_device.h>
 #include <linux/reset.h>
 #include <linux/slab.h>
+#include <linux/dma-mapping.h>
 
 /* I2C Register */
 #define ASPEED_I2C_FUN_CTRL_REG				0x00
@@ -39,6 +42,8 @@
 #define ASPEED_I2C_CMD_REG				0x14
 #define ASPEED_I2C_DEV_ADDR_REG				0x18
 #define ASPEED_I2C_BYTE_BUF_REG				0x20
+#define ASPEED_I2C_DMA_BASE_REG				0x24
+#define ASPEED_I2C_DMA_LEN_REG				0x28
 
 /* Global Register Definition */
 /* 0x00 : I2C Interrupt Status Register  */
@@ -104,6 +109,9 @@
 #define ASPEED_I2CD_BUS_BUSY_STS			BIT(16)
 #define ASPEED_I2CD_BUS_RECOVER_CMD			BIT(11)
 
+#define ASPEED_I2CD_M_S_RXDMA_EN			BIT(9)
+#define ASPEED_I2CD_M_S_TXDMA_EN			BIT(8)
+
 /* Command Bit */
 #define ASPEED_I2CD_M_STOP_CMD				BIT(5)
 #define ASPEED_I2CD_M_S_RX_CMD_LAST			BIT(4)
@@ -115,6 +123,7 @@
 /* 0x18 : I2CD Slave Device Address Register   */
 #define ASPEED_I2CD_DEV_ADDR_MASK			GENMASK(6, 0)
 
+#define ASPEED_I2CD_DMA_MAX_SIZE			4095
 enum aspeed_i2c_master_state {
 	ASPEED_I2C_MASTER_INACTIVE,
 	ASPEED_I2C_MASTER_START,
@@ -139,6 +148,10 @@ struct aspeed_i2c_bus {
 	struct device			*dev;
 	void __iomem			*base;
 	struct reset_control		*rst;
+	int						dma_enable;
+	unsigned char			*dma_buf;
+	dma_addr_t			dma_addr;
+	u32					dma_xfer_len;
 	/* Synchronizes I/O mem access to base. */
 	spinlock_t			lock;
 	struct completion		cmd_complete;
@@ -328,9 +341,11 @@ static void aspeed_i2c_do_start(struct aspeed_i2c_bus *bus)
 	struct i2c_msg *msg = &bus->msgs[bus->msgs_index];
 	u8 slave_addr = i2c_8bit_addr_from_msg(msg);
 
+	dev_dbg(bus->dev, "aspeed_i2c_do_start %s msg->len %d \n", msg->flags & I2C_M_RD ? "read" : "write", msg->len);
+
 	bus->master_state = ASPEED_I2C_MASTER_START;
 	bus->buf_index = 0;
-
+#if 0
 	if (msg->flags & I2C_M_RD) {
 		command |= ASPEED_I2CD_M_RX_CMD;
 		/* Need to let the hardware know to NACK after RX. */
@@ -340,11 +355,40 @@ static void aspeed_i2c_do_start(struct aspeed_i2c_bus *bus)
 
 	writel(slave_addr, bus->base + ASPEED_I2C_BYTE_BUF_REG);
 	writel(command, bus->base + ASPEED_I2C_CMD_REG);
+#else
+	if (msg->flags & I2C_M_RD) {
+		command |= ASPEED_I2CD_M_RX_CMD;
+		/* Need to let the hardware know to NACK after RX. */
+		if (msg->len == 1 && !(msg->flags & I2C_M_RECV_LEN))
+			command |= ASPEED_I2CD_M_S_RX_CMD_LAST;
+		if (bus->dma_enable) {
+			if(msg->len < ASPEED_I2CD_DMA_MAX_SIZE) {
+				bus->dma_xfer_len = msg->len;
+			} else {
+				bus->dma_xfer_len = ASPEED_I2CD_DMA_MAX_SIZE;
+			}
+			command |= ASPEED_I2CD_M_S_RXDMA_EN;
+			writel(slave_addr, bus->base + ASPEED_I2C_BYTE_BUF_REG);
+			
+			writel(bus->dma_addr, bus->base + ASPEED_I2C_DMA_BASE_REG);
+			writel(bus->dma_xfer_len, bus->base + ASPEED_I2C_DMA_LEN_REG);			
+		} else {
+			writel(slave_addr, bus->base + ASPEED_I2C_BYTE_BUF_REG);
+		}
+		writel(command, bus->base + ASPEED_I2C_CMD_REG);
+	} else {
+		//tx start with byte.
+		writel(slave_addr, bus->base + ASPEED_I2C_BYTE_BUF_REG);
+		writel(command, bus->base + ASPEED_I2C_CMD_REG);	
+	}
+#endif
 }
 
 /* precondition: bus.lock has been acquired. */
 static void aspeed_i2c_do_stop(struct aspeed_i2c_bus *bus)
 {
+	dev_dbg(bus->dev, "aspeed_i2c_do_stop \n");
+
 	bus->master_state = ASPEED_I2C_MASTER_STOP;
 	writel(ASPEED_I2CD_M_STOP_CMD, bus->base + ASPEED_I2C_CMD_REG);
 }
@@ -352,6 +396,8 @@ static void aspeed_i2c_do_stop(struct aspeed_i2c_bus *bus)
 /* precondition: bus.lock has been acquired. */
 static void aspeed_i2c_next_msg_or_stop(struct aspeed_i2c_bus *bus)
 {
+	dev_dbg(bus->dev, "aspeed_i2c_next_msg_or_stop \n");
+
 	if (bus->msgs_index + 1 < bus->msgs_count) {
 		bus->msgs_index++;
 		aspeed_i2c_do_start(bus);
@@ -379,6 +425,8 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 	struct i2c_msg *msg;
 	u8 recv_byte;
 	int ret;
+	int i;
+	dev_dbg(bus->dev, "aspeed_i2c_master_irq %d\n", irq_status);
 
 	if (irq_status & ASPEED_I2CD_INTR_BUS_RECOVER_DONE) {
 		bus->master_state = ASPEED_I2C_MASTER_INACTIVE;
@@ -446,8 +494,11 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 			bus->master_state = ASPEED_I2C_MASTER_TX_FIRST;
 	}
 
+	dev_dbg(bus->dev, "bus->master_state %d\n", bus->master_state);
+
 	switch (bus->master_state) {
 	case ASPEED_I2C_MASTER_TX:
+		dev_dbg(bus->dev, "ASPEED_I2C_MASTER_TX \n");
 		if (unlikely(irq_status & ASPEED_I2CD_INTR_TX_NAK)) {
 			dev_dbg(bus->dev, "slave NACKed TX\n");
 			irq_handled |= ASPEED_I2CD_INTR_TX_NAK;
@@ -457,8 +508,39 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 			goto error_and_stop;
 		}
 		irq_handled |= ASPEED_I2CD_INTR_TX_ACK;
+		dev_dbg(bus->dev, "ASPEED_I2C_MASTER_TX fall through \n");
 		/* fall through */
 	case ASPEED_I2C_MASTER_TX_FIRST:
+		dev_dbg(bus->dev, "ASPEED_I2C_MASTER_TX_FIRST bus->buf_index %d \n", bus->buf_index);
+#if 1
+		if (bus->buf_index < msg->len) {
+			bus->master_state = ASPEED_I2C_MASTER_TX;
+			if (bus->dma_enable) {
+				if ((msg->len - bus->buf_index) > ASPEED_I2CD_DMA_MAX_SIZE) {
+					bus->dma_xfer_len = ASPEED_I2CD_DMA_MAX_SIZE;
+				} else {
+					bus->dma_xfer_len = msg->len - bus->buf_index;
+				}
+				for (i = 0; i < bus->dma_xfer_len; i++)
+					bus->dma_buf[i] = msg->buf[bus->buf_index + i];
+
+				bus->buf_index += bus->dma_xfer_len;
+				writel(bus->dma_addr, bus->base + ASPEED_I2C_DMA_BASE_REG);
+				writel(bus->dma_xfer_len, bus->base + ASPEED_I2C_DMA_LEN_REG);
+				writel(ASPEED_I2CD_M_TX_CMD | ASPEED_I2CD_M_S_TXDMA_EN,
+					   bus->base + ASPEED_I2C_CMD_REG);
+			} else {
+				writel(msg->buf[bus->buf_index++],
+				       bus->base + ASPEED_I2C_BYTE_BUF_REG);
+				writel(ASPEED_I2CD_M_TX_CMD,
+				       bus->base + ASPEED_I2C_CMD_REG);
+			}
+		} else {
+			aspeed_i2c_next_msg_or_stop(bus);
+		}
+
+
+#else
 		if (bus->buf_index < msg->len) {
 			bus->master_state = ASPEED_I2C_MASTER_TX;
 			writel(msg->buf[bus->buf_index++],
@@ -468,23 +550,38 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 		} else {
 			aspeed_i2c_next_msg_or_stop(bus);
 		}
+#endif		
 		goto out_no_complete;
 	case ASPEED_I2C_MASTER_RX_FIRST:
+		dev_dbg(bus->dev, "ASPEED_I2C_MASTER_RX_FIRST \n");
 		/* RX may not have completed yet (only address cycle) */
 		if (!(irq_status & ASPEED_I2CD_INTR_RX_DONE))
 			goto out_no_complete;
 		/* fall through */
 	case ASPEED_I2C_MASTER_RX:
+		dev_dbg(bus->dev, "ASPEED_I2C_MASTER_RX \n");
 		if (unlikely(!(irq_status & ASPEED_I2CD_INTR_RX_DONE))) {
 			dev_err(bus->dev, "master failed to RX\n");
 			goto error_and_stop;
 		}
 		irq_handled |= ASPEED_I2CD_INTR_RX_DONE;
 
-		recv_byte = readl(bus->base + ASPEED_I2C_BYTE_BUF_REG) >> 8;
-		msg->buf[bus->buf_index++] = recv_byte;
-
+		if ((bus->dma_enable) && !(bus->msgs->flags & I2C_M_RECV_LEN)) {			
+			dev_dbg(bus->dev, "ASPEED_I2C_MASTER_RX len %d dma down \n", bus->dma_xfer_len);
+			for (i = 0; i < bus->dma_xfer_len; i++) {
+				msg->buf[bus->buf_index++] = bus->dma_buf[i];
+				dev_dbg(bus->dev, "[%x] ", bus->dma_buf[i]);
+			}
+			bus->buf_index += bus->dma_xfer_len;
+			dev_dbg(bus->dev, "ASPEED_I2C_MASTER_RX [%x] \n", recv_byte);			
+		} else {
+			recv_byte = readl(bus->base + ASPEED_I2C_BYTE_BUF_REG) >> 8;
+			msg->buf[bus->buf_index++] = recv_byte;
+			dev_dbg(bus->dev, "ASPEED_I2C_MASTER_RX [%x] \n", recv_byte);
+		}
+			
 		if (msg->flags & I2C_M_RECV_LEN) {
+			dev_dbg(bus->dev, "I2C_M_RECV_LEN recv_byte %d \n", recv_byte);
 			if (unlikely(recv_byte > I2C_SMBUS_BLOCK_MAX)) {
 				bus->cmd_err = -EPROTO;
 				aspeed_i2c_do_stop(bus);
@@ -497,15 +594,37 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 
 		if (bus->buf_index < msg->len) {
 			bus->master_state = ASPEED_I2C_MASTER_RX;
+#if 1
+			if (bus->dma_enable) {
+				if ((msg->len - bus->buf_index) > ASPEED_I2CD_DMA_MAX_SIZE) {
+					bus->dma_xfer_len = ASPEED_I2CD_DMA_MAX_SIZE;
+				} else {
+					bus->dma_xfer_len = msg->len - bus->buf_index;
+					command |= ASPEED_I2CD_M_S_RX_CMD_LAST;
+				}
+				bus->buf_index += bus->dma_xfer_len;
+				writel(bus->dma_addr, bus->base + ASPEED_I2C_DMA_BASE_REG);
+				writel(bus->dma_xfer_len, bus->base + ASPEED_I2C_DMA_LEN_REG);
+				command = ASPEED_I2CD_M_RX_CMD | ASPEED_I2CD_M_S_RXDMA_EN;
+			} else {
+				command = ASPEED_I2CD_M_RX_CMD;
+				if (bus->buf_index + bus->dma_xfer_len == msg->len)
+					command |= ASPEED_I2CD_M_S_RX_CMD_LAST;
+			}
+			writel(command, bus->base + ASPEED_I2C_CMD_REG);			
+#else
 			command = ASPEED_I2CD_M_RX_CMD;
 			if (bus->buf_index + 1 == msg->len)
 				command |= ASPEED_I2CD_M_S_RX_CMD_LAST;
 			writel(command, bus->base + ASPEED_I2C_CMD_REG);
+
+#endif
 		} else {
 			aspeed_i2c_next_msg_or_stop(bus);
 		}
 		goto out_no_complete;
 	case ASPEED_I2C_MASTER_STOP:
+		dev_dbg(bus->dev, "ASPEED_I2C_MASTER_STOP \n");
 		if (unlikely(!(irq_status & ASPEED_I2CD_INTR_NORMAL_STOP))) {
 			dev_err(bus->dev,
 				"master failed to STOP. irq_status:0x%x\n",
@@ -526,6 +645,7 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 		/* Do not STOP as we should be inactive. */
 		goto out_complete;
 	default:
+		dev_dbg(bus->dev, "default \n");
 		WARN(1, "unknown master state\n");
 		bus->master_state = ASPEED_I2C_MASTER_INACTIVE;
 		bus->cmd_err = -EINVAL;
@@ -621,6 +741,8 @@ static int aspeed_i2c_master_xfer(struct i2c_adapter *adap,
 	bus->msgs = msgs;
 	bus->msgs_index = 0;
 	bus->msgs_count = num;
+
+	dev_dbg(bus->dev, "aspeed_i2c_master_xfer bus->msgs_count %d ----------------------------------------------\n", bus->msgs_count);
 
 	reinit_completion(&bus->cmd_complete);
 	aspeed_i2c_do_start(bus);
@@ -902,6 +1024,7 @@ static int aspeed_i2c_probe_bus(struct platform_device *pdev)
 	/* We just need the clock rate, we don't actually use the clk object. */
 	devm_clk_put(&pdev->dev, parent_clk);
 
+#if 0
 	bus->rst = devm_reset_control_get_shared(&pdev->dev, NULL);
 	if (IS_ERR(bus->rst)) {
 		dev_err(&pdev->dev,
@@ -909,7 +1032,7 @@ static int aspeed_i2c_probe_bus(struct platform_device *pdev)
 		return PTR_ERR(bus->rst);
 	}
 	reset_control_deassert(bus->rst);
-
+#endif
 	ret = of_property_read_u32(pdev->dev.of_node,
 				   "bus-frequency", &bus->bus_frequency);
 	if (ret < 0) {
@@ -925,6 +1048,28 @@ static int aspeed_i2c_probe_bus(struct platform_device *pdev)
 		bus->get_clk_reg_val = (u32 (*)(struct device *, u32))
 				match->data;
 
+
+//	if (of_property_read_bool(pdev->dev.of_node, "dma_enable")) {
+		bus->dma_buf = dma_alloc_coherent(bus->dev, ASPEED_I2CD_DMA_MAX_SIZE,
+						      &bus->dma_addr, GFP_KERNEL);
+		if (!bus->dma_buf) {
+			dev_err(&pdev->dev, "unable to allocate tx Buffer memory\n");
+			return -ENOMEM;
+		}
+		if (bus->dma_addr % 4 != 0) {
+			dev_err(bus->dev, "not 4 byte boundary \n");
+
+			return -ENOMEM;
+		}
+		dev_dbg(bus->dev,
+			"dma enable dma_buf = [0x%x] dma_addr = [0x%x], please check 4byte boundary \n",
+			(u32)bus->dma_buf, bus->dma_addr);
+		memset(bus->dma_buf, 0, ASPEED_I2CD_DMA_MAX_SIZE);
+		bus->dma_enable = 1;
+//	} else 
+//		bus->dma_enable = 0;
+
+	printk("bus->dma_enable =============================== %d \n", bus->dma_enable);
 	/* Initialize the I2C adapter */
 	spin_lock_init(&bus->lock);
 	init_completion(&bus->cmd_complete);
@@ -981,7 +1126,7 @@ static int aspeed_i2c_remove_bus(struct platform_device *pdev)
 
 	spin_unlock_irqrestore(&bus->lock, flags);
 
-	reset_control_assert(bus->rst);
+//	reset_control_assert(bus->rst);
 
 	i2c_del_adapter(&bus->adap);
 
