@@ -327,6 +327,7 @@ comment "I2C system bus drivers (mostly embedded / system-on-chip)"
 
 config I2C_ASPEED
 	tristate "Aspeed I2C Controller"
+	select ASPEED_I2C_IRQCHIP
 	depends on ARCH_ASPEED
 	help
 	  If you say yes to this option, support will be included for the
