@@ -1070,28 +1070,25 @@ static int aspeed_i2c_probe_bus(struct platform_device *pdev)
 		bus->get_clk_reg_val = (u32 (*)(struct device *, u32))
 				match->data;
 
-
-//	if (of_property_read_bool(pdev->dev.of_node, "dma_enable")) {
+	if (of_property_read_bool(pdev->dev.of_node, "dma_enable")) {
 		bus->dma_buf = dma_alloc_coherent(bus->dev, ASPEED_I2CD_DMA_MAX_SIZE,
 						      &bus->dma_addr, GFP_KERNEL);
+		bus->dma_enable = 1;
 		if (!bus->dma_buf) {
 			dev_err(&pdev->dev, "unable to allocate tx Buffer memory\n");
-			return -ENOMEM;
+			bus->dma_enable = 0;
 		}
 		if (bus->dma_addr % 4 != 0) {
 			dev_err(bus->dev, "not 4 byte boundary \n");
-
-			return -ENOMEM;
+			bus->dma_enable = 0;
 		}
 		dev_dbg(bus->dev,
 			"dma enable dma_buf = [0x%x] dma_addr = [0x%x], please check 4byte boundary \n",
 			(u32)bus->dma_buf, bus->dma_addr);
-		memset(bus->dma_buf, 0, ASPEED_I2CD_DMA_MAX_SIZE);
-		bus->dma_enable = 1;
-//	} else 
-//		bus->dma_enable = 0;
+	} else 
+		bus->dma_enable = 0;
 
-	printk("bus->dma_enable =============================== %d \n", bus->dma_enable);
+	printk("bus->dma_enable %d \n", bus->dma_enable);
 	/* Initialize the I2C adapter */
 	spin_lock_init(&bus->lock);
 	init_completion(&bus->cmd_complete);
