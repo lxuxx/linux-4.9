@@ -514,6 +514,8 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 			bus->master_state = ASPEED_I2C_MASTER_TX_FIRST;
 	}
 
+	dev_dbg(bus->dev, "bus->master_state %d\n", bus->master_state);
+
 	switch (bus->master_state) {
 	case ASPEED_I2C_MASTER_TX:
 		dev_dbg(bus->dev, "ASPEED_I2C_MASTER_TX \n");
@@ -526,13 +528,14 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 			goto error_and_stop;
 		}
 		irq_handled |= ASPEED_I2CD_INTR_TX_ACK;
+		dev_dbg(bus->dev, "ASPEED_I2C_MASTER_TX fall through \n");
 		/* fall through */
 	case ASPEED_I2C_MASTER_TX_FIRST:
 		dev_dbg(bus->dev, "ASPEED_I2C_MASTER_TX_FIRST bus->buf_index %d \n", bus->buf_index);
 #if 1
 		if ((bus->dma_enable) && (irq_status & ASPEED_I2CD_INTR_TX_ACK))
 			bus->buf_index += bus->dma_xfer_len;
-		
+
 		if (bus->buf_index < msg->len) {
 			bus->master_state = ASPEED_I2C_MASTER_TX;
 			if (bus->dma_enable) {
@@ -597,7 +600,7 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 			recv_byte = readl(bus->base + ASPEED_I2C_BYTE_BUF_REG) >> 8;
 			msg->buf[bus->buf_index++] = recv_byte;
 		}
-			
+
 		if (msg->flags & I2C_M_RECV_LEN) {
 			dev_dbg(bus->dev, "I2C_M_RECV_LEN recv_byte %d \n", recv_byte);
 			if (unlikely(recv_byte > I2C_SMBUS_BLOCK_MAX)) {
@@ -608,11 +611,11 @@ static u32 aspeed_i2c_master_irq(struct aspeed_i2c_bus *bus, u32 irq_status)
 			msg->len = recv_byte +
 					((msg->flags & I2C_CLIENT_PEC) ? 2 : 1);
 			msg->flags &= ~I2C_M_RECV_LEN;
+			dev_dbg(bus->dev, "~I2C_M_RECV_LEN new msg->len %d \n", msg->len);
 		}
 
 		if (bus->buf_index < msg->len) {
 			bus->master_state = ASPEED_I2C_MASTER_RX;
-			dev_dbg(bus->dev, "trigger new msg->len %d bus->buf_index %d \n", msg->len, bus->buf_index);
 #if 1
 			if (bus->dma_enable) {
 				if ((msg->len - bus->buf_index) > ASPEED_I2CD_DMA_MAX_SIZE) {
@@ -970,6 +973,23 @@ static int aspeed_i2c_init(struct aspeed_i2c_bus *bus,
 	if (!of_property_read_bool(pdev->dev.of_node, "multi-master"))
 		fun_ctrl_reg |= ASPEED_I2CD_MULTI_MASTER_DIS;
 
+	if (of_property_read_bool(pdev->dev.of_node, "dma-enable")) {
+		bus->dma_buf = dma_alloc_coherent(bus->dev, ASPEED_I2CD_DMA_MAX_SIZE,
+						      &bus->dma_addr, GFP_KERNEL);
+		bus->dma_enable = 1;
+		if (!bus->dma_buf) {
+			dev_err(&pdev->dev, "unable to allocate dma memory\n");
+			bus->dma_enable = 0;
+		}
+
+		if (bus->dma_addr % 4 != 0) {
+			dev_err(bus->dev, "4 byte align error \n");
+			bus->dma_enable = 0;
+		}
+
+	} else 
+		bus->dma_enable = 0;
+
 	/* Enable Master Mode */
 	writel(readl(bus->base + ASPEED_I2C_FUN_CTRL_REG) | fun_ctrl_reg,
 	       bus->base + ASPEED_I2C_FUN_CTRL_REG);
@@ -1066,25 +1086,6 @@ static int aspeed_i2c_probe_bus(struct platform_device *pdev)
 		bus->get_clk_reg_val = (u32 (*)(struct device *, u32))
 				match->data;
 
-	if (of_property_read_bool(pdev->dev.of_node, "dma_enable")) {
-		bus->dma_buf = dma_alloc_coherent(bus->dev, ASPEED_I2CD_DMA_MAX_SIZE,
-						      &bus->dma_addr, GFP_KERNEL);
-		bus->dma_enable = 1;
-		if (!bus->dma_buf) {
-			dev_err(&pdev->dev, "unable to allocate tx Buffer memory\n");
-			bus->dma_enable = 0;
-		}
-		if (bus->dma_addr % 4 != 0) {
-			dev_err(bus->dev, "not 4 byte boundary \n");
-			bus->dma_enable = 0;
-		}
-		dev_dbg(bus->dev,
-			"dma enable dma_buf = [0x%x] dma_addr = [0x%x], please check 4byte boundary \n",
-			(u32)bus->dma_buf, bus->dma_addr);
-	} else 
-		bus->dma_enable = 0;
-
-	printk("bus->dma_enable %d \n", bus->dma_enable);
 	/* Initialize the I2C adapter */
 	spin_lock_init(&bus->lock);
 	init_completion(&bus->cmd_complete);
