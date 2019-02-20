@@ -283,11 +283,11 @@
 				status = "disabled";
 			};
 
-#if 0
 			ast_uart_sdma: uart_sdma@1e79e000 {
 				compatible = "aspeed,ast-uart-sdma";
 				reg = <0x1e79e000 0x400>;
 				interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
+				status = "disabled";
 			};
 
 			dma_uart0: dma_uart0@1e783000{
@@ -299,6 +299,7 @@
 				reg-shift = <2>;
 				dma-channel = <0>;
 				no-loopback-test;
+				status = "disabled";
 			};
 
 			dma_uart1: dma_uart1@1e78d000{
@@ -309,6 +310,7 @@
 				reg-shift = <2>;
 				dma-channel = <1>;
 				no-loopback-test;
+				status = "disabled";
 			};
 
 			dma_uart2: dma_uart2@1e78e000{
@@ -319,6 +321,7 @@
 				reg-shift = <2>;
 				dma-channel = <2>;
 				no-loopback-test;
+				status = "disabled";
 			};
 
 			dma_uart3: dma_uart3@1e78f000{
@@ -329,8 +332,9 @@
 				reg-shift = <2>;
 				dma-channel = <3>;
 				no-loopback-test;
+				status = "disabled";
 			};
-#endif
+
 			i2c: i2c@1e78a000 {
 				compatible = "simple-bus";
 				#address-cells = <1>;
