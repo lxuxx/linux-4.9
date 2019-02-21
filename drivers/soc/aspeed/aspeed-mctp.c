@@ -292,6 +292,7 @@ static int aspeed_mctp_tx_xfer(struct aspeed_mctp_info *aspeed_mctp, struct aspe
 {
 	struct pcie_vdm_header *vdm_header = &mctp_xfer->header;
 	unsigned long byte_length = 0;
+	u32 routing_type = vdm_header->type_routing;
 
 	if(!vdm_header->length) 
 		byte_length = 4096 - vdm_header->pad_len;
@@ -299,27 +300,24 @@ static int aspeed_mctp_tx_xfer(struct aspeed_mctp_info *aspeed_mctp, struct aspe
 		byte_length = vdm_header->length * 4 - vdm_header->pad_len;
 
 	//ast2500 noly support 4096, g5 is not supporting vdm_length is 1024
-	if (aspeed_mctp->mctp_version == 5 && mctp_xfer->header.length == 0)
+	if ((aspeed_mctp->mctp_version == 5) && (!mctp_xfer->header.length))
 		return 1;
 
 	MCTP_DBUG("xfer byte_length = %ld, padding len = %d\n", byte_length, vdm_header->pad_len);
 
-	if ((aspeed_mctp->mctp_version == 0) && (aspeed_mctp->mctp_version == 5)) {
-		u8 routing_type = vdm_header->type_routing & ~0x10;
-
+	if ((aspeed_mctp->mctp_version == 0) || (aspeed_mctp->mctp_version == 5)) {
 		copy_from_user(aspeed_mctp->tx_pool, mctp_xfer->xfer_buff, byte_length);
 
 		//old ast2400/ast2500 only one tx fifo and wait for tx complete
 		init_completion(&aspeed_mctp->tx_complete);		
-
 
 		//if use ast2400/ast2500 need to check vdm header support
 		if (vdm_header->som != vdm_header->eom) {
 			printk("can't support som eom different som %d , eom %d \n", vdm_header->som, vdm_header->eom);
 			return 1;
 		}
-		if (routing_type) {
-			switch (routing_type & 0x7) {
+
+		switch (routing_type & 0x7) {
 			case 0:	//route to rc
 				routing_type = 0;
 				break;
@@ -329,7 +327,6 @@ static int aspeed_mctp_tx_xfer(struct aspeed_mctp_info *aspeed_mctp, struct aspe
 			default:
 				printk("not supported rounting type %x ", routing_type);
 				break;
-			}
 		}
 
 	}else {
@@ -354,24 +351,20 @@ static int aspeed_mctp_tx_xfer(struct aspeed_mctp_info *aspeed_mctp, struct aspe
 		//routing type bit 14
 		//bit 15 : interrupt enable
 		if (!vdm_header->length)
-			aspeed_mctp->tx_cmd_desc->desc0 = INT_ENABLE | TAG_OWN(vdm_header->to) |
-							  ROUTING_TYPE(vdm_header->type_routing) |
+			aspeed_mctp->tx_cmd_desc->desc0 = INT_ENABLE | TAG_OWN(vdm_header->to) | (routing_type << 14) |
 							  PKG_SIZE(0x400) | (vdm_header->pcie_target_id << 16) |
 							  PADDING_LEN(vdm_header->pad_len);
 		else
-			aspeed_mctp->tx_cmd_desc->desc0 = INT_ENABLE | TAG_OWN(vdm_header->to) |
-							  ROUTING_TYPE(vdm_header->type_routing) |
+			aspeed_mctp->tx_cmd_desc->desc0 = INT_ENABLE | TAG_OWN(vdm_header->to) | (routing_type << 14) |
 							  PKG_SIZE(vdm_header->length) | (vdm_header->pcie_target_id << 16) |
 							  PADDING_LEN(vdm_header->pad_len);
-			
+
 		aspeed_mctp->tx_cmd_desc->desc1 = LAST_CMD | DEST_EP_ID(vdm_header->dest_epid) | TX_DATA_ADDR(aspeed_mctp->tx_pool_dma);
 		break;
 	case 5:
 		//routing type [desc0 bit 12, desc0 bit 14], but bug at bit 12, don't use
 		//bit 15 : interrupt enable
-		aspeed_mctp->tx_cmd_desc->desc0 = INT_ENABLE | TAG_OWN(vdm_header->to) |
-						  G5_ROUTING_TYPE_H(vdm_header->type_routing) |
-						  G5_ROUTING_TYPE_L(vdm_header->type_routing) |
+		aspeed_mctp->tx_cmd_desc->desc0 = INT_ENABLE | TAG_OWN(vdm_header->to) | (routing_type << 14) |
 						  G5_PKG_SIZE(vdm_header->length) | (vdm_header->pcie_target_id << 16) |
 						  PADDING_LEN(vdm_header->pad_len);
 		aspeed_mctp->tx_cmd_desc->desc1 = LAST_CMD | DEST_EP_ID(vdm_header->dest_epid) | G5_TX_DATA_ADDR(aspeed_mctp->tx_pool_dma);
@@ -399,7 +392,7 @@ static int aspeed_mctp_tx_xfer(struct aspeed_mctp_info *aspeed_mctp, struct aspe
 	//trigger tx
 	aspeed_mctp_write(aspeed_mctp, aspeed_mctp_read(aspeed_mctp, ASPEED_MCTP_CTRL) | MCTP_TX_TRIGGER, ASPEED_MCTP_CTRL);
 
-	if ((aspeed_mctp->mctp_version == 0) && (aspeed_mctp->mctp_version == 5)) {
+	if ((aspeed_mctp->mctp_version == 0) || (aspeed_mctp->mctp_version == 5)) {
 		wait_for_completion(&aspeed_mctp->tx_complete);
 	}
 
