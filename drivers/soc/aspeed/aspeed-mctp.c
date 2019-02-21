@@ -113,7 +113,9 @@
 //bit 12:2 is packet in 4bytes
 //ast2400 bit 12 can be use.
 //ast2500 bit 12 can't be used. 0: 1024 * 4 = 4096
-#define PKG_SIZE(x)			((x & 0x3ff) << 2)
+#define G5_PKG_SIZE(x)		((x & 0x3ff) << 2)
+#define PKG_SIZE(x)			((x & 0x7ff) << 2)
+
 #define PADDING_LEN(x)			(x & 0x3)
 //TX CMD desc1
 #define LAST_CMD			BIT(31)
@@ -289,9 +291,14 @@ aspeed_mctp_write(struct aspeed_mctp_info *aspeed_mctp, u32 val, u32 reg)
 static int aspeed_mctp_tx_xfer(struct aspeed_mctp_info *aspeed_mctp, struct aspeed_mctp_xfer *mctp_xfer)
 {
 	struct pcie_vdm_header *vdm_header = &mctp_xfer->header;
-	unsigned long byte_length = vdm_header->length * 4 - vdm_header->pad_len;
+	unsigned long byte_length = 0;
 
-	//ast2500 noly support 4096, g5 is not supporting Tx length = 1024
+	if(!vdm_header->length) 
+		byte_length = 4096 - vdm_header->pad_len;
+	else
+		byte_length = vdm_header->length * 4 - vdm_header->pad_len;
+
+	//ast2500 noly support 4096, g5 is not supporting vdm_length is 1024
 	if (aspeed_mctp->mctp_version == 5 && mctp_xfer->header.length == 0)
 		return 1;
 
@@ -346,10 +353,17 @@ static int aspeed_mctp_tx_xfer(struct aspeed_mctp_info *aspeed_mctp, struct aspe
 	case 0:
 		//routing type bit 14
 		//bit 15 : interrupt enable
-		aspeed_mctp->tx_cmd_desc->desc0 = INT_ENABLE | TAG_OWN(vdm_header->to) |
-						  ROUTING_TYPE(vdm_header->type_routing) |
-						  PKG_SIZE(vdm_header->length) | (vdm_header->pcie_target_id << 16) |
-						  PADDING_LEN(vdm_header->pad_len);
+		if (!vdm_header->length)
+			aspeed_mctp->tx_cmd_desc->desc0 = INT_ENABLE | TAG_OWN(vdm_header->to) |
+							  ROUTING_TYPE(vdm_header->type_routing) |
+							  PKG_SIZE(0x400) | (vdm_header->pcie_target_id << 16) |
+							  PADDING_LEN(vdm_header->pad_len);
+		else
+			aspeed_mctp->tx_cmd_desc->desc0 = INT_ENABLE | TAG_OWN(vdm_header->to) |
+							  ROUTING_TYPE(vdm_header->type_routing) |
+							  PKG_SIZE(vdm_header->length) | (vdm_header->pcie_target_id << 16) |
+							  PADDING_LEN(vdm_header->pad_len);
+			
 		aspeed_mctp->tx_cmd_desc->desc1 = LAST_CMD | DEST_EP_ID(vdm_header->dest_epid) | TX_DATA_ADDR(aspeed_mctp->tx_pool_dma);
 		break;
 	case 5:
@@ -358,12 +372,15 @@ static int aspeed_mctp_tx_xfer(struct aspeed_mctp_info *aspeed_mctp, struct aspe
 		aspeed_mctp->tx_cmd_desc->desc0 = INT_ENABLE | TAG_OWN(vdm_header->to) |
 						  G5_ROUTING_TYPE_H(vdm_header->type_routing) |
 						  G5_ROUTING_TYPE_L(vdm_header->type_routing) |
-						  PKG_SIZE(vdm_header->length) | (vdm_header->pcie_target_id << 16) |
+						  G5_PKG_SIZE(vdm_header->length) | (vdm_header->pcie_target_id << 16) |
 						  PADDING_LEN(vdm_header->pad_len);
 		aspeed_mctp->tx_cmd_desc->desc1 = LAST_CMD | DEST_EP_ID(vdm_header->dest_epid) | G5_TX_DATA_ADDR(aspeed_mctp->tx_pool_dma);
 		break;
 	case 6:
-		aspeed_mctp->tx_cmd_desc[aspeed_mctp->tx_idx].desc0 = PKG_SIZE(vdm_header->length);
+		if (!vdm_header->length) 
+			aspeed_mctp->tx_cmd_desc[aspeed_mctp->tx_idx].desc0 = PKG_SIZE(0x400);
+		else
+			aspeed_mctp->tx_cmd_desc[aspeed_mctp->tx_idx].desc0 = PKG_SIZE(vdm_header->length);
 #if 0
 		//add TEST for interrupt and stop
 		aspeed_mctp->tx_cmd_desc[aspeed_mctp->tx_idx].desc0 |= BIT(15) | BIT(16);
