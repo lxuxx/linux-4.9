@@ -2,7 +2,6 @@ obj-$(CONFIG_IRQCHIP)			+= irqchip.o
 
 obj-$(CONFIG_ARCH_ASPEED)		+= irq-aspeed-vic.o
 obj-$(CONFIG_ASPEED_SCU_IRQCHIP)	+= irq-aspeed-scu-ic.o
-obj-$(CONFIG_ASPEED_I2C_IRQCHIP)	+= irq-aspeed-i2c-ic.o
 obj-$(CONFIG_RFX_AST_IRQ)		+= egfx-irq.o
 obj-$(CONFIG_ALPINE_MSI)		+= irq-alpine-msi.o
 obj-$(CONFIG_ATH79)			+= irq-ath79-cpu.o

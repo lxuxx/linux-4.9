@@ -1639,7 +1639,8 @@ static int aspeed_i2c_probe(struct platform_device *pdev)
 	i2c_bus->slave_dma = BYTE_MODE;
 	i2c_bus->do_master_xfer = aspeed_i2c_master_do_byte_xfer;
 
-	i2c_bus->global_reg = syscon_regmap_lookup_by_compatible("aspeed,ast2600-i2c-ic");
+	//i2c_bus->global_reg = syscon_regmap_lookup_by_compatible("aspeed,ast2600-i2c-ic");
+	i2c_bus->global_reg = syscon_regmap_lookup_by_compatible("aspeed,ast2600-i2c-global");
 	if (IS_ERR(i2c_bus->global_reg)) {
 		dev_err(&pdev->dev, "failed to find 2600 i2c global regmap\n");
 	}
@@ -1649,10 +1650,10 @@ static int aspeed_i2c_probe(struct platform_device *pdev)
 
 	if(global_ctrl & BIT(1))
 		i2c_bus->clk_div_mode = 1;
-	
+
 	if(!(global_ctrl & BIT(2))) {
 		ret = -ENOENT;
-		goto free_irq;		
+		goto free_irq;
 	}
 
 	if (of_device_is_compatible(pdev->dev.of_node, "aspeed,ast-dma-i2c")) {
