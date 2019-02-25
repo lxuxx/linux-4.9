@@ -155,7 +155,7 @@ aspeed_acry_write(struct aspeed_acry_dev *crypto, u32 val, u32 reg)
 static inline u32
 aspeed_acry_read(struct aspeed_acry_dev *crypto, u32 reg)
 {
-#if 1
+#if 0
 	u32 val = readl(crypto->regs + reg);
 	printk("R : reg %x , val: %x \n", reg, val);
 	return val;

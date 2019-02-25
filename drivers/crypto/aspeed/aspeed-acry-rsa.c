@@ -28,6 +28,7 @@
 
 void print_dram(const u8 *buf, int len)
 {
+#ifdef ASPEED_RSA_DEBUG
 	int i;
 
 	for (i = 0; i < len; i++) {
@@ -38,11 +39,13 @@ void print_dram(const u8 *buf, int len)
 			printk(KERN_CONT "\n");
 	}
 	printk(KERN_CONT "\n");
+#endif
 }
 
 // mode 0 : exponential, mode 1 : modulus, mode 2 : data
 void print_sram(u8 *buf, int len, int mode)
 {
+#ifdef ASPEED_RSA_DEBUG
 	int i;
 
 	switch (mode) {
@@ -76,6 +79,7 @@ void print_sram(u8 *buf, int len, int mode)
 			printk(KERN_CONT "\n");
 	}
 	printk(KERN_CONT "\n");
+#endif
 }
 
 int aspeed_acry_rsa_sg_copy_to_buffer(u8 *buf, struct scatterlist *src, size_t nbytes)
@@ -179,24 +183,12 @@ static int aspeed_acry_rsa_transfer(struct aspeed_acry_dev *acry_dev)
 	int i, j;
 
 	RSA_DBG("\n");
-	// result_nbytes = ASPEED_ACRY_RSA_MAX_LEN;
-	// for (j = ASPEED_ACRY_RSA_MAX_LEN / 4 - 1; j >= 0; j--) {
-	// 	if (dw_pointer[data_dw_mapping[j]] == 0) {
-	// 		result_nbytes -= 4;
-	// 	} else {
-	// 		for (i = 4 - 1; i >= 0; i--) {
-	// 			if (dw_pointer[data_dw_mapping[j]] >> (i * 8) & 0xff) {
-	// 				break;
-	// 			} else
-	// 				result_nbytes --;
-	// 		}
-	// 	}
-	// }
-	// if (result_nbytes > req->dst_len)
-	// 	return -ENOMEM;
 
 	aspeed_acry_write(acry_dev, ACRY_CMD_DMA_SRAM_AHB_CPU, ASPEED_ACRY_DMA_CMD);
-	print_sram(sram_buffer, ASPEED_ACRY_RSA_MAX_LEN, 2);
+	// printk("sram result:\n");
+	// print_dram(sram_buffer, ASPEED_ACRY_RSA_MAX_LEN * 3);
+
+	// print_sram(sram_buffer, ASPEED_ACRY_RSA_MAX_LEN, 2);
 	i = 0;
 	leading_zero = 1;
 	result_nbytes = ASPEED_ACRY_RSA_MAX_LEN;
@@ -209,25 +201,15 @@ static int aspeed_acry_rsa_transfer(struct aspeed_acry_dev *acry_dev)
 			i++;
 		}
 	}
-	printk("result_nbytes: %d, %d\n", result_nbytes, req->dst_len);
-	scatterwalk_map_and_copy(dram_buffer, out_sg, 0, result_nbytes, 1);
+	// printk("result_nbytes: %d, %d\n", result_nbytes, req->dst_len);
+	// print_dram(dram_buffer, result_nbytes);
+	if (result_nbytes <= req->dst_len) {
+		scatterwalk_map_and_copy(dram_buffer, out_sg, 0, result_nbytes, 1);// TODO check sram DW write
+		req->dst_len = result_nbytes;
+	} else {
+		printk("RSA engine error!\n")
+	}
 	aspeed_acry_write(acry_dev, ACRY_CMD_DMA_SRAM_AHB_ENGINE, ASPEED_ACRY_DMA_CMD);
-	// count = 0;
-	// a = 0;
-	// for (j = result_nbytes - 1; j >= 0; j--) {
-	// 	if (count == 4) {
-	// 		scatterwalk_map_and_copy(&a, out_sg,
-	// 					 offset, 4, 1);
-	// 		offset += 4;
-	// 		a = 0;
-	// 		count = 0;
-	// 		break;
-	// 	} else {
-	// 		a <<= 8;
-	// 		a |= sram_buffer[data_byte_mapping[j]];
-	// 		count ++;
-	// 	}
-	// }
 	return aspeed_acry_rsa_complete(acry_dev, 0);
 }
 
@@ -244,9 +226,14 @@ static inline int aspeed_acry_rsa_wait_for_data_ready(struct aspeed_acry_dev *ac
 	rsa_engine->resume = resume;
 	return -EINPROGRESS;
 #else
+	u32 isr;
+
 	RSA_DBG("\n");
-	while (!(aspeed_acry_read(acry_dev, ASPEED_ACRY_STATUS) & ACRY_RSA_ISR));
-	// aspeed_acry_write(acry_dev, 0, ASPEED_ACRY_STATUS);
+	do {
+		isr = aspeed_acry_read(acry_dev, ASPEED_ACRY_STATUS);
+	} while (!(isr & ACRY_RSA_ISR));
+	aspeed_acry_write(acry_dev, isr, ASPEED_ACRY_STATUS);
+	aspeed_acry_write(acry_dev, 0, ASPEED_ACRY_TRIGGER);
 	udelay(2);
 
 
@@ -263,15 +250,18 @@ int aspeed_acry_rsa_trigger(struct aspeed_acry_dev *acry_dev)
 	RSA_DBG("\n");
 	if (ctx->enc) {
 		aspeed_acry_rsa_sg_copy_to_buffer(ctx->rsa_pub_addr, req->src, req->src_len);
-		print_dram(ctx->rsa_pub_addr, 200);
+		// printk("dram:\n");
+		// print_dram(ctx->rsa_pub_addr, req->src_len * 3);
 		aspeed_acry_write(acry_dev, ctx->rsa_pub_dma_addr, ASPEED_ACRY_DMA_SRC_BASE);
-		aspeed_acry_write(acry_dev, (ctx->ne << 16) + (ctx->nm << 16), ASPEED_ACRY_RSA_KEY_LEN);
-
+		aspeed_acry_write(acry_dev, (ctx->ne << 16) + ctx->nm, ASPEED_ACRY_RSA_KEY_LEN);
+		// printk("exp bits:%d , mod bits:%d\n", ctx->ne, ctx->nm);
 	} else {
 		aspeed_acry_rsa_sg_copy_to_buffer(ctx->rsa_priv_addr, req->src, req->src_len);
-		print_dram(ctx->rsa_priv_addr, 200);
+		// printk("dram:\n");
+		// print_dram(ctx->rsa_priv_addr, req->src_len * 3);
 		aspeed_acry_write(acry_dev, ctx->rsa_priv_dma_addr, ASPEED_ACRY_DMA_SRC_BASE);
 		aspeed_acry_write(acry_dev, (ctx->nd << 16) + ctx->nm, ASPEED_ACRY_RSA_KEY_LEN);
+		// printk("exp bits:%d , mod bits:%d\n", ctx->nd, ctx->nm);
 	}
 	aspeed_acry_write(acry_dev, DMA_DEST_LEN(0x1800), ASPEED_ACRY_DMA_DEST); //TODO check length
 	acry_dev->resume = aspeed_acry_rsa_transfer;
@@ -320,9 +310,8 @@ static int aspeed_acry_rsa_setkey(struct crypto_akcipher *tfm, const void *key,
 	int ret;
 
 	RSA_DBG("\n");
-// 	/* Free the old RSA key if any */
-	// aspeed_acry_rsa_free_key(rsa_key);
-
+	/* Free the old RSA key if any */
+	memset(ctx->rsa_pub_addr, 0, ASPEED_ACRY_BUFF_SIZE * 2);
 	if (priv)
 		ret = rsa_parse_priv_key(&raw_key, key, keylen);
 	else
@@ -333,7 +322,7 @@ static int aspeed_acry_rsa_setkey(struct crypto_akcipher *tfm, const void *key,
 	       raw_key.n_sz, raw_key.e_sz, raw_key.d_sz,
 	       raw_key.p_sz, raw_key.q_sz, raw_key.dp_sz,
 	       raw_key.dq_sz, raw_key.qinv_sz);
-	if (raw_key.n_sz > 512)
+	if (raw_key.n_sz > 513)
 		return -EINVAL;
 
 	ctx->n_sz = raw_key.n_sz;
@@ -354,14 +343,14 @@ static int aspeed_acry_rsa_setkey(struct crypto_akcipher *tfm, const void *key,
 	ctx->e_sz = raw_key.e_sz;
 	ctx->ne = aspeed_acry_rsa_ctx_copy(ctx->rsa_pub_addr, raw_key.e,
 					   raw_key.e_sz, 0);
-	printk("rsa_pub_addr:\n");
-	// print_dram(ctx->rsa_pub_addr, 2048 * 3);
-	print_sram(ctx->rsa_pub_addr, ctx->n_sz, 1);
-	print_sram(ctx->rsa_pub_addr, ctx->e_sz, 0);
-	printk("rsa_priv_addr:\n");
-	// print_dram(ctx->rsa_priv_addr, 2048 * 3);
-	print_sram(ctx->rsa_priv_addr, ctx->n_sz, 1);
-	print_sram(ctx->rsa_priv_addr, ctx->d_sz, 0);
+	// printk("rsa_pub_addr:\n");
+	// // print_dram(ctx->rsa_pub_addr, 2048 * 3);
+	// print_sram(ctx->rsa_pub_addr, ctx->n_sz, 1);
+	// print_sram(ctx->rsa_pub_addr, ctx->e_sz, 0);
+	// printk("rsa_priv_addr:\n");
+	// // print_dram(ctx->rsa_priv_addr, 2048 * 3);
+	// print_sram(ctx->rsa_priv_addr, ctx->n_sz, 1);
+	// print_sram(ctx->rsa_priv_addr, ctx->d_sz, 0);
 
 	if (ctx->ne < 0)
 		return -ENOMEM;
