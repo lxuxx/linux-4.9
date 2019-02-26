@@ -325,6 +325,17 @@ config I2C_POWERMAC
 
 comment "I2C system bus drivers (mostly embedded / system-on-chip)"
 
+config I2C_ASPEED
+	tristate "Aspeed I2C Controller"
+	select ASPEED_I2C_IRQCHIP
+	depends on ARCH_ASPEED
+	help
+	  If you say yes to this option, support will be included for the
+	  Aspeed I2C controller.
+
+	  This driver can also be built as a module.  If so, the module
+	  will be called i2c-aspeed.
+
 config I2C_AT91
 	tristate "Atmel AT91 I2C Two-Wire interface (TWI)"
 	depends on ARCH_AT91
@@ -352,7 +363,7 @@ config I2C_AST
           This driver can also be built as a module.  If so, the module
           will be called i2c-ast.
 
-config I2C_ASPEED
+config I2C_ASPEED_PKG
 	tristate "ASPEED NEW I2C adapter "
 	select ASPEED_I2C_IRQCHIP
 	help

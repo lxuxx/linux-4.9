@@ -169,7 +169,7 @@ config SERIAL_8250_RUNTIME_UARTS
 
 config AST_UART_SDMA
 	bool "AST UART SDMA"
-	depends on ARCH_AST2500 || ARCH_AST1220
+	depends on MACH_ASPEED_G5 || MACH_ASPEED_G6
 	help
 	  The ASPEED SDMA for support UART
 
