@@ -479,7 +479,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x80 0x80 0xC00 0x20>;
-#if 0
+#if 1
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -502,7 +502,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x100 0x80 0xC20 0x20>;
-#if 0
+#if 1
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -519,7 +519,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x180 0x80 0xC40 0x20>;
-#if 0
+#if 1
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -528,10 +528,6 @@
 		bus-frequency = <100000>;
 		interrupts = <2>;
 		interrupt-parent = <&i2c_ic>;
-#if 0		
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c3_default>;
-#endif		
 	};
 	i2c3: i2c@200 {
 		#address-cells = <1>;
@@ -539,7 +535,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x200 0x40 0xC60 0x20>;
-#if 0
+#if 1
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -548,10 +544,6 @@
 		bus-frequency = <100000>;
 		interrupts = <3>;
 		interrupt-parent = <&i2c_ic>;
-#if 0
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c4_default>;
-#endif
 	};
 	i2c4: i2c@280 {
 		#address-cells = <1>;
@@ -559,7 +551,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x280 0x80 0xC80 0x20>;
-#if 0
+#if 1
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -568,10 +560,6 @@
 		bus-frequency = <100000>;
 		interrupts = <4>;
 		interrupt-parent = <&i2c_ic>;
-#if 0		
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c5_default>;
-#endif		
 	};
 	i2c5: i2c@300 {
 		#address-cells = <1>;
@@ -579,7 +567,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x300 0x40 0xCA0 0x20>;
-#if 0
+#if 1
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -588,10 +576,6 @@
 		bus-frequency = <100000>;
 		interrupts = <5>;
 		interrupt-parent = <&i2c_ic>;
-#if 0
-		pinctrl-names = "default";		
-		pinctrl-0 = <&pinctrl_i2c6_default>;
-#endif
 	};
 	i2c6: i2c@380 {
 		#address-cells = <1>;
@@ -599,7 +583,7 @@
 		#interrupt-cells = <1>;
 
 		reg = <0x380 0x80 0xCC0 0x20>;
-#if 0
+#if 1
 		compatible = "aspeed,ast-g6-i2c", "aspeed,ast-dma-i2c";
 #else
 		compatible = "aspeed,aspeed-i2c", "aspeed,ast-dma-i2c";
@@ -608,9 +592,6 @@
 		bus-frequency = <100000>;
 		interrupts = <6>;		
 		interrupt-parent = <&i2c_ic>;
-#if 0		
-		pinctrl-0 = <&pinctrl_i2c7_default>;
-#endif		
 	};
 	i2c7: i2c@400 {
 		#address-cells = <1>;
@@ -627,10 +608,6 @@
 		bus-frequency = <100000>;
 		interrupts = <7>;
 		interrupt-parent = <&i2c_ic>;
-#if 0
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c8_default>;
-#endif		
 	};
 	i2c8: i2c@480 {
 		#address-cells = <1>;
@@ -647,10 +624,6 @@
 		bus-frequency = <100000>;
 		interrupts = <8>;
 		interrupt-parent = <&i2c_ic>;
-#if 0		
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c9_default>;
-#endif		
 	};
 	i2c9: i2c@500 {
 		#address-cells = <1>;
@@ -667,10 +640,6 @@
 		bus-frequency = <100000>;
 		interrupts = <9>;
 		interrupt-parent = <&i2c_ic>;
-#if 0		
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c10_default>;
-#endif		
 		status = "disabled";
 	};
 	i2c10: i2c@580 {
@@ -688,10 +657,6 @@
 		bus-frequency = <100000>;
 		interrupts = <10>;
 		interrupt-parent = <&i2c_ic>;
-#if 0		
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c11_default>;
-#endif		
 		status = "disabled";
 	};
 	i2c11: i2c@600 {
@@ -709,10 +674,6 @@
 		bus-frequency = <100000>;
 		interrupts = <11>;
 		interrupt-parent = <&i2c_ic>;
-#if 0		
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c12_default>;
-#endif		
 		status = "disabled";
 	};
 	i2c12: i2c@680 {
@@ -730,10 +691,6 @@
 		bus-frequency = <100000>;
 		interrupts = <12>;
 		interrupt-parent = <&i2c_ic>;
-#if 0		
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c13_default>;
-#endif		
 		status = "disabled";
 	};
 	i2c13: i2c@700 {
@@ -751,10 +708,6 @@
 		bus-frequency = <100000>;
 		interrupts = <13>;
 		interrupt-parent = <&i2c_ic>;
-#if 0		
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c14_default>;
-#endif		
 		status = "disabled";
 	};
 	i2c14: i2c@780 {
@@ -772,10 +725,6 @@
 		bus-frequency = <100000>;
 		interrupts = <13>;
 		interrupt-parent = <&i2c_ic>;
-#if 0
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c14_default>;
-#endif		
 		status = "disabled";
 	};
 	i2c15: i2c@800 {
@@ -793,10 +742,6 @@
 		bus-frequency = <100000>;
 		interrupts = <13>;
 		interrupt-parent = <&i2c_ic>;
-#if 0
-		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_i2c14_default>;
-#endif
 		status = "disabled";
 	};
 };
