@@ -2,6 +2,7 @@
 # Makefile for the video capture/playback device drivers.
 #
 obj-$(CONFIG_VIDEO_AST_JPEG)		+= ast-jpeg/
+obj-$(CONFIG_VIDEO_ASPEED)		+= aspeed-video.o
 obj-$(CONFIG_VIDEO_M32R_AR_M64278) += arv.o
 
 obj-$(CONFIG_VIDEO_VIA_CAMERA) += via-camera.o

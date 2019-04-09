@@ -148,6 +148,10 @@ int usb_control_msg(struct usb_device *dev, unsigned int pipe, __u8 request,
 
 	ret = usb_internal_control_msg(dev, pipe, dr, data, size, timeout);
 
+	/* Linger a bit, prior to the next control message. */
+	if (dev->quirks & USB_QUIRK_DELAY_CTRL_MSG)
+		msleep(200);
+
 	kfree(dr);
 
 	return ret;
@@ -722,19 +726,11 @@ static int usb_string_sub(struct usb_device *dev, unsigned int langid,
 	if (dev->quirks & USB_QUIRK_STRING_FETCH_255)
 		rc = -EIO;
 	else
-#ifdef CONFIG_ARCH_ASPEED
-		rc = usb_get_string(dev, langid, index, buf, 256);
-#else
 		rc = usb_get_string(dev, langid, index, buf, 255);
-#endif
 
 	/* If that failed try to read the descriptor length, then
 	 * ask for just that many bytes */
-#ifdef CONFIG_ARCH_ASPEED
-	if ((rc < 2) || (rc == 256)) {
-#else
 	if (rc < 2) {
-#endif		
 		rc = usb_get_string(dev, langid, index, buf, 2);
 		if (rc == 2)
 			rc = usb_get_string(dev, langid, index, buf, buf[0]);
@@ -2075,6 +2071,10 @@ int cdc_parse_cdc_header(struct usb_cdc_parsed_header *hdr,
 			dev_err(&intf->dev, "skipping garbage byte\n");
 			elength = 1;
 			goto next_desc;
+		}
+		if ((buflen < elength) || (elength < 3)) {
+			dev_err(&intf->dev, "invalid descriptor buffer length\n");
+			break;
 		}
 		if (buffer[1] != USB_DT_CS_INTERFACE) {
 			dev_err(&intf->dev, "skipping garbage\n");

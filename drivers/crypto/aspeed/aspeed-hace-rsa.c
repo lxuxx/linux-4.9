@@ -15,7 +15,7 @@
  *
  */
 
-#include "aspeed-crypto.h"
+#include "aspeed-hace.h"
 
 // #define ASPEED_RSA_DEBUG
 
@@ -484,25 +484,64 @@ void RSAgetNp(struct aspeed_rsa_ctx *ctx, struct aspeed_rsa_key *rsa_key)
 	return;
 }
 
-static int aspeed_akcipher_complete(struct aspeed_crypto_dev *crypto_dev, int err)
+int aspeed_hace_rsa_handle_queue(struct aspeed_hace_dev *hace_dev,
+				 struct crypto_async_request *new_areq)
 {
-	struct akcipher_request *req = crypto_dev->akcipher_req;
+	struct aspeed_hace_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
+	struct crypto_async_request *areq, *backlog;
+	unsigned long flags;
+	int ret = 0;
 
 	RSA_DBG("\n");
-	crypto_dev->flags &= ~CRYPTO_FLAGS_BUSY;
-	if (crypto_dev->is_async)
+	spin_lock_irqsave(&rsa_engine->lock, flags);
+	if (new_areq)
+		ret = crypto_enqueue_request(&rsa_engine->queue, new_areq);
+	if (rsa_engine->flags & CRYPTO_FLAGS_BUSY) {
+		spin_unlock_irqrestore(&rsa_engine->lock, flags);
+		return ret;
+	}
+	backlog = crypto_get_backlog(&rsa_engine->queue);
+	areq = crypto_dequeue_request(&rsa_engine->queue);
+	if (areq)
+		rsa_engine->flags |= CRYPTO_FLAGS_BUSY;
+	spin_unlock_irqrestore(&rsa_engine->lock, flags);
+
+	if (!areq)
+		return ret;
+
+	if (backlog)
+		backlog->complete(backlog, -EINPROGRESS);
+
+
+	rsa_engine->akcipher_req = container_of(areq, struct akcipher_request, base);
+
+	//TODO trigger
+	ret = aspeed_hace_rsa_trigger(hace_dev);
+
+	return ret;
+}
+
+static int aspeed_akcipher_complete(struct aspeed_hace_dev *hace_dev, int err)
+{
+	struct aspeed_hace_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
+	struct akcipher_request *req = rsa_engine->akcipher_req;
+
+	RSA_DBG("\n");
+	rsa_engine->flags &= ~CRYPTO_FLAGS_BUSY;
+	if (rsa_engine->is_async)
 		req->base.complete(&req->base, err);
 
-	tasklet_schedule(&crypto_dev->queue_task);
+	aspeed_hace_rsa_handle_queue(hace_dev, NULL);
 
 	return err;
 }
 
-static int aspeed_akcipher_transfer(struct aspeed_crypto_dev *crypto_dev)
+static int aspeed_akcipher_transfer(struct aspeed_hace_dev *hace_dev)
 {
-	struct akcipher_request *req = crypto_dev->akcipher_req;
+	struct aspeed_hace_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
+	struct akcipher_request *req = rsa_engine->akcipher_req;
 	struct scatterlist *out_sg = req->dst;
-	u8 *xa_buff = crypto_dev->rsa_buff + ASPEED_RSA_XA_BUFF;
+	u8 *xa_buff = rsa_engine->rsa_buff + ASPEED_RSA_XA_BUFF;
 	int nbytes = 0;
 	int err = 0;
 	int result_length;
@@ -523,47 +562,50 @@ static int aspeed_akcipher_transfer(struct aspeed_crypto_dev *crypto_dev)
 		printk("sg_copy_from_buffer nbytes error \n");
 		return -EINVAL;
 	}
-	return aspeed_akcipher_complete(crypto_dev, err);
+	return aspeed_akcipher_complete(hace_dev, err);
 }
 
-static inline int aspeed_akcipher_wait_for_data_ready(struct aspeed_crypto_dev *crypto_dev,
-		aspeed_crypto_fn_t resume)
+static inline int aspeed_akcipher_wait_for_data_ready(struct aspeed_hace_dev *hace_dev,
+		aspeed_hace_fn_t resume)
 {
+	struct aspeed_hace_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
+
 #ifdef CONFIG_CRYPTO_DEV_ASPEED_AKCIPHER_INT
-	u32 isr = aspeed_crypto_read(crypto_dev, ASPEED_HACE_STS);
+	u32 isr = aspeed_hace_read(hace_dev, ASPEED_HACE_STS);
 
 	RSA_DBG("\n");
 	if (unlikely(isr & HACE_RSA_ISR))
-		return resume(crypto_dev);
+		return resume(hace_dev);
 
-	crypto_dev->resume = resume;
+	rsa_engine->resume = resume;
 	return -EINPROGRESS;
 #else
 	RSA_DBG("\n");
-	while (aspeed_crypto_read(crypto_dev, ASPEED_HACE_STS) & HACE_RSA_BUSY);
-	aspeed_crypto_write(crypto_dev, 0, ASPEED_HACE_RSA_CMD);
+	while (aspeed_hace_read(hace_dev, ASPEED_HACE_STS) & HACE_RSA_BUSY);
+	aspeed_hace_write(hace_dev, 0, ASPEED_HACE_RSA_CMD);
 	udelay(2);
 
-	return resume(crypto_dev);
+	return resume(hace_dev);
 #endif
 }
 
-int aspeed_crypto_rsa_trigger(struct aspeed_crypto_dev *crypto_dev)
+int aspeed_hace_rsa_trigger(struct aspeed_hace_dev *hace_dev)
 {
-	struct crypto_akcipher *cipher = crypto_akcipher_reqtfm(crypto_dev->akcipher_req);
+	struct aspeed_hace_engine_rsa *rsa_engine = &hace_dev->rsa_engine;
+	struct akcipher_request *req = rsa_engine->akcipher_req;
+	struct crypto_akcipher *cipher = crypto_akcipher_reqtfm(req);
 	struct aspeed_rsa_ctx *ctx = crypto_tfm_ctx(&cipher->base);
-	struct akcipher_request *req = crypto_dev->akcipher_req;
 	struct scatterlist *in_sg = req->src;
 	struct aspeed_rsa_key *rsa_key = &ctx->key;
 	int nbytes = 0;
-	u8 *xa_buff = crypto_dev->rsa_buff + ASPEED_RSA_XA_BUFF;
-	u8 *e_buff = crypto_dev->rsa_buff + ASPEED_RSA_E_BUFF;
-	u8 *n_buff = crypto_dev->rsa_buff + ASPEED_RSA_N_BUFF;
-	u8 *np_buff = crypto_dev->rsa_buff + ASPEED_RSA_NP_BUFF;
+	u8 *xa_buff = rsa_engine->rsa_buff + ASPEED_RSA_XA_BUFF;
+	u8 *e_buff = rsa_engine->rsa_buff + ASPEED_RSA_E_BUFF;
+	u8 *n_buff = rsa_engine->rsa_buff + ASPEED_RSA_N_BUFF;
+	u8 *np_buff = rsa_engine->rsa_buff + ASPEED_RSA_NP_BUFF;
 
 	RSA_DBG("\n");
 #if 0
-	printk("rsa_buff: \t%x\n", crypto_dev->rsa_buff);
+	printk("rsa_buff: \t%x\n", rsa_engine->rsa_buff);
 	printk("xa_buff: \t%x\n", xa_buff);
 	printk("e_buff: \t%x\n", e_buff);
 #endif
@@ -581,9 +623,9 @@ int aspeed_crypto_rsa_trigger(struct aspeed_crypto_dev *crypto_dev)
 	printk("input message:\n");
 	printA(xa_buff);
 	printk("input M:\n");
-	printA((u8 *)(crypto_dev->rsa_buff + ASPEED_RSA_N_BUFF));
+	printA((u8 *)(rsa_engine->rsa_buff + ASPEED_RSA_N_BUFF));
 	printk("input Mp:\n");
-	printA((u8 *)(crypto_dev->rsa_buff + ASPEED_RSA_NP_BUFF));
+	printA((u8 *)(rsa_engine->rsa_buff + ASPEED_RSA_NP_BUFF));
 	printk("ne = %d nm = %d\n", rsa_key->ne, rsa_key->nm);
 	printk("ready rsa\n");
 #endif
@@ -592,27 +634,27 @@ int aspeed_crypto_rsa_trigger(struct aspeed_crypto_dev *crypto_dev)
 		// printk("rsa_key->e: %d\n", rsa_key->ne);
 		// printk("input E:\n");
 		// printA(e_buff);
-		aspeed_crypto_write(crypto_dev, rsa_key->ne + (rsa_key->nm << 16),
-				    ASPEED_HACE_RSA_MD_EXP_BIT);
+		aspeed_hace_write(hace_dev, rsa_key->ne + (rsa_key->nm << 16),
+				  ASPEED_HACE_RSA_MD_EXP_BIT);
 	} else {
 		memcpy(e_buff, rsa_key->d, 512);
 		// printk("rsa_key->d: %d\n", rsa_key->nd);
 		// printk("input E:\n");
 		// printA(e_buff);
-		aspeed_crypto_write(crypto_dev, rsa_key->nd + (rsa_key->nm << 16),
-				    ASPEED_HACE_RSA_MD_EXP_BIT);
+		aspeed_hace_write(hace_dev, rsa_key->nd + (rsa_key->nm << 16),
+				  ASPEED_HACE_RSA_MD_EXP_BIT);
 	}
 #ifdef CONFIG_CRYPTO_DEV_ASPEED_AKCIPHER_INT
-	aspeed_crypto_write(crypto_dev,
-			    RSA_CMD_SRAM_ENGINE_ACCESSABLE | RSA_CMD_FIRE | RSA_CMD_INT_ENABLE,
-			    ASPEED_HACE_RSA_CMD);
-	crypto_dev->resume = aspeed_akcipher_transfer;
-	return aspeed_akcipher_wait_for_data_ready(crypto_dev, aspeed_akcipher_transfer);
+	aspeed_hace_write(hace_dev,
+			  RSA_CMD_SRAM_ENGINE_ACCESSABLE | RSA_CMD_FIRE | RSA_CMD_INT_ENABLE,
+			  ASPEED_HACE_RSA_CMD);
+	rsa_engine->resume = aspeed_akcipher_transfer;
+	return aspeed_akcipher_wait_for_data_ready(hace_dev, aspeed_akcipher_transfer);
 #else
-	aspeed_crypto_write(crypto_dev,
-			    RSA_CMD_SRAM_ENGINE_ACCESSABLE | RSA_CMD_FIRE,
-			    ASPEED_HACE_RSA_CMD);
-	return aspeed_akcipher_wait_for_data_ready(crypto_dev, aspeed_akcipher_transfer);
+	aspeed_hace_write(hace_dev,
+			  RSA_CMD_SRAM_ENGINE_ACCESSABLE | RSA_CMD_FIRE,
+			  ASPEED_HACE_RSA_CMD);
+	return aspeed_akcipher_wait_for_data_ready(hace_dev, aspeed_akcipher_transfer);
 #endif
 
 }
@@ -621,12 +663,12 @@ static int aspeed_rsa_enc(struct akcipher_request *req)
 {
 	struct crypto_akcipher *tfm = crypto_akcipher_reqtfm(req);
 	struct aspeed_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
-	struct aspeed_crypto_dev *crypto_dev = ctx->crypto_dev;
+	struct aspeed_hace_dev *hace_dev = ctx->hace_dev;
 
 	ctx->enc = 1;
 	RSA_DBG("\n");
 
-	return aspeed_crypto_handle_queue(crypto_dev, &req->base);
+	return aspeed_hace_rsa_handle_queue(hace_dev, &req->base);
 
 }
 
@@ -634,12 +676,12 @@ static int aspeed_rsa_dec(struct akcipher_request *req)
 {
 	struct crypto_akcipher *tfm = crypto_akcipher_reqtfm(req);
 	struct aspeed_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
-	struct aspeed_crypto_dev *crypto_dev = ctx->crypto_dev;
+	struct aspeed_hace_dev *hace_dev = ctx->hace_dev;
 
 	ctx->enc = 0;
 	RSA_DBG("\n");
 
-	return aspeed_crypto_handle_queue(crypto_dev, &req->base);
+	return aspeed_hace_rsa_handle_queue(hace_dev, &req->base);
 }
 
 
@@ -668,7 +710,6 @@ static int aspeed_rsa_setkey(struct crypto_akcipher *tfm, const void *key,
 {
 	struct aspeed_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
 	struct rsa_key raw_key;
-	struct aspeed_crypto_dev *crypto_dev = ctx->crypto_dev;
 	struct aspeed_rsa_key *rsa_key = &ctx->key;
 	int ret;
 
@@ -686,7 +727,7 @@ static int aspeed_rsa_setkey(struct crypto_akcipher *tfm, const void *key,
 	// 	raw_key.n_sz, raw_key.e_sz, raw_key.d_sz,
 	// 	raw_key.p_sz, raw_key.q_sz, raw_key.dp_sz,
 	// 	raw_key.dq_sz, raw_key.qinv_sz);
-	if (raw_key.n_sz > crypto_dev->rsa_max_buf_len) {
+	if (raw_key.n_sz > ASPEED_RSA_BUFF_SIZE) {
 		aspeed_rsa_free_key(rsa_key);
 		return -EINVAL;
 	}
@@ -716,12 +757,10 @@ static int aspeed_rsa_setkey(struct crypto_akcipher *tfm, const void *key,
 
 	BNCopyToLN(rsa_key->n, raw_key.n, raw_key.n_sz);
 
-	if (!(ctx->crypto_dev->version & ASPEED_CRYPTO_G6)) {
-		rsa_key->np = kzalloc(ASPEED_RSA_KEY_LEN, GFP_KERNEL);
-		if (!rsa_key->n)
-			goto err;
-		RSAgetNp(ctx, rsa_key);
-	}
+	rsa_key->np = kzalloc(ASPEED_RSA_KEY_LEN, GFP_KERNEL);
+	if (!rsa_key->n)
+		goto err;
+	RSAgetNp(ctx, rsa_key);
 
 	return 0;
 err:
@@ -758,33 +797,30 @@ static int aspeed_rsa_init_tfm(struct crypto_akcipher *tfm)
 {
 	struct aspeed_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
 	struct akcipher_alg *alg = __crypto_akcipher_alg(tfm->base.__crt_alg);
-	struct aspeed_crypto_alg *algt;
+	struct aspeed_hace_alg *algt;
 
 	RSA_DBG("\n");
 
-	algt = container_of(alg, struct aspeed_crypto_alg, alg.akcipher);
+	algt = container_of(alg, struct aspeed_hace_alg, alg.akcipher);
 
-	ctx->crypto_dev = algt->crypto_dev;
+	ctx->hace_dev = algt->hace_dev;
 
-	if (!(ctx->crypto_dev->version & ASPEED_CRYPTO_G6))
-		ctx->euclid_ctx = kzalloc(ASPEED_EUCLID_CTX_LEN, GFP_KERNEL);
+	ctx->euclid_ctx = kzalloc(ASPEED_EUCLID_CTX_LEN, GFP_KERNEL);
 	return 0;
 }
 
 static void aspeed_rsa_exit_tfm(struct crypto_akcipher *tfm)
 {
 	struct aspeed_rsa_ctx *ctx = akcipher_tfm_ctx(tfm);
-	struct aspeed_crypto_dev *crypto_dev = ctx->crypto_dev;
 	struct aspeed_rsa_key *key = &ctx->key;
 
 	RSA_DBG("\n");
 
 	aspeed_rsa_free_key(key);
-	if (!(crypto_dev->version & ASPEED_CRYPTO_G6))
-		kfree(ctx->euclid_ctx);
+	kfree(ctx->euclid_ctx);
 }
 
-struct aspeed_crypto_alg aspeed_akcipher_algs[] = {
+struct aspeed_hace_alg aspeed_akcipher_algs[] = {
 	{
 		.alg.akcipher = {
 			.encrypt = aspeed_rsa_enc,
@@ -810,13 +846,13 @@ struct aspeed_crypto_alg aspeed_akcipher_algs[] = {
 	},
 };
 
-int aspeed_register_akcipher_algs(struct aspeed_crypto_dev *crypto_dev)
+int aspeed_register_hace_rsa_algs(struct aspeed_hace_dev *hace_dev)
 {
 	int i;
 	int err = 0;
 
 	for (i = 0; i < ARRAY_SIZE(aspeed_akcipher_algs); i++) {
-		aspeed_akcipher_algs[i].crypto_dev = crypto_dev;
+		aspeed_akcipher_algs[i].hace_dev = hace_dev;
 		err = crypto_register_akcipher(&aspeed_akcipher_algs[i].alg.akcipher);
 		if (err)
 			return err;

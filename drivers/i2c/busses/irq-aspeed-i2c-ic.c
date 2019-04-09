@@ -51,6 +51,7 @@ static const struct of_device_id aspeed_i2c_ic_of_match[] = {
 	{ .compatible = "aspeed,ast2400-i2c-ic", .data = (void *) 14},
 	{ .compatible = "aspeed,ast2500-i2c-ic", .data = (void *) 14},
 	{ .compatible = "aspeed,ast2600-i2c-ic", .data = (void *) 16},
+	{ .compatible = "aspeed,ast2600-i2c-global", .data = (void *) 0},	
 	{},
 };
 
@@ -66,6 +67,7 @@ static void aspeed_g6_i2c_ic_irq_handler(struct irq_desc *desc)
 	unsigned long bit, status;
 	unsigned int bus_irq;
 
+	chained_irq_enter(chip, desc);
 	if(readl(i2c_ic->base + ASPEED_I2CG_CTRL) & ASPEED_I2CG_M_S_SEPARATE_INTR) {
 		status = readl(i2c_ic->base);
 		status &= i2c_ic->i2c_irq_mask;
@@ -74,7 +76,6 @@ static void aspeed_g6_i2c_ic_irq_handler(struct irq_desc *desc)
 		status = readl(i2c_ic->base);
 		status &= i2c_ic->i2c_irq_mask;
 	}
-	chained_irq_enter(chip, desc);
 	for_each_set_bit(bit, &status, i2c_ic->bus_num) {
 		bus_irq = irq_find_mapping(i2c_ic->irq_domain, bit);
 		generic_handle_irq(bus_irq);
@@ -140,7 +141,12 @@ static int aspeed_i2c_ic_probe(struct platform_device *pdev)
 	struct device_node *node = pdev->dev.of_node;
 	const struct of_device_id *match;
 	u32 bus_owner;
+	u32 new_mode;
 	int ret = 0;
+
+	match = of_match_node(aspeed_i2c_ic_of_match, node);
+	if (!match)
+		return -ENOMEM;
 
 	i2c_ic = kzalloc(sizeof(*i2c_ic), GFP_KERNEL);
 	if (!i2c_ic)
@@ -152,11 +158,15 @@ static int aspeed_i2c_ic_probe(struct platform_device *pdev)
 		goto err_free_ic;
 	}
 
-	i2c_ic->parent_irq = irq_of_parse_and_map(node, 0);
-	if (i2c_ic->parent_irq < 0) {
-		ret = i2c_ic->parent_irq;
-		goto err_iounmap;
-	}
+	i2c_ic->bus_num = (int) match->data;
+
+	if (i2c_ic->bus_num) {
+		i2c_ic->parent_irq = irq_of_parse_and_map(node, 0);
+		if (i2c_ic->parent_irq < 0) {
+			ret = i2c_ic->parent_irq;
+			goto err_iounmap;
+		}
+	} 
 
 	i2c_ic->rst = devm_reset_control_get_exclusive(&pdev->dev, NULL);
 
@@ -171,18 +181,15 @@ static int aspeed_i2c_ic_probe(struct platform_device *pdev)
 	udelay(3);
 	reset_control_deassert(i2c_ic->rst);
 
-	match = of_match_node(aspeed_i2c_ic_of_match, node);
-	if (!match)
-		goto err_iounmap;
-
-	i2c_ic->bus_num = (int) match->data;
-
 	/* ast2600 init */
-	if(of_device_is_compatible(node, "aspeed,ast2600-i2c-ic")) {
+	if ((of_device_is_compatible(node, "aspeed,ast2600-i2c-global")) || 
+		(of_device_is_compatible(node, "aspeed,ast2600-i2c-ic"))) {
 		/* only support in ast-g6 platform */
-#ifdef CONFIG_I2C_ASPEED
-		writel(ASPEED_I2CG_SLAVE_PKT_NAK | ASPEED_I2CG_CTRL_NEW_REG, i2c_ic->base + ASPEED_I2CG_CTRL);
-#endif
+
+		if(!of_property_read_u32(node, "new-mode", &new_mode)) {
+			if(new_mode)
+				writel(ASPEED_I2CG_SLAVE_PKT_NAK | ASPEED_I2CG_CTRL_NEW_REG, i2c_ic->base + ASPEED_I2CG_CTRL);
+		}
 		/* assign 4 base clock 
 		 * base clk1 : 1M for 1KHz
 		 * base clk2 : 4M for 400KHz	 
@@ -206,25 +213,28 @@ static int aspeed_i2c_ic_probe(struct platform_device *pdev)
 		i2c_ic->i2c_irq_mask = 0xffffffff;
 	}
 
-	i2c_ic->irq_domain = irq_domain_add_linear(node,
-			     i2c_ic->bus_num,
-			     &aspeed_i2c_ic_irq_domain_ops,
-			     i2c_ic);
-	if (!i2c_ic->irq_domain) {
-		ret = -ENOMEM;
-		goto err_iounmap;
-	}
+	if(i2c_ic->bus_num) {
+		i2c_ic->irq_domain = irq_domain_add_linear(node,
+				     i2c_ic->bus_num,
+				     &aspeed_i2c_ic_irq_domain_ops,
+				     i2c_ic);
+		if (!i2c_ic->irq_domain) {
+			ret = -ENOMEM;
+			goto err_iounmap;
+		}
 
-	i2c_ic->irq_domain->name = "aspeed-i2c-domain";
+		i2c_ic->irq_domain->name = "aspeed-i2c-domain";
 
-	if(of_device_is_compatible(node, "aspeed,ast2600-i2c-ic")) {
-		irq_set_chained_handler_and_data(i2c_ic->parent_irq,
-						 aspeed_g6_i2c_ic_irq_handler, i2c_ic);
-	} else {
-		irq_set_chained_handler_and_data(i2c_ic->parent_irq,
-						 aspeed_i2c_ic_irq_handler, i2c_ic);
-	}
-	pr_info("i2c controller registered, irq %d\n", i2c_ic->parent_irq);
+		if(of_device_is_compatible(node, "aspeed,ast2600-i2c-ic")) {
+			irq_set_chained_handler_and_data(i2c_ic->parent_irq,
+							 aspeed_g6_i2c_ic_irq_handler, i2c_ic);
+		} else {
+			irq_set_chained_handler_and_data(i2c_ic->parent_irq,
+							 aspeed_i2c_ic_irq_handler, i2c_ic);
+		}
+		pr_info("i2c controller registered, irq %d\n", i2c_ic->parent_irq);
+	} else 
+		pr_info("i2c global registered \n");
 
 	return 0;
 

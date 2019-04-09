@@ -14,8 +14,8 @@ config CRYPTO_DEV_ASPEED
 	  help
 	    Say 'Y' here to use the AST Hash & Crypto Engine (HACE)
 
-config CRYPTO_DEV_ASPEED_ABLK_INT
-        bool "Enable Ablkcipher Interrupt"
+config CRYPTO_DEV_ASPEED_SK_INT
+        bool "Enable Skcipher Interrupt"
         depends on CRYPTO_DEV_ASPEED
         default y
 

@@ -189,6 +189,7 @@ struct gpio_desc {
 #define FLAG_OPEN_SOURCE 8	/* Gpio is open source type */
 #define FLAG_USED_AS_IRQ 9	/* GPIO is connected to an IRQ */
 #define FLAG_IS_HOGGED	11	/* GPIO is hogged */
+#define FLAG_TRANSITORY 12	/* GPIO may lose value in sleep or reset */
 
 	/* Connection label */
 	const char		*label;
@@ -208,6 +209,8 @@ static int __maybe_unused gpio_chip_hwgpio(const struct gpio_desc *desc)
 {
 	return desc - &desc->gdev->descs[0];
 }
+
+void devprop_gpiochip_set_names(struct gpio_chip *chip);
 
 /* With descriptor prefix */
 

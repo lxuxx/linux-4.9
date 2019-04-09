@@ -39,22 +39,6 @@ config HWMON_DEBUG_CHIP
 
 comment "Native drivers"
 
-config SENSORS_ASPEED_ADC
-	tristate "ASPEED ADC Controller Driver"
-	depends on ARCH_ASPEED
-	default n
-	help
-          This driver provides support for the ASPEED ADC
-          Controller, which provides an Voltage Sensor.
-
-config SENSORS_AST1010_ADC
-        tristate "AST1010 ADC Controller Driver"
-        depends on ARCH_ASPEED
-        default n
-        help
-          This driver provides support for the ASPEED ADC
-          Controller, which provides an Voltage Sensor.
-
 config SENSORS_ASPEED_PWM_FAN
         tristate "ASPEED PWM & FAN Tacho Controller Driver"
         depends on ARCH_ASPEED
@@ -372,6 +356,18 @@ config SENSORS_ASB100
 
 	  This driver can also be built as a module.  If so, the module
 	  will be called asb100.
+
+config SENSORS_ASPEED
+	tristate "ASPEED AST2400/AST2500 PWM and Fan tach driver"
+	help
+	  This driver provides support for ASPEED AST2400/AST2500 PWM
+	  and Fan Tacho controllers.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called aspeed_pwm_tacho.
+
+config SENSORS_ASPEED_PWM_TECHOMETER 
+	tristate "ASPEED AST2600 PWM and Fan Tachometer"
 
 config SENSORS_ATXP1
 	tristate "Attansic ATXP1 VID controller"

@@ -85,12 +85,14 @@
 #define ASPEED_MCTP_RX_DESC_ADDR	0x20
 #define ASPEED_MCTP_RX_DESC_NUM		0x24
 #define ASPEED_MCTP_RX_WRITE_PT		0x28
+#define  MCTP_HW_READ_PT_UPDATE		0x80000000
+#define  MCTP_HW_READ_PT_NUM_MASK	0xfff
 #define ASPEED_MCTP_RX_READ_PT		0x2C
 /* ast2600 mctp use tx cmd descript */
 #define ASPEED_MCTP_TX_DESC_ADDR	0x30
 #define ASPEED_MCTP_TX_DESC_NUM		0x34
-#define ASPEED_MCTP_TX_WRITE_PT		0x38
-#define ASPEED_MCTP_TX_READ_PT		0x3C
+#define ASPEED_MCTP_TX_READ_PT		0x38
+#define ASPEED_MCTP_TX_WRITE_PT		0x3C
 
 /*************************************************************************************/
 //TX CMD desc0 : ast-g4, ast-g5
@@ -111,7 +113,9 @@
 //bit 12:2 is packet in 4bytes
 //ast2400 bit 12 can be use.
 //ast2500 bit 12 can't be used. 0: 1024 * 4 = 4096
-#define PKG_SIZE(x)			((x & 0x3ff) << 2)
+#define G5_PKG_SIZE(x)		((x & 0x3ff) << 2)
+#define PKG_SIZE(x)			((x & 0x7ff) << 2)
+
 #define PADDING_LEN(x)			(x & 0x3)
 //TX CMD desc1
 #define LAST_CMD			BIT(31)
@@ -137,7 +141,7 @@
 #define CMD_UPDATE			BIT(0)
 //RX CMD desc1
 #define LAST_CMD			BIT(31)
-#define RX_DATA_ADDR(x)			((((x) >> 7) & 0x3fffff) << 7)
+#define RX_DATA_ADDR(x)			((x) & 0x3fffff80)
 
 /*************************************************************************************/
 //pcie vdm header
@@ -216,10 +220,10 @@ struct aspeed_mctp_xfer {
 	struct pcie_vdm_header header;
 };
 /*************************************************************************************/
-// #define ASPEED_MCTP_DEBUG
+//#define ASPEED_MCTP_DEBUG
 
 #ifdef ASPEED_MCTP_DEBUG
-#define MCTP_DBUG(fmt, args...) printk("%s() " fmt,__FUNCTION__, ## args)
+#define MCTP_DBUG(fmt, args...) printk(KERN_DEBUG "%s() " fmt,__FUNCTION__, ## args)
 #else
 #define MCTP_DBUG(fmt, args...)
 #endif
@@ -287,30 +291,33 @@ aspeed_mctp_write(struct aspeed_mctp_info *aspeed_mctp, u32 val, u32 reg)
 static int aspeed_mctp_tx_xfer(struct aspeed_mctp_info *aspeed_mctp, struct aspeed_mctp_xfer *mctp_xfer)
 {
 	struct pcie_vdm_header *vdm_header = &mctp_xfer->header;
-	unsigned long byte_length = vdm_header->length * 4 - vdm_header->pad_len;
+	unsigned long byte_length = 0;
+	u32 routing_type = vdm_header->type_routing;
 
-	//ast2500 noly support 4096, g5 is not supporting Tx length = 1024
-	if (aspeed_mctp->mctp_version == 5 && mctp_xfer->header.length == 0)
+	if(!vdm_header->length) 
+		byte_length = 4096 - vdm_header->pad_len;
+	else
+		byte_length = vdm_header->length * 4 - vdm_header->pad_len;
+
+	//ast2500 noly support 4096, g5 is not supporting vdm_length is 1024
+	if ((aspeed_mctp->mctp_version == 5) && (!mctp_xfer->header.length))
 		return 1;
 
-	MCTP_DBUG("xfer byte_length = %d, padding len = %d\n", byte_length, vdm_header->pad_len);
+	MCTP_DBUG("xfer byte_length = %ld, padding len = %d\n", byte_length, vdm_header->pad_len);
 
-	if ((aspeed_mctp->mctp_version == 0) && (aspeed_mctp->mctp_version == 5)) {
-		u8 routing_type = vdm_header->type_routing;
-		
+	if ((aspeed_mctp->mctp_version == 0) || (aspeed_mctp->mctp_version == 5)) {
 		copy_from_user(aspeed_mctp->tx_pool, mctp_xfer->xfer_buff, byte_length);
-		
+
 		//old ast2400/ast2500 only one tx fifo and wait for tx complete
 		init_completion(&aspeed_mctp->tx_complete);		
-
 
 		//if use ast2400/ast2500 need to check vdm header support
 		if (vdm_header->som != vdm_header->eom) {
 			printk("can't support som eom different som %d , eom %d \n", vdm_header->som, vdm_header->eom);
 			return 1;
 		}
-		if (routing_type) {
-			switch (routing_type & 0x7) {
+
+		switch (routing_type & 0x7) {
 			case 0:	//route to rc
 				routing_type = 0;
 				break;
@@ -320,17 +327,20 @@ static int aspeed_mctp_tx_xfer(struct aspeed_mctp_info *aspeed_mctp, struct aspe
 			default:
 				printk("not supported rounting type %x ", routing_type);
 				break;
-			}
 		}
 
 	}else {
 		//TODO check tx is full or not 
-		if(((aspeed_mctp->tx_idx + 1) % MCTP_G6_TX_FIFO_NUM) == aspeed_mctp_read(aspeed_mctp, ASPEED_MCTP_TX_WRITE_PT)) {
+		u32 hw_read_pt;
+		aspeed_mctp_write(aspeed_mctp, MCTP_HW_READ_PT_UPDATE, ASPEED_MCTP_TX_READ_PT);
+		hw_read_pt = aspeed_mctp_read(aspeed_mctp, ASPEED_MCTP_TX_READ_PT) & MCTP_HW_READ_PT_NUM_MASK;
+		if(((aspeed_mctp->tx_idx + 1) % MCTP_G6_TX_FIFO_NUM) == aspeed_mctp_read(aspeed_mctp, ASPEED_MCTP_TX_READ_PT)) {
 			printk("TX FIFO full \n");
-			return 1;
+			return 0;
 		} else {
 			void *cur_tx_buff = aspeed_mctp->tx_pool + (MCTP_TX_BUFF_SIZE * aspeed_mctp->tx_idx);
 			//ast2600 support vdm header transfer
+			mctp_xfer->header.pcie_req_id = (readl(aspeed_mctp->pci_bdf_regs) & 0x1fff << 3);
 			copy_from_user(cur_tx_buff, &mctp_xfer->header, sizeof(struct pcie_vdm_header));
 			copy_from_user(cur_tx_buff + sizeof(struct pcie_vdm_header), mctp_xfer->xfer_buff, byte_length);
 		}
@@ -340,35 +350,49 @@ static int aspeed_mctp_tx_xfer(struct aspeed_mctp_info *aspeed_mctp, struct aspe
 	case 0:
 		//routing type bit 14
 		//bit 15 : interrupt enable
-		aspeed_mctp->tx_cmd_desc->desc0 = INT_ENABLE | TAG_OWN(vdm_header->to) |
-						  ROUTING_TYPE(vdm_header->type_routing) |
-						  PKG_SIZE(vdm_header->length) | (vdm_header->pcie_target_id << 16) |
-						  PADDING_LEN(vdm_header->pad_len);
+		if (!vdm_header->length)
+			aspeed_mctp->tx_cmd_desc->desc0 = INT_ENABLE | TAG_OWN(vdm_header->to) | (routing_type << 14) |
+							  PKG_SIZE(0x400) | (vdm_header->pcie_target_id << 16) |
+							  PADDING_LEN(vdm_header->pad_len);
+		else
+			aspeed_mctp->tx_cmd_desc->desc0 = INT_ENABLE | TAG_OWN(vdm_header->to) | (routing_type << 14) |
+							  PKG_SIZE(vdm_header->length) | (vdm_header->pcie_target_id << 16) |
+							  PADDING_LEN(vdm_header->pad_len);
+
 		aspeed_mctp->tx_cmd_desc->desc1 = LAST_CMD | DEST_EP_ID(vdm_header->dest_epid) | TX_DATA_ADDR(aspeed_mctp->tx_pool_dma);
 		break;
 	case 5:
 		//routing type [desc0 bit 12, desc0 bit 14], but bug at bit 12, don't use
 		//bit 15 : interrupt enable
-		aspeed_mctp->tx_cmd_desc->desc0 = INT_ENABLE | TAG_OWN(vdm_header->to) |
-						  G5_ROUTING_TYPE_H(vdm_header->type_routing) |
-						  G5_ROUTING_TYPE_L(vdm_header->type_routing) |
-						  PKG_SIZE(vdm_header->length) | (vdm_header->pcie_target_id << 16) |
+		aspeed_mctp->tx_cmd_desc->desc0 = INT_ENABLE | TAG_OWN(vdm_header->to) | (routing_type << 14) |
+						  G5_PKG_SIZE(vdm_header->length) | (vdm_header->pcie_target_id << 16) |
 						  PADDING_LEN(vdm_header->pad_len);
 		aspeed_mctp->tx_cmd_desc->desc1 = LAST_CMD | DEST_EP_ID(vdm_header->dest_epid) | G5_TX_DATA_ADDR(aspeed_mctp->tx_pool_dma);
 		break;
 	case 6:
-		aspeed_mctp->tx_cmd_desc[aspeed_mctp->tx_idx].desc0 = PKG_SIZE(vdm_header->length);
+		if (!vdm_header->length) 
+			aspeed_mctp->tx_cmd_desc[aspeed_mctp->tx_idx].desc0 = PKG_SIZE(0x400);
+		else
+			aspeed_mctp->tx_cmd_desc[aspeed_mctp->tx_idx].desc0 = PKG_SIZE(vdm_header->length);
+#if 0
+		//add TEST for interrupt and stop
+		aspeed_mctp->tx_cmd_desc[aspeed_mctp->tx_idx].desc0 |= BIT(15) | BIT(16);
+		//
+		MCTP_DBUG("tx idx [%d] desc0 %x , desc1 %x \n", aspeed_mctp->tx_idx, 
+							aspeed_mctp->tx_cmd_desc[aspeed_mctp->tx_idx].desc0, 
+							aspeed_mctp->tx_cmd_desc[aspeed_mctp->tx_idx].desc1);
+#endif
 		//trigger write pt;
 		aspeed_mctp->tx_idx++;
 		aspeed_mctp->tx_idx %= MCTP_G6_TX_FIFO_NUM;
-		aspeed_mctp_write(aspeed_mctp, aspeed_mctp->tx_idx, ASPEED_MCTP_TX_READ_PT);
+		aspeed_mctp_write(aspeed_mctp, aspeed_mctp->tx_idx, ASPEED_MCTP_TX_WRITE_PT);
 		break;
 	}
 
 	//trigger tx
 	aspeed_mctp_write(aspeed_mctp, aspeed_mctp_read(aspeed_mctp, ASPEED_MCTP_CTRL) | MCTP_TX_TRIGGER, ASPEED_MCTP_CTRL);
 
-	if ((aspeed_mctp->mctp_version == 0) && (aspeed_mctp->mctp_version == 5)) {
+	if ((aspeed_mctp->mctp_version == 0) || (aspeed_mctp->mctp_version == 5)) {
 		wait_for_completion(&aspeed_mctp->tx_complete);
 	}
 
@@ -391,12 +415,11 @@ static void aspeed_mctp_ctrl_init(struct aspeed_mctp_info *aspeed_mctp)
 		}
 		aspeed_mctp_write(aspeed_mctp, aspeed_mctp->tx_cmd_desc_dma, ASPEED_MCTP_TX_DESC_ADDR);
 		aspeed_mctp_write(aspeed_mctp, aspeed_mctp->tx_fifo_num, ASPEED_MCTP_TX_DESC_NUM);
-		aspeed_mctp_write(aspeed_mctp, 0, ASPEED_MCTP_TX_READ_PT);
-		
+		aspeed_mctp_write(aspeed_mctp, 0, ASPEED_MCTP_TX_WRITE_PT);
 	} else {
 		aspeed_mctp_write(aspeed_mctp, aspeed_mctp->tx_cmd_desc_dma, ASPEED_MCTP_TX_CMD);
 	}
-	
+
 	aspeed_mctp->rx_idx = 0;
 	aspeed_mctp->rx_hw_idx = 0;
 
@@ -492,7 +515,6 @@ static long mctp_ioctl(struct file *file, unsigned int cmd,
 	struct aspeed_mctp_info *aspeed_mctp = dev_get_drvdata(c->this_device);
 	void __user *argp = (void __user *)arg;
 	int recv_length;
-	struct aspeed_mctp_xfer mctp_xfer;
 
 	switch (cmd) {
 	case ASPEED_MCTP_IOCTX:
@@ -513,22 +535,26 @@ static long mctp_ioctl(struct file *file, unsigned int cmd,
 	case ASPEED_MCTP_IOCRX:
 		// MCTP_DBUG("ASPEED_MCTP_IOCRX \n");
 		if (aspeed_mctp->mctp_version == 6) {
-			if(aspeed_mctp->rx_idx == aspeed_mctp_read(aspeed_mctp, ASPEED_MCTP_RX_WRITE_PT)) {
+			u32 hw_read_pt;
+			aspeed_mctp_write(aspeed_mctp, MCTP_HW_READ_PT_UPDATE, ASPEED_MCTP_RX_WRITE_PT);
+			hw_read_pt = aspeed_mctp_read(aspeed_mctp, ASPEED_MCTP_RX_WRITE_PT) & MCTP_HW_READ_PT_NUM_MASK;
+
+			if(aspeed_mctp->rx_idx == hw_read_pt) {
 				MCTP_DBUG("No rx data\n");
-				return -EFAULT;
+				return 0;
 			} else {
 				struct pcie_vdm_header *vdm = aspeed_mctp->rx_pool + (aspeed_mctp->rx_fifo_size * aspeed_mctp->rx_idx);
 				u32 *rx_buffer = aspeed_mctp->rx_pool + (aspeed_mctp->rx_fifo_size * aspeed_mctp->rx_idx) + sizeof(struct pcie_vdm_header);
 				struct aspeed_mctp_xfer *mctp_rx_xfer = (struct aspeed_mctp_xfer *)arg;
 				recv_length = (vdm->length * 4) + vdm->pad_len;
-				
+
 				if (copy_to_user(&mctp_rx_xfer->header, vdm, sizeof(struct pcie_vdm_header)))
 					return -EFAULT;
 				else {
 					if (copy_to_user(mctp_rx_xfer->xfer_buff, rx_buffer, recv_length))
 						return -EFAULT;
 				}
-				
+
 				aspeed_mctp->rx_idx++;
 				aspeed_mctp->rx_idx %= aspeed_mctp->rx_fifo_num;
 				aspeed_mctp_write(aspeed_mctp, aspeed_mctp->rx_idx, ASPEED_MCTP_RX_READ_PT);
@@ -536,15 +562,10 @@ static long mctp_ioctl(struct file *file, unsigned int cmd,
 		} else {
 			struct aspeed_mctp_cmd_desc *rx_cmd_desc = aspeed_mctp->rx_cmd_desc;
 			u32 desc0 = rx_cmd_desc[aspeed_mctp->rx_idx].desc0;
+			struct aspeed_mctp_xfer *mctp_rx_xfer = (struct aspeed_mctp_xfer *)arg;
 			unsigned int pci_bdf;
-			
 
-			if (copy_from_user(&mctp_xfer, argp, sizeof(struct aspeed_mctp_xfer))) {
-				MCTP_DBUG("copy_from_user fail\n");
-				return -EFAULT;
-			}
-
-			if ((aspeed_mctp->rx_idx == aspeed_mctp->rx_hw_idx) && (desc0 == 0)) {
+			if ((aspeed_mctp->rx_idx == aspeed_mctp->rx_hw_idx) && (!desc0)) {
 				if (aspeed_mctp->rx_full) {
 					MCTP_DBUG("re-trigger\n");
 					aspeed_mctp_ctrl_init(aspeed_mctp);
@@ -553,33 +574,37 @@ static long mctp_ioctl(struct file *file, unsigned int cmd,
 				return 0;
 			}
 
-			if (mctp_xfer.header.length != 0 && mctp_xfer.header.length < GET_PKG_LEN(desc0))
+			if (!desc0)
+				return 0;
+
+			mctp_rx_xfer->header.length = GET_PKG_LEN(desc0);
+			MCTP_DBUG("mctp_rx_xfer->header.length %d \n", mctp_rx_xfer->header.length);
+
+			if (mctp_rx_xfer->header.length != 0 && mctp_rx_xfer->header.length < GET_PKG_LEN(desc0))
 				return -EINVAL;
 
-			mctp_xfer.header.length = GET_PKG_LEN(desc0);
-			mctp_xfer.header.pad_len = GET_PADDING_LEN(desc0);
-			mctp_xfer.header.src_epid = GET_SRC_EPID(desc0);
-			mctp_xfer.header.type_routing = GET_ROUTING_TYPE(desc0);
-			mctp_xfer.header.pkt_seq = GET_SEQ_NO(desc0);
-			mctp_xfer.header.msg_tag = GET_MSG_TAG(desc0);
-			mctp_xfer.header.eom = GET_MCTP_EOM(desc0);
-			mctp_xfer.header.som = GET_MCTP_SOM(desc0);
+			mctp_rx_xfer->header.pad_len = GET_PADDING_LEN(desc0);
+			mctp_rx_xfer->header.src_epid = GET_SRC_EPID(desc0);
+			mctp_rx_xfer->header.type_routing = GET_ROUTING_TYPE(desc0);
+			mctp_rx_xfer->header.pkt_seq = GET_SEQ_NO(desc0);
+			mctp_rx_xfer->header.msg_tag = GET_MSG_TAG(desc0);
+			mctp_rx_xfer->header.eom = GET_MCTP_EOM(desc0);
+			mctp_rx_xfer->header.som = GET_MCTP_SOM(desc0);
 			// 0x1e6ed0c4[4:0]: Dev#
 			// 0x1e6ed0c4[12:5]: Bus#
 			// Fun# always 0
 			if (aspeed_mctp->mctp_version != 0) {
 				pci_bdf = readl(aspeed_mctp->pci_bdf_regs);
-				mctp_xfer.header.pcie_target_id = (pci_bdf & 0x1f) << 3 |
+				mctp_rx_xfer->header.pcie_target_id = (pci_bdf & 0x1f) << 3 |
 								  (pci_bdf >> 5 & 0xff) << 8;
 			}
-			recv_length = (mctp_xfer.header.length * 4);
+			recv_length = (mctp_rx_xfer->header.length * 4);
 
-			if (copy_to_user(mctp_xfer.xfer_buff,
+			if (copy_to_user(mctp_rx_xfer->xfer_buff,
 					 aspeed_mctp->rx_pool + (aspeed_mctp->rx_fifo_size * aspeed_mctp->rx_idx),
 					 recv_length)) {
 				return -EFAULT;
 			} else {
-				copy_to_user(argp, &mctp_xfer, sizeof(struct aspeed_mctp_xfer));
 				rx_cmd_desc[aspeed_mctp->rx_idx].desc0 = 0;
 				aspeed_mctp->rx_idx++;
 				aspeed_mctp->rx_idx %= aspeed_mctp->rx_fifo_num;
@@ -672,7 +697,8 @@ static int aspeed_mctp_probe(struct platform_device *pdev)
 		break;
 	case 6:
 		aspeed_mctp->tx_fifo_num = MCTP_G6_TX_FIFO_NUM;
-		aspeed_mctp->rx_fifo_size = 64;	//TODO Configurable
+		//must 16byte align 
+		aspeed_mctp->rx_fifo_size = (64 + 16);	//TODO AST2600 tx/rx unit can be configurate by register 
 		aspeed_mctp->rx_fifo_num = MCTP_RX_BUFF_POOL_SIZE / aspeed_mctp->rx_fifo_size;
 		aspeed_mctp->dram_base = G6_DRAM_BASE_ADDR;
 		break;

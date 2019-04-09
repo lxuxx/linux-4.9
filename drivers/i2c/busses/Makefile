@@ -29,9 +29,11 @@ obj-$(CONFIG_I2C_HYDRA)		+= i2c-hydra.o
 obj-$(CONFIG_I2C_POWERMAC)	+= i2c-powermac.o
 
 # Embedded system I2C/SMBus host controller drivers
-obj-$(CONFIG_I2C_AT91)		+= i2c-at91.o
-obj-$(CONFIG_I2C_AST)		+= i2c-ast.o #ipmb-ast.o
 obj-$(CONFIG_I2C_ASPEED)	+= i2c-aspeed.o
+obj-$(CONFIG_I2C_AT91)		+= i2c-at91.o
+obj-$(CONFIG_ASPEED_I2C_IRQCHIP)+= irq-aspeed-i2c-ic.o
+obj-$(CONFIG_I2C_AST)		+= i2c-ast.o #ipmb-ast.o
+obj-$(CONFIG_I2C_ASPEED_PKG)	+= i2c-aspeed-pkg.o
 obj-$(CONFIG_I2C_AU1550)	+= i2c-au1550.o
 obj-$(CONFIG_I2C_AXXIA)		+= i2c-axxia.o
 obj-$(CONFIG_I2C_BCM2835)	+= i2c-bcm2835.o
